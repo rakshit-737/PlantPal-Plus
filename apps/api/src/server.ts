@@ -1,0 +1,46 @@
+/**
+ * Process entry point: load configuration, build the app, listen, and shut down
+ * cleanly.
+ *
+ * Graceful shutdown matters on the target hosts, which send SIGTERM before
+ * replacing an instance. Without it, in-flight requests are cut mid-response.
+ */
+
+import { createApp } from './app.js'
+import { loadEnv } from './config/env.js'
+import { initPool } from './db/pool.js'
+import { runMigrations } from './db/migrate.js'
+import { logger } from './logging.js'
+
+const env = loadEnv()
+const pool = initPool(env.DATABASE_URL)
+
+// Run migrations at boot so every deploy is self-migrating. The migration runner
+// is idempotent: it records which migrations have run, so a re-deploy applies
+// nothing new.
+const migrationResult = await runMigrations()
+logger.info(
+  { applied: migrationResult.applied, skipped: migrationResult.skipped },
+  'boot migrations completed',
+)
+const app = createApp({ corsOrigins: env.CORS_ORIGINS })
+
+const server = app.listen(env.PORT, () => {
+  logger.info({ port: env.PORT, nodeEnv: env.NODE_ENV }, 'PlantPal+ API listening')
+})
+
+function shutdown(signal: string): void {
+  logger.info({ signal }, 'shutting down')
+  server.close((err) => {
+    if (err) {
+      logger.error({ err }, 'error during shutdown')
+      process.exit(1)
+    }
+    process.exit(0)
+  })
+  // Do not wait forever for a stuck connection to drain.
+  setTimeout(() => process.exit(1), 10_000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
