@@ -33,6 +33,12 @@ export const ERROR_CODES = {
   UNSUPPORTED_MEDIA_TYPE: { status: 415, messageKey: 'errors.unsupported_media_type' },
   // 429
   RATE_LIMITED: { status: 429, messageKey: 'errors.rate_limited' },
+  /**
+   * BR-ACC-09 — repeated failed logins. Distinct from ACCOUNT_LOCKED (403),
+   * which is an account state; this one is a self-expiring rate limit and the
+   * client should retry after the Retry-After header.
+   */
+  ACC_ACCOUNT_LOCKED: { status: 429, messageKey: 'errors.rate_limited' },
   // 5xx
   INTERNAL_ERROR: { status: 500, messageKey: 'errors.internal_error' },
   UPSTREAM_ERROR: { status: 502, messageKey: 'errors.upstream_error' },

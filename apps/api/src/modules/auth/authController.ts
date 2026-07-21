@@ -10,6 +10,7 @@
 
 import type { NextFunction, Request, Response } from 'express'
 
+import { env } from '../../config/env.js'
 import { AppError, type ErrorDetail, ERROR_CODES } from '../../http/errors.js'
 import { logger } from '../../logging.js'
 import {
@@ -59,6 +60,41 @@ function deviceLabel(req: Request): string | null {
 function platform(req: Request): string {
   const raw = req.header('x-plantpal-client')
   return raw === 'IOS' || raw === 'ANDROID' || raw === 'WEB' ? raw : 'WEB'
+}
+
+/**
+ * The access-token signing secret, read through the validated configuration.
+ *
+ * Reading `process.env.JWT_ACCESS_SECRET!` directly would defer the failure to
+ * request time: a deploy missing the variable would boot happily and then return
+ * 500 on every single login. `env()` validates it once at startup (present, and
+ * at least 32 characters), so a misconfiguration stops the deploy instead.
+ */
+function accessSecret(): string {
+  return env().JWT_ACCESS_SECRET
+}
+
+/** BR-ACC-10 clause 5 — the minimum wall-clock cost of any login attempt. */
+export const LOGIN_TIMING_FLOOR_MS = 250
+
+/**
+ * Pad the current operation out to the timing floor.
+ *
+ * Account enumeration by timing works because "no such user" is cheap (no hash
+ * to verify) while "wrong password" is expensive (a full Argon2 verification).
+ * Padding every path up to a common floor removes the signal — but only if the
+ * elapsed time is measured from the start of the handler. Measuring it after the
+ * expensive work has already happened yields a constant delay added to a
+ * variable cost, which leaves the difference entirely intact.
+ */
+export async function enforceTimingFloor(
+  startedAt: number,
+  floorMs: number = LOGIN_TIMING_FLOOR_MS,
+): Promise<void> {
+  const remaining = floorMs - (Date.now() - startedAt)
+  if (remaining > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remaining))
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +167,10 @@ interface LoginBody {
 }
 
 export async function login(req: Request, res: Response, next: NextFunction) {
+  // Captured before any work so the constant-time floor below measures the whole
+  // handler. Taking this reading later would make the floor a fixed delay added
+  // to a variable amount of work, which equalises nothing (BR-ACC-10 clause 5).
+  const startedAt = Date.now()
   try {
     const { email, password } = req.body as LoginBody
     if (!email || !password) {
@@ -153,25 +193,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       if (lockUntil > Date.now()) {
         const remaining = Math.ceil((lockUntil - Date.now()) / 1000)
         await recordLoginAttempt(normalised, prefix, 'LOCKED_OUT')
-        const err = new AppError(
-          'ACCOUNT_LOCKED' as unknown as AppError['code'],
+        // Set the header before throwing: the terminal handler writes the body,
+        // and a header cannot be added once that has happened.
+        res.setHeader('Retry-After', String(remaining))
+        throw new AppError(
+          'ACC_ACCOUNT_LOCKED',
           `Too many attempts. Try again in ${remaining} seconds.`,
           { context: { retry_after_seconds: remaining } },
         )
-        // Override the error code. BR-ACC-09 expects a 429 with ACC_ACCOUNT_LOCKED.
-        res.status(429).json({
-          error: {
-            code: 'ACC_ACCOUNT_LOCKED',
-            message: err.message,
-            message_key: 'errors.rate_limited',
-            request_id: req.requestId,
-            timestamp: new Date().toISOString(),
-          },
-          retry_after_seconds: remaining,
-        })
-        res.setHeader('Retry-After', String(remaining))
-        next(new AppError('INTERNAL_ERROR', ''))
-        return
       }
     }
 
@@ -184,12 +213,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     const hashToVerify = user?.password_hash ?? DUMMY_HASH
     const passwordOk = await verifyPassword(password, hashToVerify)
 
-    // 4. Timing floor: 250ms minimum (BR-ACC-10 clause 5).
-    const started = Date.now()
-    const elapsed = Date.now() - started
-    if (elapsed < 250) {
-      await new Promise((resolve) => setTimeout(resolve, 250 - elapsed))
-    }
+    // 4. Constant-time floor: every login path takes at least 250 ms measured
+    //    from entry (BR-ACC-10 clause 5), so the cost difference between a
+    //    dummy-hash verification and a real Argon2 verification is absorbed
+    //    rather than exposed as a timing oracle for account enumeration.
+    await enforceTimingFloor(startedAt)
 
     // 5. No user, or user exists but the dummy hash (delete/absent): identical 401.
     if (!user || !user.password_hash) {
@@ -248,7 +276,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     await recordLoginSuccess(user.id)
     await recordLoginAttempt(normalised, prefix, 'SUCCESS')
 
-    const accessToken = signAccessToken(user.id, session.sessionId, process.env['JWT_ACCESS_SECRET']!)
+    const accessToken = signAccessToken(user.id, session.sessionId, accessSecret())
 
     const body: Record<string, unknown> = {
       access_token: accessToken,
@@ -319,7 +347,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     const accessToken = signAccessToken(
       row.userId,
       row.sessionId,
-      process.env['JWT_ACCESS_SECRET']!,
+      accessSecret(),
     )
 
     const isWeb = platform(req) === 'WEB'
@@ -394,7 +422,7 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
       throw new AppError('AUTHENTICATION_REQUIRED', 'Authentication is required.')
     }
     const token = header.slice(7)
-    const secret = process.env['JWT_ACCESS_SECRET']!
+    const secret = accessSecret()
     const result = verifyAccessToken(token, secret)
     if (!result.ok) {
       throw new AppError(
