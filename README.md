@@ -20,9 +20,9 @@ This is a full software-engineering project delivered phase by phase, with every
 | Phase | Status |
 |---|---|
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
-| 2 — Design | ⬜ Not started |
-| 3 — Implementation | 🟡 In progress — shared domain package and API foundation |
-| 4 — Testing | 🟡 In progress — 86 tests |
+| 2 — Design | 🟡 In progress — architecture + design package in [docs/architecture/](docs/architecture/) and [docs/design/](docs/design/) |
+| 3 — Implementation | 🟡 In progress — shared domain package, API auth foundation, and the web client |
+| 4 — Testing | 🟡 In progress — 92 tests, gated by CI |
 | 5 — Documentation | ⬜ Not started |
 | 6 — Deployment | ⬜ Not started |
 
@@ -46,7 +46,10 @@ Start at **[docs/requirements/SRS.md](docs/requirements/SRS.md)** for the Softwa
 ```
 packages/shared/     Domain logic shared by backend, web and mobile
 apps/api/            Express + TypeScript REST API
+apps/web/            React + Vite web application
 docs/requirements/   Phase 1 requirements package
+docs/architecture/   Phase 2 architecture (system design, DB schema, REST API spec)
+docs/design/         Phase 2 design (design language, components, wireframes, navigation)
 ```
 
 The shared package exists so a business rule lives in exactly one place. The watering algorithm, the Atwater energy identity and the Mifflin-St Jeor equation are each implemented once and consumed identically by the server, the website and the mobile app — the requirements demand bit-for-bit agreement between them.
@@ -75,6 +78,15 @@ npm run dev --workspace @plantpal/api
 ```
 
 The API refuses to start on missing or invalid configuration rather than failing later at the first request that needs it.
+
+To run the web app, point it at a running API and start the Vite dev server:
+
+```bash
+cp apps/web/.env.example apps/web/.env   # set VITE_API_TARGET (default http://localhost:4000)
+npm run dev --workspace @plantpal/web    # Vite dev server on :5173, proxies /api to the target
+```
+
+Every push and pull request to `main` runs `npm run typecheck` and `npm test` on Node 20.11 and 22 via [GitHub Actions](.github/workflows/ci.yml).
 
 ---
 
