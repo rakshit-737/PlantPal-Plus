@@ -1,0 +1,53 @@
+name: CI
+
+# Gates the checks the project already keeps green: the full test suite and
+# strict TypeScript across every workspace. Lint/format are intentionally NOT
+# gated yet — eslint is not configured and Prettier reports pre-existing style
+# drift in 75 files; wiring those in would fail the pipeline for reasons
+# unrelated to a given change. Add them once the repo is formatted clean.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same ref cancels the in-flight run for it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: test + typecheck (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20.11 is the floor declared in package.json engines; 22 is current LTS.
+        node: ['20.11', '22']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # npm ci needs a lockfile; fall back to install if one is not committed.
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "::warning::No package-lock.json found; using 'npm install'. Commit a lockfile for reproducible CI."
+            npm install
+          fi
+
+      - name: Typecheck (strict TypeScript, all workspaces)
+        run: npm run typecheck
+
+      - name: Test (all workspaces)
+        run: npm test
