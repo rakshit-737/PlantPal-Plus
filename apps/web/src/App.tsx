@@ -3,10 +3,14 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppShell } from './layouts/AppShell'
+import { AchievementsPage } from './pages/AchievementsPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { FitnessPage } from './pages/FitnessPage'
 import { LoginPage } from './pages/LoginPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { NutritionPage } from './pages/NutritionPage'
+import { PlantsPage } from './pages/PlantsPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 export function App() {
   return (
@@ -26,42 +30,11 @@ export function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
-            <Route
-              path="/plants"
-              element={
-                <PlaceholderPage
-                  title="Plants"
-                  blurb="Your plants, watering reminders and growth timeline."
-                />
-              }
-            />
-            <Route
-              path="/fitness"
-              element={
-                <PlaceholderPage title="Fitness" blurb="Workouts, steps, goals and streaks." />
-              }
-            />
-            <Route
-              path="/nutrition"
-              element={
-                <PlaceholderPage
-                  title="Nutrition"
-                  blurb="Meals, macros, daily targets and water intake."
-                />
-              }
-            />
-            <Route
-              path="/achievements"
-              element={
-                <PlaceholderPage title="Achievements" blurb="Streaks, badges and milestones." />
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <PlaceholderPage title="Settings" blurb="Preferences, modules and your account." />
-              }
-            />
+            <Route path="/plants" element={<PlantsPage />} />
+            <Route path="/fitness" element={<FitnessPage />} />
+            <Route path="/nutrition" element={<NutritionPage />} />
+            <Route path="/achievements" element={<AchievementsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
 
           {/* Unknown paths fall back to the dashboard (or login, via the guard). */}

@@ -11,6 +11,12 @@ import express, { type Express } from 'express'
 import helmet from 'helmet'
 
 import authRoutes from './modules/auth/authRoutes.js'
+import { authenticate } from './modules/auth/authController.js'
+import plantsRoutes from './modules/plants/plantsRoutes.js'
+import fitnessRoutes from './modules/fitness/fitnessRoutes.js'
+import nutritionRoutes from './modules/nutrition/nutritionRoutes.js'
+import dashboardRoutes from './modules/dashboard/dashboardRoutes.js'
+import { Router } from 'express'
 import { errorHandler, notFoundHandler } from './http/errorHandler.js'
 import { requestId } from './http/requestId.js'
 import { logger } from './logging.js'
@@ -46,6 +52,15 @@ export function createApp(options: AppOptions): Express {
 
   // Auth routes — registration, login, token refresh, logout.
   app.use('/api/auth', authRoutes)
+
+  app.use('/api/v1/plants', plantsRoutes)
+  app.use('/api/v1/fitness', fitnessRoutes)
+  app.use('/api/v1/nutrition', nutritionRoutes)
+  app.use('/api/v1/dashboard', dashboardRoutes)
+
+  const achievementsRouter = Router()
+  achievementsRouter.get('/', authenticate, (_req, res) => res.json([]))
+  app.use('/api/v1/achievements', achievementsRouter)
 
   /**
    * FR-SYS-25 — health and readiness.

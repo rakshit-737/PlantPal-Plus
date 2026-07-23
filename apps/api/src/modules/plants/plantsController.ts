@@ -1,0 +1,147 @@
+import type { NextFunction, Request, Response } from 'express'
+import { authenticate } from '../auth/authController.js'
+import { notFound, badRequest } from '../../http/errors.js'
+import {
+  listPlants,
+  getPlant,
+  createPlant,
+  updatePlant,
+  softDeletePlant,
+  logCareEvent,
+  listCareEvents,
+  listSpecies,
+} from './plantsRepo.js'
+
+const VALID_ACTION_TYPES = ['WATER', 'FERTILIZE', 'PRUNE', 'REPOT', 'MIST', 'ROTATE', 'TREAT']
+
+export { authenticate }
+
+export async function list(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const plants = await listPlants(userId)
+    res.json(plants)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function get(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const plant = await getPlant(req.params.id!, userId)
+    if (!plant) throw notFound()
+    res.json(plant)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function create(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const body = req.body as Record<string, unknown>
+
+    const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : ''
+    if (!nickname || nickname.length > 80) {
+      throw badRequest('nickname must be 1–80 characters.', [{ field: 'nickname', issue: 'invalid' }])
+    }
+
+    const base = Number(body.base_interval_days)
+    if (!Number.isInteger(base) || base < 1 || base > 365) {
+      throw badRequest('base_interval_days must be 1–365.', [{ field: 'base_interval_days', issue: 'invalid' }])
+    }
+
+    const min = Number(body.min_interval_days)
+    const max = Number(body.max_interval_days)
+    if (min > max) {
+      throw badRequest('min_interval_days must not exceed max_interval_days.', [
+        { field: 'min_interval_days', issue: 'invalid' },
+      ])
+    }
+
+    const plant = await createPlant(userId, body as any)
+    res.status(201).json(plant)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function update(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const plant = await updatePlant(req.params.id!, userId, req.body)
+    if (!plant) throw notFound()
+    res.json(plant)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function remove(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const deleted = await softDeletePlant(req.params.id!, userId)
+    if (!deleted) throw notFound()
+    res.json({ status: 'deleted' })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function logCare(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const body = req.body as Record<string, unknown>
+
+    const actionType = body.action_type as string
+    if (!actionType || !VALID_ACTION_TYPES.includes(actionType)) {
+      throw badRequest('action_type must be one of: ' + VALID_ACTION_TYPES.join(', '), [
+        { field: 'action_type', issue: 'invalid' },
+      ])
+    }
+
+    const localDateStr = body.local_date_str as string
+    if (!localDateStr) {
+      throw badRequest('local_date_str is required.', [{ field: 'local_date_str', issue: 'required' }])
+    }
+
+    try {
+      await logCareEvent(
+        userId,
+        req.params.id!,
+        actionType,
+        body.note as string | undefined,
+        localDateStr,
+        body.client_idempotency_key as string | undefined,
+      )
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && '__notFound' in (err as Record<string, unknown>)) {
+        throw notFound()
+      }
+      throw err
+    }
+    res.status(201).json({ status: 'logged' })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getCareHistory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).userId as string
+    const events = await listCareEvents(req.params.id!, userId)
+    res.json(events)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function searchSpecies(req: Request, res: Response, next: NextFunction) {
+  try {
+    const species = await listSpecies(req.query.q as string | undefined)
+    res.json(species)
+  } catch (err) {
+    next(err)
+  }
+}
