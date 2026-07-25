@@ -16,6 +16,8 @@ import fitnessRoutes from './modules/fitness/fitnessRoutes.js'
 import nutritionRoutes from './modules/nutrition/nutritionRoutes.js'
 import dashboardRoutes from './modules/dashboard/dashboardRoutes.js'
 import achievementsRoutes from './modules/achievements/achievementsRoutes.js'
+import remindersRoutes from './modules/reminders/remindersRoutes.js'
+import syncRoutes from './modules/sync/syncRoutes.js'
 import { errorHandler, notFoundHandler } from './http/errorHandler.js'
 import { requestId } from './http/requestId.js'
 import { logger } from './logging.js'
@@ -57,6 +59,8 @@ export function createApp(options: AppOptions): Express {
   app.use('/api/v1/nutrition', nutritionRoutes)
   app.use('/api/v1/dashboard', dashboardRoutes)
   app.use('/api/v1/achievements', achievementsRoutes)
+  app.use('/api/v1/reminders', remindersRoutes)
+  app.use('/api/v1/sync', syncRoutes)
 
   /**
    * FR-SYS-25 — health and readiness.
