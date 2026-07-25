@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FlatList, Text, View } from 'react-native'
+import { FlatList, Pressable, Text, View } from 'react-native'
 
-import { listPlants, logCare, type Plant } from '../api/endpoints'
-import { Badge, Button, Card, EmptyState, PageHeader, Spinner } from '../components/ui'
+import {
+  createPlant,
+  listPlants,
+  logCare,
+  searchSpecies,
+  type Plant,
+  type Species,
+} from '../api/endpoints'
+import { Badge, Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
 import { usePalette, space } from '../theme'
 
 function localDateStr(): string {
@@ -21,11 +28,24 @@ function dueLabel(plant: Plant): { text: string; overdue: boolean } {
   return { text: `Due in ${days}d`, overdue: false }
 }
 
+const LIGHT_OPTIONS = ['LOW', 'MEDIUM', 'BRIGHT_INDIRECT', 'DIRECT_SUN']
+
 export function PlantsScreen() {
   const p = usePalette()
   const [plants, setPlants] = useState<Plant[]>([])
   const [loading, setLoading] = useState(true)
   const [wateringId, setWateringId] = useState<string | null>(null)
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [nickname, setNickname] = useState('')
+  const [speciesQuery, setSpeciesQuery] = useState('')
+  const [speciesList, setSpeciesList] = useState<Species[]>([])
+  const [selectedSpecies, setSelectedSpecies] = useState<Species | null>(null)
+  const [light, setLight] = useState('BRIGHT_INDIRECT')
+  const [placement, setPlacement] = useState<'INDOOR' | 'OUTDOOR'>('INDOOR')
+  const [baseInterval, setBaseInterval] = useState('7')
+  const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -38,6 +58,63 @@ export function PlantsScreen() {
   useEffect(() => {
     void load().finally(() => setLoading(false))
   }, [load])
+
+  useEffect(() => {
+    if (!speciesQuery || selectedSpecies) {
+      setSpeciesList([])
+      return
+    }
+    const t = setTimeout(() => {
+      searchSpecies(speciesQuery)
+        .then(setSpeciesList)
+        .catch(() => setSpeciesList([]))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [speciesQuery, selectedSpecies])
+
+  function pickSpecies(s: Species) {
+    setSelectedSpecies(s)
+    setSpeciesQuery(s.common_name)
+    setSpeciesList([])
+    // Species defaults seed the schedule; the user can still override.
+    setBaseInterval(String(s.base_interval_days))
+    setLight(s.default_light)
+  }
+
+  async function handleAdd() {
+    setFormError('')
+    if (!nickname.trim()) {
+      setFormError('Nickname is required.')
+      return
+    }
+    const base = parseInt(baseInterval, 10)
+    if (!base || base < 1 || base > 365) {
+      setFormError('Watering interval must be 1–365 days.')
+      return
+    }
+    setSaving(true)
+    try {
+      await createPlant({
+        nickname: nickname.trim(),
+        species_id: selectedSpecies?.id ?? null,
+        light_exposure: light,
+        placement,
+        base_interval_days: base,
+        min_interval_days: selectedSpecies?.min_interval_days ?? Math.max(1, Math.round(base / 2)),
+        max_interval_days: selectedSpecies?.max_interval_days ?? base * 2,
+      })
+      setAddOpen(false)
+      setNickname('')
+      setSpeciesQuery('')
+      setSelectedSpecies(null)
+      setBaseInterval('7')
+      await load()
+    } catch {
+      setFormError('Failed to add plant. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function water(plant: Plant) {
     setWateringId(plant.id)
@@ -60,14 +137,67 @@ export function PlantsScreen() {
       data={plants}
       keyExtractor={(item) => item.id}
       ListHeaderComponent={
-        <PageHeader title="Plants" subtitle="Watering that adapts to each plant." />
+        <View style={{ gap: space.sm }}>
+          <PageHeader title="Plants" subtitle="Watering that adapts to each plant." />
+          {addOpen ? (
+            <Card style={{ gap: space.sm }}>
+              <Input label="Nickname" value={nickname} onChangeText={setNickname} placeholder="e.g. Monstera by the window" autoCapitalize="sentences" />
+              <Input
+                label="Species (optional)"
+                value={speciesQuery}
+                onChangeText={(t) => {
+                  setSpeciesQuery(t)
+                  setSelectedSpecies(null)
+                }}
+                placeholder="Search the catalogue…"
+                autoCapitalize="sentences"
+              />
+              {speciesList.map((s) => (
+                <Pressable key={s.id} onPress={() => pickSpecies(s)} style={{ paddingVertical: space.xs }}>
+                  <Text style={{ color: p.textMain, fontSize: 14 }}>
+                    {s.common_name} <Text style={{ color: p.textMuted, fontStyle: 'italic' }}>({s.scientific_name})</Text>
+                  </Text>
+                </Pressable>
+              ))}
+              <Text style={{ color: p.textMain, fontSize: 13, fontWeight: '500' }}>Light</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
+                {LIGHT_OPTIONS.map((l) => (
+                  <View key={l} style={{ opacity: light === l ? 1 : 0.55 }}>
+                    <Button
+                      title={l.replace(/_/g, ' ')}
+                      variant={light === l ? 'primary' : 'secondary'}
+                      onPress={() => setLight(l)}
+                    />
+                  </View>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row', gap: space.xs }}>
+                {(['INDOOR', 'OUTDOOR'] as const).map((pl) => (
+                  <View key={pl} style={{ opacity: placement === pl ? 1 : 0.55 }}>
+                    <Button
+                      title={pl}
+                      variant={placement === pl ? 'primary' : 'secondary'}
+                      onPress={() => setPlacement(pl)}
+                    />
+                  </View>
+                ))}
+              </View>
+              <Input label="Watering interval (days)" value={baseInterval} onChangeText={setBaseInterval} keyboardType="number-pad" />
+              <ErrorText message={formError} />
+              <Button title="Add plant" onPress={handleAdd} loading={saving} />
+              <Button title="Cancel" variant="ghost" onPress={() => setAddOpen(false)} />
+            </Card>
+          ) : (
+            <Button title="+ Add plant" onPress={() => setAddOpen(true)} />
+          )}
+        </View>
       }
       ListEmptyComponent={
         <Card>
           <EmptyState
             icon="🪴"
             title="No plants yet"
-            body="Add your first plant on the web app — the mobile add flow ships next."
+            body="Add your first plant and PlantPal+ schedules its watering."
           />
         </Card>
       }

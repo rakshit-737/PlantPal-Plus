@@ -88,9 +88,29 @@ export interface Plant {
   created_at: string
 }
 
+export interface Species {
+  id: string
+  scientific_name: string
+  common_name: string
+  base_interval_days: number
+  min_interval_days: number
+  max_interval_days: number
+  default_light: string
+  default_soil: string
+}
+
 export const listPlants = () => apiRequest<Plant[]>('/v1/plants')
-export const createPlant = (data: Partial<Plant>) =>
-  apiRequest<Plant>('/v1/plants', { method: 'POST', body: data })
+export const searchSpecies = (q: string) =>
+  apiRequest<Species[]>(`/v1/plants/species?q=${encodeURIComponent(q)}`)
+export const createPlant = (data: {
+  nickname: string
+  species_id?: string | null
+  light_exposure: string
+  placement: string
+  base_interval_days: number
+  min_interval_days: number
+  max_interval_days: number
+}) => apiRequest<Plant>('/v1/plants', { method: 'POST', body: data })
 export const logCare = (
   plantId: string,
   data: { action_type: string; note?: string; local_date_str: string },
