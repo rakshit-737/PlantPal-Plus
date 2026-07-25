@@ -51,11 +51,17 @@ export async function insertReminders(inserts: ReminderInsert[]): Promise<number
   return created
 }
 
+export interface DispatchableReminder extends PendingReminderRow {
+  user_id: string
+  title: string
+  body: string | null
+}
+
 /** The dispatcher's hot query (idx_reminders_due): pending rows now due. */
-export async function findDuePending(limit = 200): Promise<PendingReminderRow[]> {
+export async function findDuePending(limit = 200): Promise<DispatchableReminder[]> {
   const pool = getPool()
-  const { rows } = await pool.query<PendingReminderRow>(
-    `select id, due_at_utc, attempts
+  const { rows } = await pool.query<DispatchableReminder>(
+    `select id, user_id, title, body, due_at_utc, attempts
      from reminders
      where status = 'PENDING' and due_at_utc <= now()
      order by due_at_utc asc
@@ -63,6 +69,18 @@ export async function findDuePending(limit = 200): Promise<PendingReminderRow[]>
     [limit],
   )
   return rows
+}
+
+/** Push ticket came back ok: SENT → DELIVERED (FR-NOT-03). */
+export async function markDelivered(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const pool = getPool()
+  await pool.query(
+    `update reminders
+     set status = 'DELIVERED', updated_at = now()
+     where id = any ($1::uuid[]) and status = 'SENT'`,
+    [ids],
+  )
 }
 
 export async function markSent(ids: string[]): Promise<void> {

@@ -11,21 +11,65 @@
 import cron from 'node-cron'
 
 import { logger } from '../../logging.js'
+import { activeTokensForUsers, revokeTokens } from '../notifications/devicesRepo.js'
+import { sendPushMessages, type PushMessage } from '../notifications/expoPush.js'
 import { planWateringReminders, tick } from './reminderEngine.js'
 import {
   findDuePending,
   findPlantsNeedingReminder,
   insertReminders,
+  markDelivered,
   markFailed,
   markSent,
+  type DispatchableReminder,
 } from './remindersRepo.js'
 
 export const REMINDER_HORIZON_HOURS = 24
+
+/**
+ * Attempt Expo Push for the reminders just marked SENT. A reminder whose user
+ * has a token with an ok ticket advances to DELIVERED; tokens Expo reports as
+ * DeviceNotRegistered are revoked (FR-NOT-15). Users with no granted token
+ * simply keep the in-app SENT row — push is an upgrade, never a requirement.
+ */
+async function deliverByPush(sentRows: DispatchableReminder[]): Promise<number> {
+  if (sentRows.length === 0) return 0
+  const tokensByUser = await activeTokensForUsers([...new Set(sentRows.map((r) => r.user_id))])
+  if (tokensByUser.size === 0) return 0
+
+  const messages: PushMessage[] = []
+  const reminderIdsByToken = new Map<string, string[]>()
+  for (const row of sentRows) {
+    for (const token of tokensByUser.get(row.user_id) ?? []) {
+      messages.push({
+        to: token,
+        title: row.title,
+        body: row.body ?? '',
+        data: { reminder_id: row.id },
+      })
+      const list = reminderIdsByToken.get(token)
+      if (list) list.push(row.id)
+      else reminderIdsByToken.set(token, [row.id])
+    }
+  }
+  if (messages.length === 0) return 0
+
+  const result = await sendPushMessages(messages)
+  await revokeTokens(result.notRegistered, 'DEVICE_NOT_REGISTERED')
+
+  const deliveredIds = new Set<string>()
+  for (const token of result.delivered) {
+    for (const id of reminderIdsByToken.get(token) ?? []) deliveredIds.add(id)
+  }
+  await markDelivered([...deliveredIds])
+  return deliveredIds.size
+}
 
 /** One full pass: schedule new watering reminders, then dispatch what is due. */
 export async function runReminderPass(now = new Date()): Promise<{
   scheduled: number
   sent: number
+  delivered: number
   failed: number
 }> {
   const duePlants = await findPlantsNeedingReminder(REMINDER_HORIZON_HOURS)
@@ -37,7 +81,10 @@ export async function runReminderPass(now = new Date()): Promise<{
   await markSent(decision.send)
   await markFailed(decision.fail)
 
-  return { scheduled, sent: decision.send.length, failed: decision.fail.length }
+  const sentSet = new Set(decision.send)
+  const delivered = await deliverByPush(pending.filter((r) => sentSet.has(r.id)))
+
+  return { scheduled, sent: decision.send.length, delivered, failed: decision.fail.length }
 }
 
 let task: ReturnType<typeof cron.schedule> | null = null
@@ -50,7 +97,7 @@ export function startReminderEngine(): void {
   task = cron.schedule(REMINDER_CRON, () => {
     void runReminderPass()
       .then((r) => {
-        if (r.scheduled || r.sent || r.failed) {
+        if (r.scheduled || r.sent || r.delivered || r.failed) {
           logger.info(r, 'reminder pass complete')
         }
       })
