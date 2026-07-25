@@ -11,6 +11,7 @@ import { loadEnv } from './config/env.js'
 import { initPool } from './db/pool.js'
 import { runMigrations } from './db/migrate.js'
 import { logger } from './logging.js'
+import { startReminderEngine, stopReminderEngine } from './modules/reminders/reminderService.js'
 
 const env = loadEnv()
 const pool = initPool(env.DATABASE_URL)
@@ -29,8 +30,13 @@ const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, nodeEnv: env.NODE_ENV }, 'PlantPal+ API listening')
 })
 
+// RSK-01: the reminder tick lives in this process. Keep /healthz pinged by an
+// external monitor so the free-tier instance does not sleep through it.
+startReminderEngine()
+
 function shutdown(signal: string): void {
   logger.info({ signal }, 'shutting down')
+  stopReminderEngine()
   server.close((err) => {
     if (err) {
       logger.error({ err }, 'error during shutdown')
