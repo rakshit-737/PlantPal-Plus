@@ -21,8 +21,8 @@ This is a full software-engineering project delivered phase by phase, with every
 |---|---|
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
 | 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
-| 3 — Implementation | 🟡 In progress — REST API (auth, plants, fitness, nutrition, dashboard, achievements), web app, and the Expo mobile app; reminder engine and offline sync endpoint still open |
-| 4 — Testing | 🟡 In progress — 92 tests, gated by CI |
+| 3 — Implementation | 🟡 In progress — REST API (auth, plants, fitness, nutrition, dashboard, achievements, reminders, offline sync), web app, and the Expo mobile app; photo upload pipeline still open |
+| 4 — Testing | 🟡 In progress — 108 tests, gated by CI |
 | 5 — Documentation | ⬜ Not started |
 | 6 — Deployment | ⬜ Not started |
 
