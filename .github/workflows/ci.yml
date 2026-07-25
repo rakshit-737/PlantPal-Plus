@@ -46,6 +46,11 @@ jobs:
             npm install
           fi
 
+      # dist/ is gitignored; the api, web and mobile workspaces resolve
+      # @plantpal/shared through its built declarations, so build it first.
+      - name: Build shared package
+        run: npm run build --workspace @plantpal/shared
+
       - name: Typecheck (strict TypeScript, all workspaces)
         run: npm run typecheck
 

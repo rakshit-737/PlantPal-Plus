@@ -72,3 +72,5 @@ tmp/
 # Local agent/tooling state (not project source)
 .opencode/
 .opencode
+# Graphify knowledge-graph output
+graphify-out/
