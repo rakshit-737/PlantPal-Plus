@@ -11,7 +11,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "migrate": "node --experimental-strip-types src/db/migrate.ts"
+    "migrate": "node --experimental-strip-types src/db/migrate.ts",
+    "seed": "node --experimental-strip-types src/db/seed.ts"
   },
   "dependencies": {
     "@plantpal/shared": "*",
