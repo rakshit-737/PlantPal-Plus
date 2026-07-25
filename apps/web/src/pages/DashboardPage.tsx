@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Card, Spinner, StatCard, EmptyState, PageHeader } from '../components/ui'
+import { Card, Spinner, StatCard, EmptyState, PageHeader, Button } from '../components/ui'
 import { useAuth } from '../auth/AuthContext'
 import { getDashboard, type DashboardData } from '../lib/dashboardApi'
+import { dismissReminder, listReminders, type Reminder } from '../lib/remindersApi'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
@@ -14,14 +15,28 @@ const listIcons: Record<string, string> = {
 export function DashboardPage() {
   const { user } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getDashboard(todayStr())
-      .then(setData)
-      .catch(() => setData(null))
+    Promise.allSettled([getDashboard(todayStr()), listReminders()])
+      .then(([dashboard, reminderList]) => {
+        setData(dashboard.status === 'fulfilled' ? dashboard.value : null)
+        setReminders(reminderList.status === 'fulfilled' ? reminderList.value : [])
+      })
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleDismiss(id: string) {
+    // Optimistic: the row disappears immediately; a failure restores it.
+    const prev = reminders
+    setReminders(prev.filter((r) => r.id !== id))
+    try {
+      await dismissReminder(id)
+    } catch {
+      setReminders(prev)
+    }
+  }
 
   const greetingName = user?.email?.split('@')[0] ?? 'there'
   const streak = data?.streak.current ?? 0
@@ -67,6 +82,28 @@ export function DashboardPage() {
               accent="text-tertiary"
             />
           </div>
+
+          {reminders.length > 0 && (
+            <section className="mt-xl">
+              <h2 className="mb-md font-heading text-xl font-semibold text-text-main">
+                Reminders
+              </h2>
+              <div className="flex flex-col gap-sm">
+                {reminders.map((r) => (
+                  <Card key={r.id} className="flex items-center gap-md py-sm">
+                    <span className="text-xl">🔔</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-text-main">{r.title}</p>
+                      {r.body && <p className="text-xs text-text-muted">{r.body}</p>}
+                    </div>
+                    <Button variant="ghost" onClick={() => void handleDismiss(r.id)}>
+                      Dismiss
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="mt-xl">
             <h2 className="mb-md font-heading text-xl font-semibold text-text-main">Today</h2>
