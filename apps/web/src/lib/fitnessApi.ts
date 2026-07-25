@@ -39,11 +39,19 @@ export interface WeeklySummary {
   by_day: { date: string; workouts: number; steps: number; calories: number }[]
 }
 
-export const listWorkouts = () => apiRequest<Workout[]>('/v1/fitness')
+// List endpoints wrap their arrays ({ workouts }, { exercises }, …) per the
+// fitness controller; unwrap here so pages deal in plain arrays.
+export const listWorkouts = () =>
+  apiRequest<{ workouts: Workout[] }>('/v1/fitness').then((r) => r.workouts)
 export const logWorkout = (data: Partial<Workout>) =>
   apiRequest<Workout>('/v1/fitness', { method: 'POST', body: data })
 export const getSummary = (week?: string) =>
   apiRequest<WeeklySummary>(`/v1/fitness/summary${week ? `?week=${week}` : ''}`)
 export const searchExercises = (q: string) =>
-  apiRequest<Exercise[]>(`/v1/fitness/exercises?q=${encodeURIComponent(q)}`)
-export const getPersonalRecords = () => apiRequest<unknown[]>('/v1/fitness/personal-records')
+  apiRequest<{ exercises: Exercise[] }>(`/v1/fitness/exercises?q=${encodeURIComponent(q)}`).then(
+    (r) => r.exercises,
+  )
+export const getPersonalRecords = () =>
+  apiRequest<{ personal_records: unknown[] }>('/v1/fitness/personal-records').then(
+    (r) => r.personal_records,
+  )

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { authenticate } from '../auth/authController.js'
 import { notFound, badRequest } from '../../http/errors.js'
+import { getUserId } from '../../http/requestUser.js'
 import {
   listPlants,
   getPlant,
@@ -18,7 +19,7 @@ export { authenticate }
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const plants = await listPlants(userId)
     res.json(plants)
   } catch (err) {
@@ -28,7 +29,7 @@ export async function list(req: Request, res: Response, next: NextFunction) {
 
 export async function get(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const plant = await getPlant(req.params.id!, userId)
     if (!plant) throw notFound()
     res.json(plant)
@@ -39,7 +40,7 @@ export async function get(req: Request, res: Response, next: NextFunction) {
 
 export async function create(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const body = req.body as Record<string, unknown>
 
     const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : ''
@@ -69,7 +70,7 @@ export async function create(req: Request, res: Response, next: NextFunction) {
 
 export async function update(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const plant = await updatePlant(req.params.id!, userId, req.body)
     if (!plant) throw notFound()
     res.json(plant)
@@ -80,7 +81,7 @@ export async function update(req: Request, res: Response, next: NextFunction) {
 
 export async function remove(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const deleted = await softDeletePlant(req.params.id!, userId)
     if (!deleted) throw notFound()
     res.json({ status: 'deleted' })
@@ -91,7 +92,7 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
 
 export async function logCare(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const body = req.body as Record<string, unknown>
 
     const actionType = body.action_type as string
@@ -129,7 +130,7 @@ export async function logCare(req: Request, res: Response, next: NextFunction) {
 
 export async function getCareHistory(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = (req as any).userId as string
+    const userId = getUserId(req)
     const events = await listCareEvents(req.params.id!, userId)
     res.json(events)
   } catch (err) {

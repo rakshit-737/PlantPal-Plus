@@ -37,25 +37,27 @@ export interface WorkoutRow {
 }
 
 export interface CreateWorkoutData {
-  exercise_id?: string
+  exercise_id?: string | undefined
   activity_type: string
-  duration_mins?: number
-  perceived_intensity?: string
-  met_value_at_log?: number
-  body_mass_at_log_kg?: number
-  calories_burned?: number
+  duration_mins?: number | undefined
+  perceived_intensity?: string | undefined
+  met_value_at_log?: number | undefined
+  body_mass_at_log_kg?: number | undefined
+  calories_burned?: number | undefined
   total_volume_kg: number
-  steps?: number
-  note?: string
+  steps?: number | undefined
+  note?: string | undefined
   local_date_str: string
-  client_idempotency_key?: string
-  sets?: {
-    set_index: number
-    reps: number
-    weight_kg: number
-    volume_kg: number
-    estimated_1rm_kg?: number
-  }[]
+  client_idempotency_key?: string | undefined
+  sets?:
+    | {
+        set_index: number
+        reps: number
+        weight_kg: number
+        volume_kg: number
+        estimated_1rm_kg?: number | undefined
+      }[]
+    | undefined
 }
 
 export interface WeeklySummary {
@@ -151,7 +153,7 @@ export async function getWorkout(id: string, userId: string): Promise<WorkoutRow
 
 export async function createWorkout(userId: string, data: CreateWorkoutData): Promise<WorkoutRow> {
   return await transaction(async (client) => {
-    const { rows: [workout] } = await client.query<Omit<WorkoutRow, 'sets'>>(
+    const { rows: workoutRows } = await client.query<Omit<WorkoutRow, 'sets'>>(
       `insert into workouts
          (user_id, exercise_id, activity_type, duration_mins, perceived_intensity,
           met_value_at_log, body_mass_at_log_kg, calories_burned, total_volume_kg,
@@ -176,16 +178,20 @@ export async function createWorkout(userId: string, data: CreateWorkoutData): Pr
         data.client_idempotency_key ?? null,
       ],
     )
+    const workout = workoutRows[0]
+    if (!workout) throw new Error('workout insert returned no row')
 
     const sets: WorkoutSetRow[] = []
     if (data.sets && data.sets.length > 0) {
       for (const s of data.sets) {
-        const { rows: [setRow] } = await client.query<WorkoutSetRow>(
+        const { rows: setRows } = await client.query<WorkoutSetRow>(
           `insert into workout_sets (workout_id, set_index, reps, weight_kg, volume_kg, estimated_1rm_kg)
            values ($1,$2,$3,$4,$5,$6)
            returning id, set_index, reps, weight_kg, volume_kg, estimated_1rm_kg`,
           [workout.id, s.set_index, s.reps, s.weight_kg, s.volume_kg, s.estimated_1rm_kg ?? null],
         )
+        const setRow = setRows[0]
+        if (!setRow) throw new Error('workout_sets insert returned no row')
         sets.push(setRow)
       }
     }

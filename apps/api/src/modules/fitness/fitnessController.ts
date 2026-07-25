@@ -18,6 +18,7 @@ import {
 
 import { badRequest, notFound } from '../../http/errors.js'
 import { authenticate } from '../auth/authController.js'
+import { getUserId } from '../../http/requestUser.js'
 import {
   listWorkouts,
   getWorkout,
@@ -30,9 +31,7 @@ import {
 
 export { authenticate }
 
-function userId(req: Request): string {
-  return (req as unknown as Record<string, unknown>).userId as string
-}
+const userId = getUserId
 
 export async function listWorkoutsHandler(req: Request, res: Response, next: NextFunction) {
   try {

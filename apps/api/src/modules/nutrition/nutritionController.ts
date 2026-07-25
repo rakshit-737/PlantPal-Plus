@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 
 import { AppError } from '../../http/errors.js'
+import { getUserId } from '../../http/requestUser.js'
 import {
   searchFoods,
   getDailySummary,
@@ -25,7 +26,7 @@ export async function searchFoodsHandler(req: Request, res: Response, next: Next
     if (!q || typeof q !== 'string' || q.trim().length === 0) {
       throw new AppError('VALIDATION_FAILED', 'Query parameter q is required.')
     }
-    const userId = (req as unknown as Record<string, string>).userId
+    const userId = getUserId(req)
     const results = await searchFoods(q.trim(), userId)
     res.status(200).json({ foods: results })
   } catch (err) {
@@ -39,7 +40,7 @@ export async function getDailySummaryHandler(req: Request, res: Response, next: 
     if (!isValidDateStr(date)) {
       throw new AppError('VALIDATION_FAILED', 'date must be YYYY-MM-DD.')
     }
-    const userId = (req as unknown as Record<string, string>).userId
+    const userId = getUserId(req)
     const summary = await getDailySummary(userId, date)
     res.status(200).json(summary)
   } catch (err) {
@@ -85,7 +86,7 @@ export async function logMealHandler(req: Request, res: Response, next: NextFunc
       throw new AppError('VALIDATION_FAILED', 'The request failed validation.', { details: errors })
     }
 
-    const userId = (req as unknown as Record<string, string>).userId
+    const userId = getUserId(req)
     const meal = await logMeal(userId, {
       meal_type: body.meal_type as string,
       note: typeof body.note === 'string' ? body.note : undefined,
@@ -126,7 +127,7 @@ export async function logWaterHandler(req: Request, res: Response, next: NextFun
       throw new AppError('VALIDATION_FAILED', 'The request failed validation.', { details: errors })
     }
 
-    const userId = (req as unknown as Record<string, string>).userId
+    const userId = getUserId(req)
     const entry = await logWater(userId, {
       amount_ml: body.amount_ml as number,
       local_date_str: body.local_date_str as string,

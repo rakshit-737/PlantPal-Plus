@@ -41,15 +41,32 @@ export interface DailySummary {
   totals: { kcal: number; protein_g: number; carbs_g: number; fat_g: number }
 }
 
+/** Input for one meal item — mirrors the API's logMeal contract, which also
+ * accepts the optional catalogue food_id the view type does not carry. */
+export interface MealItemInput {
+  food_id?: string
+  food_name_at_log: string
+  quantity: number
+  serving_unit: string
+  grams: number
+  kcal: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+}
+
+// The API wraps the list as { foods } (nutritionController.searchFoodsHandler).
 export const searchFoods = (q: string) =>
-  apiRequest<Food[]>(`/v1/nutrition/foods/search?q=${encodeURIComponent(q)}`)
+  apiRequest<{ foods: Food[] }>(`/v1/nutrition/foods/search?q=${encodeURIComponent(q)}`).then(
+    (r) => r.foods,
+  )
 export const getDailySummary = (date?: string) =>
   apiRequest<DailySummary>(`/v1/nutrition/summary${date ? `?date=${date}` : ''}`)
 export const logMeal = (data: {
   meal_type: string
   note?: string
   local_date_str: string
-  items: Partial<MealItem>[]
+  items: MealItemInput[]
 }) => apiRequest<Meal>('/v1/nutrition/meals', { method: 'POST', body: data })
 export const logWater = (amount_ml: number) =>
   apiRequest<{ id: string; amount_ml: number }>('/v1/nutrition/water', {

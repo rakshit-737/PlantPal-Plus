@@ -202,7 +202,7 @@ export async function getDailySummary(
  * --------------------------------------------------------------------- */
 
 export interface LogMealItemInput {
-  food_id?: string
+  food_id?: string | undefined
   food_name_at_log: string
   quantity: number
   serving_unit: string
@@ -215,9 +215,9 @@ export interface LogMealItemInput {
 
 export interface LogMealInput {
   meal_type: string
-  note?: string
+  note?: string | undefined
   local_date_str: string
-  client_idempotency_key?: string
+  client_idempotency_key?: string | undefined
   items: LogMealItemInput[]
 }
 
@@ -244,7 +244,7 @@ export async function logMeal(userId: string, data: LogMealInput): Promise<Logge
     const total_carbs_g = data.items.reduce((s, i) => s + i.carbs_g, 0)
     const total_fat_g = data.items.reduce((s, i) => s + i.fat_g, 0)
 
-    const { rows: [meal] } = await client.query<LoggedMeal>(
+    const { rows: mealRows } = await client.query<LoggedMeal>(
       `insert into meals
          (user_id, meal_type, total_kcal, total_protein_g, total_carbs_g, total_fat_g,
           note, local_date_str, client_idempotency_key)
@@ -266,6 +266,8 @@ export async function logMeal(userId: string, data: LogMealInput): Promise<Logge
         data.client_idempotency_key ?? null,
       ],
     )
+    const meal = mealRows[0]
+    if (!meal) throw new Error('meal insert returned no row')
 
     for (const item of data.items) {
       await client.query(
@@ -299,8 +301,8 @@ export async function logMeal(userId: string, data: LogMealInput): Promise<Logge
 export interface LogWaterInput {
   amount_ml: number
   local_date_str: string
-  goal_ml_at_log?: number
-  client_idempotency_key?: string
+  goal_ml_at_log?: number | undefined
+  client_idempotency_key?: string | undefined
 }
 
 export interface LoggedWater {
@@ -310,7 +312,7 @@ export interface LoggedWater {
 
 export async function logWater(userId: string, data: LogWaterInput): Promise<LoggedWater> {
   const pool = getPool()
-  const { rows: [row] } = await pool.query<LoggedWater>(
+  const { rows } = await pool.query<LoggedWater>(
     `insert into water_logs (user_id, amount_ml, goal_ml_at_log, local_date_str, client_idempotency_key)
      values ($1, $2, $3, $4, $5)
      returning id, amount_ml`,
@@ -322,6 +324,8 @@ export async function logWater(userId: string, data: LogWaterInput): Promise<Log
       data.client_idempotency_key ?? null,
     ],
   )
+  const row = rows[0]
+  if (!row) throw new Error('water_logs insert returned no row')
   return row
 }
 
