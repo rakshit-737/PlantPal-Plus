@@ -17,6 +17,7 @@ import {
 
 import { trySilentSignIn } from '../api/client'
 import { login as loginApi, logout as logoutApi, type AuthUser, type LoginResponse } from '../api/endpoints'
+import { registerForPushReminders } from '../notifications'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -41,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       setIsAuthenticated(ok)
       setIsLoading(false)
+      // FR-NOT-14: re-register the push token on every authenticated cold start.
+      if (ok) void registerForPushReminders()
     })()
     return () => {
       cancelled = true
@@ -51,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await loginApi(email, password)
     setUser(res.user)
     setIsAuthenticated(true)
+    void registerForPushReminders()
     return res
   }, [])
 
