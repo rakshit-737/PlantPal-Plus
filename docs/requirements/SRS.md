@@ -299,7 +299,6 @@ Every path below is relative to `docs/requirements/` and resolves both in the re
 ### 2.1 Product perspective
 
 #### 2.1.1 Origin and standing
-
 PlantPal+ is a **new, self-contained product**. It is not a component of a larger system, it replaces no existing system of the author's, and it inherits no legacy data. It has exactly one runtime dependency class it does not own — the free-tier services enumerated in `DEP-01` to `DEP-17` — and every one of those carries a named fallback, because the free-tier envelope is the defining constraint of the project rather than an incidental one.
 
 Two structural claims define the perspective, and everything in sections 3 to 6 follows from them.

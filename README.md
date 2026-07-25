@@ -20,8 +20,8 @@ This is a full software-engineering project delivered phase by phase, with every
 | Phase | Status |
 |---|---|
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
-| 2 — Design | 🟡 In progress — architecture + design package in [docs/architecture/](docs/architecture/) and [docs/design/](docs/design/) |
-| 3 — Implementation | 🟡 In progress — shared domain package, API auth foundation, and the web client |
+| 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
+| 3 — Implementation | 🟡 In progress — REST API (auth, plants, fitness, nutrition, dashboard, achievements), web app, and the Expo mobile app; reminder engine and offline sync endpoint still open |
 | 4 — Testing | 🟡 In progress — 92 tests, gated by CI |
 | 5 — Documentation | ⬜ Not started |
 | 6 — Deployment | ⬜ Not started |
@@ -47,8 +47,9 @@ Start at **[docs/requirements/SRS.md](docs/requirements/SRS.md)** for the Softwa
 packages/shared/     Domain logic shared by backend, web and mobile
 apps/api/            Express + TypeScript REST API
 apps/web/            React + Vite web application
+apps/mobile/         React Native (Expo) mobile application
 docs/requirements/   Phase 1 requirements package
-docs/architecture/   Phase 2 architecture (system design, DB schema, REST API spec)
+docs/architecture/   Phase 2 architecture (system design, DB schema, REST API spec, OpenAPI, ADRs)
 docs/design/         Phase 2 design (design language, components, wireframes, navigation)
 ```
 
@@ -56,34 +57,72 @@ The shared package exists so a business rule lives in exactly one place. The wat
 
 ---
 
-## Getting started
+## Installation
 
-Requires **Node.js 20.11+**.
+Requires **Node.js 20.11+** and npm. One install at the repository root covers every workspace (API, website, mobile app, shared package):
 
 ```bash
 git clone https://github.com/rakshit-737/PlantPal-Plus.git
 cd PlantPal-Plus
 npm install
 
-npm test            # run every workspace's tests
+npm test            # run every workspace's tests (92)
 npm run typecheck   # strict TypeScript across all packages
 ```
 
-To run the API you will need a PostgreSQL database (a free [Neon](https://neon.tech) branch is sufficient):
+### 1. The API server (required by both clients)
+
+You will need a PostgreSQL database — a free [Neon](https://neon.tech) or [Supabase](https://supabase.com) instance is sufficient, or any local PostgreSQL 15+.
 
 ```bash
 cp apps/api/.env.example apps/api/.env
-# fill in DATABASE_URL and JWT_ACCESS_SECRET, then:
-npm run dev --workspace @plantpal/api
+# fill in DATABASE_URL and JWT_ACCESS_SECRET (32+ chars), then:
+
+npm run migrate --workspace @plantpal/api   # apply schema migrations 001–006
+npm run seed --workspace @plantpal/api      # load species, exercise and achievement catalogues
+npm run dev --workspace @plantpal/api       # API on http://localhost:4000
 ```
 
 The API refuses to start on missing or invalid configuration rather than failing later at the first request that needs it.
 
-To run the web app, point it at a running API and start the Vite dev server:
+### 2. The website (React + Vite)
 
 ```bash
 cp apps/web/.env.example apps/web/.env   # set VITE_API_TARGET (default http://localhost:4000)
-npm run dev --workspace @plantpal/web    # Vite dev server on :5173, proxies /api to the target
+npm run dev --workspace @plantpal/web    # Vite dev server on http://localhost:5173
+```
+
+The dev server proxies `/api` to the target, so no CORS setup is needed locally. For a production deployment:
+
+```bash
+npm run build --workspace @plantpal/web  # static bundle in apps/web/dist/
+```
+
+Serve `apps/web/dist/` from any static host (Vercel/Netlify free tiers work) with `/api/*` rewritten to the deployed API origin.
+
+### 3. The mobile application (React Native + Expo)
+
+The fastest way to run it on your own phone is [Expo Go](https://expo.dev/go) (free, App Store / Play Store):
+
+```bash
+cd apps/mobile
+npx expo start                            # prints a QR code
+```
+
+Scan the QR code with Expo Go (Android) or the Camera app (iOS) — the app loads over your LAN. Emulators work too: press `a` for the Android emulator or `i` for the iOS simulator.
+
+**Pointing the app at your API:** by default the Android emulator uses `http://10.0.2.2:4000` (the emulator's alias for your machine) and the iOS simulator uses `http://localhost:4000`. A physical phone needs your computer's LAN IP:
+
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+# EXPO_PUBLIC_API_URL=http://192.168.x.x:4000  (your machine's LAN address)
+```
+
+**Installable binaries** are built with [EAS](https://docs.expo.dev/build/introduction/) (free tier):
+
+```bash
+npm install -g eas-cli
+eas build --platform android --profile preview   # produces an installable .apk
 ```
 
 Every push and pull request to `main` runs `npm run typecheck` and `npm test` on Node 20.11 and 22 via [GitHub Actions](.github/workflows/ci.yml).

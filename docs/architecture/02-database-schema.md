@@ -120,3 +120,118 @@ SELECT * FROM plants WHERE user_id = $1 AND deleted_at IS NULL;
 ```
 
 RLS may be layered on later as defence-in-depth, but it would require issuing a request-scoped Postgres role or `SET LOCAL app.user_id`, since `auth.uid()` is unavailable under first-party auth. It is **not** the primary isolation mechanism.
+
+## 6. Normalized SQL DDL
+Below is the PostgreSQL schema defining the tables, constraints, and relationships from the ER diagram.
+
+```sql
+-- Core Auth & Profile
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    display_name VARCHAR(100),
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    locale VARCHAR(10) DEFAULT 'en-US',
+    height_cm INT,
+    weight_kg NUMERIC(5,2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE refresh_tokens (
+    hash VARCHAR(64) PRIMARY KEY, -- SHA-256
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_used TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    consumed BOOLEAN DEFAULT FALSE
+);
+
+-- Plant Care
+CREATE TABLE plants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    species_id UUID, -- nullable, references an external or seeded species table
+    nickname VARCHAR(100) NOT NULL,
+    room VARCHAR(100),
+    acquisition_date DATE,
+    status VARCHAR(20) DEFAULT 'THRIVING', -- THRIVING, NEEDS_ATTENTION, CRITICAL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE plant_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plant_id UUID NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
+    action_type VARCHAR(50) NOT NULL, -- WATER, FERTILIZE, PRUNE
+    image_path VARCHAR(255),
+    logged_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+    local_date_str VARCHAR(10) NOT NULL, -- YYYY-MM-DD
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Fitness
+CREATE TABLE workouts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    activity_type VARCHAR(50) NOT NULL,
+    duration_mins INT NOT NULL,
+    calories_burned INT,
+    logged_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+    local_date_str VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Nutrition
+CREATE TABLE foods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    cal_per_100g NUMERIC(6,2) NOT NULL,
+    protein_per_100g NUMERIC(6,2) NOT NULL,
+    carbs_per_100g NUMERIC(6,2) NOT NULL,
+    fat_per_100g NUMERIC(6,2) NOT NULL,
+    is_custom BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE meal_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    food_id UUID NOT NULL REFERENCES foods(id) ON DELETE RESTRICT,
+    meal_type VARCHAR(50) NOT NULL, -- BREAKFAST, LUNCH, DINNER, SNACK
+    quantity NUMERIC(6,2) NOT NULL,
+    serving_unit VARCHAR(50) NOT NULL,
+    computed_calories INT NOT NULL,
+    logged_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+    local_date_str VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sync & Notifications
+CREATE TABLE sync_outbox (
+    client_idempotency_key UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    entity_type VARCHAR(50) NOT NULL,
+    payload JSONB NOT NULL,
+    status VARCHAR(20) DEFAULT 'PROCESSED', -- PENDING, PROCESSED, FAILED
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE scheduled_reminders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reminder_type VARCHAR(50) NOT NULL,
+    target_entity_id UUID,
+    due_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, SENT, CANCELLED
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```

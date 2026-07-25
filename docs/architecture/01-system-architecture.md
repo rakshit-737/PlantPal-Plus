@@ -2,8 +2,8 @@
 
 | Field | Value |
 | --- | --- |
-| Document | `01-system-architecture.md` — High-level system design |
-| Version | 1.0 |
+| Document | `01-system-architecture.md` — High-level system design (C4 Model) |
+| Version | 1.1 |
 | Owner | Rakshit |
 
 ## 1. Monorepo Structure (npm workspaces)
@@ -22,54 +22,96 @@ To enforce the "TypeScript everywhere" rule and share code seamlessly across web
 │   └── eslint-config/# Shared linting rules
 ```
 
-## 2. High-Level Architecture Diagram
-The following diagram illustrates how the clients interact with the backend, database, and external services.
+## 2. System Architecture (C4 Model)
+
+The architecture is documented following the C4 model (Context, Container, and Component levels) using Mermaid diagrams.
+
+### 2.1 Context Diagram (Level 1)
+Shows the system in its environment, interacting with users and external systems.
 
 ```mermaid
-flowchart TD
-    %% Clients
-    subgraph Clients["Clients (React & React Native)"]
-        Mobile["📱 Mobile App (Expo)<br>Offline-first writes"]
-        Web["💻 Web App (Vite)<br>Responsive UI"]
-    end
+C4Context
+    title System Context Diagram for PlantPal+
 
-    %% API Gateway & Services
-    subgraph Backend["API Server (Node.js / Express on Render)"]
-        Router["Express Router / Auth"]
-        Controllers["Module Controllers"]
-        SyncEngine["Sync Outbox Resolver"]
-        Scheduler["node-cron Reminder Engine"]
+    Person(user, "User", "A user tracking their plants, fitness, and nutrition.")
+    
+    System(plantpal, "PlantPal+", "Unified daily-habit tracker for plant care, fitness, and nutrition.")
+    
+    System_Ext(expopush, "Expo Push Notification Service", "Delivers push notifications to mobile devices.")
+    System_Ext(openfoodfacts, "Open Food Facts API", "Optional external database for food nutrition data.")
+    System_Ext(perenual, "Perenual API", "Optional external database for plant species data.")
+
+    Rel(user, plantpal, "Uses to track daily habits", "HTTPS")
+    Rel(plantpal, expopush, "Sends reminders via", "HTTPS")
+    Rel(plantpal, openfoodfacts, "Fetches nutrition data from", "HTTPS")
+    Rel(plantpal, perenual, "Fetches plant species from", "HTTPS")
+```
+
+### 2.2 Container Diagram (Level 2)
+Zooming into the `PlantPal+` system to show the high-level technical containers.
+
+```mermaid
+C4Container
+    title Container Diagram for PlantPal+
+
+    Person(user, "User", "A user tracking their habits")
+
+    System_Boundary(c1, "PlantPal+") {
+        Container(mobile, "Mobile App", "React Native, Expo", "Provides offline-first logging and push notifications.")
+        Container(web, "Web App", "React, Vite", "Provides a responsive dashboard and data management interface.")
         
-        Router --> Controllers
-        Router --> SyncEngine
-        Controllers <--> Scheduler
-    end
+        Container(api, "API Server", "Node.js, Express", "Handles business logic, auth, sync, and background reminders. Hosted on Render/Railway.")
+        
+        ContainerDb(db, "Database", "PostgreSQL (Supabase/Neon)", "Stores user data, logs, species, and foods.")
+        ContainerDb(storage, "Object Storage", "Supabase Storage", "Stores plant photos.")
+    }
 
-    %% Storage & External
-    subgraph Data["Supabase Platform"]
-        DB[(PostgreSQL)]
-        Storage["Object Storage (Photos)"]
-    end
-    
-    subgraph External["External Integrations"]
-        ExpoPush["Expo Push Notification Service"]
-        OpenFoodFacts["Open Food Facts API"]
-        Perenual["Perenual Plant API"]
-    end
+    System_Ext(expopush, "Expo Push")
+    System_Ext(externalapis, "External APIs (Food/Plants)")
 
-    %% Connections
-    Mobile <-->|REST API (HTTPS)| Router
-    Web <-->|REST API (HTTPS)| Router
+    Rel(user, mobile, "Uses", "Touch")
+    Rel(user, web, "Uses", "Browser")
+
+    Rel(mobile, api, "Makes API calls to", "JSON/HTTPS")
+    Rel(web, api, "Makes API calls to", "JSON/HTTPS")
     
-    Controllers <-->|SQL Queries| DB
-    SyncEngine <-->|Upsert by ID| DB
+    Rel(mobile, storage, "Uploads photos to", "HTTPS")
+    Rel(web, storage, "Uploads photos to", "HTTPS")
+
+    Rel(api, db, "Reads from and writes to", "SQL/TCP")
+    Rel(api, expopush, "Dispatches reminders to", "HTTPS")
+    Rel(api, externalapis, "Enriches catalogue using", "HTTPS")
+```
+
+### 2.3 Component Diagram: API Server (Level 3)
+Zooming into the `API Server` container to show its internal components.
+
+```mermaid
+C4Component
+    title Component Diagram for API Server
+
+    Container_Boundary(api, "API Server") {
+        Component(router, "Express Router & Auth", "Express Middleware", "Routes requests, validates JWTs, manages sessions.")
+        Component(sync, "Sync Engine", "TypeScript Module", "Processes offline outbox queues, upserting append-only events idempotently.")
+        Component(modules, "Domain Modules", "TypeScript Controllers", "Handles Plants, Fitness, Nutrition, and Dashboard logic.")
+        Component(scheduler, "Reminder Scheduler", "node-cron", "Checks for due reminders every 5 minutes and dispatches them.")
+        Component(dal, "Data Access Layer", "pg Pool", "Executes parameterized SQL queries against PostgreSQL.")
+    }
+
+    Container(mobile, "Mobile App", "React Native", "Client")
+    ContainerDb(db, "Database", "PostgreSQL", "Storage")
+    System_Ext(expopush, "Expo Push", "Notifications")
+
+    Rel(mobile, router, "Makes requests to", "JSON/HTTPS")
+    Rel(router, sync, "Delegates offline sync to")
+    Rel(router, modules, "Routes standard API calls to")
     
-    Mobile -->|Direct Upload| Storage
-    Web -->|Direct Upload| Storage
+    Rel(sync, dal, "Uses")
+    Rel(modules, dal, "Uses")
+    Rel(scheduler, dal, "Reads pending reminders from")
     
-    Scheduler -->|Trigger Push| ExpoPush
-    Controllers -->|Optional Fetch| OpenFoodFacts
-    Controllers -->|Optional Fetch| Perenual
+    Rel(dal, db, "Executes SQL against", "TCP/IP")
+    Rel(scheduler, expopush, "Sends push payloads to", "HTTPS")
 ```
 
 > **Auth is first-party, not Supabase Auth.** Supabase here provides only managed PostgreSQL and object storage. Authentication (registration, login, JWT access tokens, opaque rotating refresh tokens, session cap) is implemented inside the Express API — see the API specification and the auth ADR. Consequently, per-row isolation is enforced in application queries scoped by `user_id`, **not** by Supabase Row-Level Security using `auth.uid()`.
@@ -77,7 +119,7 @@ flowchart TD
 ## 3. Offline & Sync Strategy
 - **Offline-Light:** Clients cache reads using TanStack Query (persisted to AsyncStorage / IndexedDB). 
 - **Append-Only Write Outbox:** Log actions (watering, meals, workouts) are queued locally if offline.
-- **Syncing:** When back online, the client pushes the queue to the `SyncEngine`. Each payload includes a `client_uuid` (idempotency key).
+- **Syncing:** When back online, the client pushes the queue to the `Sync Engine`. Each payload includes a `client_uuid` (idempotency key).
 - **Conflict-Free:** Since log events are immutable events (append-only), there is no need for complex CRDTs or Last-Write-Wins merging. The server simply upserts by the idempotency key.
 
 ## 4. Reminder Engine
