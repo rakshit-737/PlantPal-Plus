@@ -19,6 +19,7 @@ import {
 import { badRequest, notFound } from '../../http/errors.js'
 import { authenticate } from '../auth/authController.js'
 import { getUserId } from '../../http/requestUser.js'
+import { recordDailyLogSafe } from '../engagement/engagementService.js'
 import {
   listWorkouts,
   getWorkout,
@@ -144,6 +145,9 @@ export async function logWorkout(req: Request, res: Response, next: NextFunction
       client_idempotency_key: body.client_idempotency_key as string | undefined,
       sets: sets.length > 0 ? sets : undefined,
     })
+
+    // BR-GAM-03: a >= 10 min session or the step goal may complete the day.
+    await recordDailyLogSafe(userId(req), 'FITNESS', body.local_date_str as string)
 
     res.status(201).json(workout)
   } catch (err) {

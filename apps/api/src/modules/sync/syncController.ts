@@ -25,6 +25,7 @@ import {
 import { AppError } from '../../http/errors.js'
 import { getUserId } from '../../http/requestUser.js'
 import { logger } from '../../logging.js'
+import { recordDailyLogSafe, type ModuleScope } from '../engagement/engagementService.js'
 import { logCareEvent } from '../plants/plantsRepo.js'
 import { createWorkout } from '../fitness/fitnessRepo.js'
 import { logMeal, logWater } from '../nutrition/nutritionRepo.js'
@@ -133,6 +134,14 @@ const DESTINATION_TABLE = {
   WATER_LOG: 'water_logs',
 } as const
 
+/** Which engagement scope a synced event feeds; water feeds none (BR-GAM-04). */
+const ENGAGEMENT_SCOPE: Record<keyof typeof DESTINATION_TABLE, ModuleScope | null> = {
+  PLANT_CARE_EVENT: 'PLANT_CARE',
+  WORKOUT: 'FITNESS',
+  MEAL: 'NUTRITION',
+  WATER_LOG: null,
+}
+
 async function applyEvent(
   userId: string,
   key: string,
@@ -233,6 +242,9 @@ export async function drainOutboxHandler(req: Request, res: Response, next: Next
       try {
         const entityId = await applyEvent(userId, key, event.entity_type, event.payload)
         await markProcessed(row.id, entityId)
+        const scope = ENGAGEMENT_SCOPE[event.entity_type]
+        const localDate = (event.payload as { local_date_str?: string }).local_date_str
+        if (scope && localDate) await recordDailyLogSafe(userId, scope, localDate)
         results.push({
           client_idempotency_key: key,
           status: 'PROCESSED',

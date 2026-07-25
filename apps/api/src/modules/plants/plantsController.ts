@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express'
 import { authenticate } from '../auth/authController.js'
 import { notFound, badRequest } from '../../http/errors.js'
 import { getUserId } from '../../http/requestUser.js'
+import { recordDailyLogSafe } from '../engagement/engagementService.js'
 import {
   listPlants,
   getPlant,
@@ -122,6 +123,8 @@ export async function logCare(req: Request, res: Response, next: NextFunction) {
       }
       throw err
     }
+    // BR-GAM-02: a resolved care task may complete the plant-care day.
+    await recordDailyLogSafe(userId, 'PLANT_CARE', localDateStr)
     res.status(201).json({ status: 'logged' })
   } catch (err) {
     next(err)

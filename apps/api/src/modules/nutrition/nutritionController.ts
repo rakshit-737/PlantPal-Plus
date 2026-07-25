@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express'
 
 import { AppError } from '../../http/errors.js'
 import { getUserId } from '../../http/requestUser.js'
+import { recordDailyLogSafe } from '../engagement/engagementService.js'
 import {
   searchFoods,
   getDailySummary,
@@ -104,6 +105,9 @@ export async function logMealHandler(req: Request, res: Response, next: NextFunc
         fat_g: typeof item.fat_g === 'number' ? item.fat_g : 0,
       })),
     })
+
+    // BR-GAM-04: the second de-duplicated meal of the day completes it.
+    await recordDailyLogSafe(userId, 'NUTRITION', body.local_date_str as string)
 
     res.status(201).json(meal)
   } catch (err) {
