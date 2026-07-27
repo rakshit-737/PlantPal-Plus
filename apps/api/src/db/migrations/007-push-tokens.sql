@@ -1,46 +1,40 @@
--- 007: Device push tokens — ENT-07 (DevicePushToken).
+-- 007: Bring ENT-07 device_push_tokens (created in 001) up to FR-NOT-14/15.
 -- References: modules/notifications.md FR-NOT-14/15, BR-NOT-15.
 --
--- The registry is a set, not a column: phone + tablet + a not-yet-pruned
--- reinstall is normal. At most 5 active rows per user (LRU_EVICTED beyond
--- that); a token registered by a different user revokes the previous owner's
--- row first (TOKEN_REASSIGNED) so a handed-over device can never receive the
--- previous owner's reminders.
+-- 001 shipped the registry core (installation_id, token, ACTIVE/UNREGISTERED/
+-- STALE status). This migration adds what dispatch and the settings screen
+-- need: permission tracking, device metadata, revocation bookkeeping, and the
+-- table-wide token uniqueness the spec requires.
+--
+-- Status mapping: ACTIVE = live target; UNREGISTERED = Expo said
+-- DeviceNotRegistered; STALE = revoked by policy (LRU_EVICTED,
+-- TOKEN_REASSIGNED, TOKEN_ROTATED, USER_LOGOUT) with the reason recorded.
 
 begin;
 
-create table if not exists device_push_tokens (
-  id                     uuid        primary key default gen_random_uuid(),
-  user_id                uuid        not null references users(id) on delete cascade,
-  -- Unique across the whole table, not merely per user (FR-NOT-14).
-  expo_push_token        text        not null unique
-                                     check (
-                                       length(expo_push_token) between 20 and 200
-                                       and (expo_push_token like 'ExponentPushToken[%'
-                                            or expo_push_token like 'ExpoPushToken[%')
-                                     ),
-  platform               text        not null check (platform = any (array['IOS','ANDROID','WEB'])),
-  -- Stable per application installation; links the row to the auth session.
-  client_installation_id uuid        not null,
-  device_label           text        check (length(device_label) <= 64),
-  app_version            text        check (length(app_version) <= 20),
-  -- DENIED rows are stored but never targeted by a send (FR-NOT-14 rule 5).
-  permission_status      text        not null default 'UNDETERMINED'
-                                     check (permission_status = any (array['GRANTED','DENIED','UNDETERMINED'])),
-  revoked_at             timestamptz,
-  revoke_reason          text        check (revoke_reason = any (array[
-                                       'LRU_EVICTED','TOKEN_REASSIGNED','DEVICE_NOT_REGISTERED','USER_LOGOUT'
-                                     ])),
-  created_at             timestamptz not null default now(),
-  last_seen_at           timestamptz not null default now()
-);
+alter table device_push_tokens
+  add column if not exists device_label      text check (length(device_label) <= 64),
+  add column if not exists app_version       text check (length(app_version) <= 20),
+  add column if not exists permission_status text not null default 'UNDETERMINED'
+                             check (permission_status = any (array['GRANTED','DENIED','UNDETERMINED'])),
+  add column if not exists revoked_at        timestamptz,
+  add column if not exists revoke_reason     text
+                             check (revoke_reason = any (array[
+                               'LRU_EVICTED','TOKEN_REASSIGNED','TOKEN_ROTATED','DEVICE_NOT_REGISTERED','USER_LOGOUT'
+                             ]));
 
--- The dispatcher's target set: a user's active, permitted tokens.
-create index if not exists idx_push_tokens_user_active
-  on device_push_tokens (user_id, last_seen_at desc)
-  where revoked_at is null and permission_status = 'GRANTED';
+-- FR-NOT-14: one live owner per token string, table-wide (not merely per
+-- user). Partial on ACTIVE so a reassigned or rotated token keeps its revoked
+-- rows as an audit trail while the new owner's row takes the live slot.
+create unique index if not exists idx_push_tokens_token
+  on device_push_tokens (token) where status = 'ACTIVE';
+
+-- The dispatcher's target set: a user's live, permitted tokens.
+create index if not exists idx_push_tokens_dispatch
+  on device_push_tokens (user_id, last_confirmed_at desc)
+  where status = 'ACTIVE' and permission_status = 'GRANTED';
 
 comment on table device_push_tokens is
-  'FR-NOT-14: max 5 active per user (LRU_EVICTED); token unique table-wide; reassignment revokes the previous owner';
+  'ENT-07 / FR-NOT-14: max 5 ACTIVE per user (LRU_EVICTED); token unique table-wide; reassignment revokes the previous owner';
 
 commit;

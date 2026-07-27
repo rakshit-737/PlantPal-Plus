@@ -1,7 +1,11 @@
 /**
  * Device push token registry — ENT-07 (DevicePushToken).
  *
- * References: migrations/007-push-tokens.sql, FR-NOT-14/15.
+ * References: migrations/001-auth-schema.sql (core), 007-push-tokens.sql
+ * (FR-NOT-14/15 additions).
+ *
+ * Status mapping: ACTIVE = live dispatch target; UNREGISTERED = Expo reported
+ * DeviceNotRegistered; STALE = revoked by policy with revoke_reason recorded.
  */
 
 import { transaction, getPool } from '../../db/pool.js'
@@ -14,7 +18,7 @@ export interface DeviceView {
   device_label: string | null
   app_version: string | null
   permission_status: string
-  last_seen_at: string
+  last_confirmed_at: string | null
 }
 
 export interface RegisterTokenInput {
@@ -28,38 +32,37 @@ export interface RegisterTokenInput {
 
 /**
  * Register or refresh a token (FR-NOT-14 processing rules 2–4):
- * upsert by token string; a token owned by a different user revokes the
- * previous owner's row (TOKEN_REASSIGNED) before this user takes it over;
- * a sixth active token evicts the least-recently-seen (LRU_EVICTED).
+ * - upsert by token string (unique table-wide)
+ * - a token owned by a different user revokes the previous owner's row first
+ *   (TOKEN_REASSIGNED) so a handed-over device cannot receive old reminders
+ * - an Expo token rotation retires this installation's previous ACTIVE rows
+ *   (TOKEN_ROTATED) instead of leaving dead targets behind
+ * - a sixth active token evicts the least-recently-confirmed (LRU_EVICTED)
  */
 export async function registerToken(
   userId: string,
   input: RegisterTokenInput,
 ): Promise<{ id: string; devices: DeviceView[] }> {
   return transaction(async (client) => {
+    // Revoked audit rows may share the token string; the live row (or, absent
+    // one, the newest) is the row this registration acts on.
     const { rows: existing } = await client.query<{ id: string; user_id: string }>(
-      `select id, user_id from device_push_tokens where expo_push_token = $1 for update`,
+      `select id, user_id from device_push_tokens
+       where token = $1
+       order by (status = 'ACTIVE') desc, created_at desc
+       limit 1
+       for update`,
       [input.expo_push_token],
     )
     const current = existing[0]
 
     let id: string
-    if (current && current.user_id !== userId) {
-      // Device handover (E-26): the previous owner's row dies first, then the
-      // token is recreated under the new subject.
-      await client.query(
-        `update device_push_tokens
-         set revoked_at = now(), revoke_reason = 'TOKEN_REASSIGNED'
-         where id = $1`,
-        [current.id],
-      )
-      id = await insertToken(client, userId, input)
-    } else if (current) {
+    if (current && current.user_id === userId) {
       const { rows } = await client.query<{ id: string }>(
         `update device_push_tokens
-         set platform = $2, client_installation_id = $3, device_label = $4,
-             app_version = $5, permission_status = $6,
-             revoked_at = null, revoke_reason = null, last_seen_at = now()
+         set platform = $2, installation_id = $3, device_label = $4, app_version = $5,
+             permission_status = $6, status = 'ACTIVE', revoked_at = null,
+             revoke_reason = null, last_confirmed_at = now(), updated_at = now()
          where id = $1
          returning id`,
         [
@@ -73,87 +76,102 @@ export async function registerToken(
       )
       id = rows[0]!.id
     } else {
-      id = await insertToken(client, userId, input)
+      if (current) {
+        // Device handover (E-26): the previous owner's row is revoked first;
+        // the ACTIVE-only unique index then frees the token for the new owner
+        // while the revoked row remains as the audit trail.
+        await client.query(
+          `update device_push_tokens
+           set status = 'STALE', revoked_at = now(), revoke_reason = 'TOKEN_REASSIGNED',
+               updated_at = now()
+           where id = $1`,
+          [current.id],
+        )
+      }
+
+      // Token rotation: retire this installation's previous live rows.
+      await client.query(
+        `update device_push_tokens
+         set status = 'STALE', revoked_at = now(), revoke_reason = 'TOKEN_ROTATED',
+             updated_at = now()
+         where user_id = $1 and installation_id = $2 and status = 'ACTIVE' and token <> $3`,
+        [userId, input.client_installation_id, input.expo_push_token],
+      )
+
+      const { rows } = await client.query<{ id: string }>(
+        `insert into device_push_tokens
+           (user_id, installation_id, platform, token, status, device_label, app_version,
+            permission_status, last_confirmed_at)
+         values ($1, $2, $3, $4, 'ACTIVE', $5, $6, $7, now())
+         returning id`,
+        [
+          userId,
+          input.client_installation_id,
+          input.platform,
+          input.expo_push_token,
+          input.device_label ?? null,
+          input.app_version ?? null,
+          input.permission_status,
+        ],
+      )
+      id = rows[0]!.id
     }
 
-    // FR-NOT-14 rule 4: cap active rows at 5, evicting by oldest last_seen_at.
+    // FR-NOT-14 rule 4: cap ACTIVE rows at 5, evicting the least recently seen.
     await client.query(
       `update device_push_tokens
-       set revoked_at = now(), revoke_reason = 'LRU_EVICTED'
+       set status = 'STALE', revoked_at = now(), revoke_reason = 'LRU_EVICTED',
+           updated_at = now()
        where id in (
          select id from device_push_tokens
-         where user_id = $1 and revoked_at is null
-         order by last_seen_at desc
+         where user_id = $1 and status = 'ACTIVE'
+         order by last_confirmed_at desc nulls last
          offset $2
        )`,
       [userId, MAX_ACTIVE_TOKENS_PER_USER],
     )
 
     const { rows: devices } = await client.query<DeviceView>(
-      `select id, platform, device_label, app_version, permission_status, last_seen_at
+      `select id, platform, device_label, app_version, permission_status, last_confirmed_at
        from device_push_tokens
-       where user_id = $1 and revoked_at is null
-       order by last_seen_at desc`,
+       where user_id = $1 and status = 'ACTIVE'
+       order by last_confirmed_at desc nulls last`,
       [userId],
     )
     return { id, devices }
   })
 }
 
-async function insertToken(
-  client: { query: (sql: string, params: unknown[]) => Promise<{ rows: { id: string }[] }> },
-  userId: string,
-  input: RegisterTokenInput,
-): Promise<string> {
-  const { rows } = await client.query(
-    `insert into device_push_tokens
-       (user_id, expo_push_token, platform, client_installation_id, device_label, app_version, permission_status)
-     values ($1, $2, $3, $4, $5, $6, $7)
-     returning id`,
-    [
-      userId,
-      input.expo_push_token,
-      input.platform,
-      input.client_installation_id,
-      input.device_label ?? null,
-      input.app_version ?? null,
-      input.permission_status,
-    ],
-  )
-  return rows[0]!.id
-}
-
 /** Active, permission-granted tokens for a set of users (the dispatch target set). */
-export async function activeTokensForUsers(
-  userIds: string[],
-): Promise<Map<string, string[]>> {
+export async function activeTokensForUsers(userIds: string[]): Promise<Map<string, string[]>> {
   if (userIds.length === 0) return new Map()
   const pool = getPool()
-  const { rows } = await pool.query<{ user_id: string; expo_push_token: string }>(
-    `select user_id, expo_push_token
+  const { rows } = await pool.query<{ user_id: string; token: string }>(
+    `select user_id, token
      from device_push_tokens
      where user_id = any ($1::uuid[])
-       and revoked_at is null
+       and status = 'ACTIVE'
        and permission_status = 'GRANTED'`,
     [userIds],
   )
   const map = new Map<string, string[]>()
   for (const row of rows) {
     const list = map.get(row.user_id)
-    if (list) list.push(row.expo_push_token)
-    else map.set(row.user_id, [row.expo_push_token])
+    if (list) list.push(row.token)
+    else map.set(row.user_id, [row.token])
   }
   return map
 }
 
-/** Revoke tokens Expo reports as DeviceNotRegistered (FR-NOT-15). */
+/** Revoke tokens Expo reports as gone (FR-NOT-15). */
 export async function revokeTokens(tokens: string[], reason: string): Promise<void> {
   if (tokens.length === 0) return
   const pool = getPool()
   await pool.query(
     `update device_push_tokens
-     set revoked_at = now(), revoke_reason = $2
-     where expo_push_token = any ($1::text[]) and revoked_at is null`,
+     set status = case when $2 = 'DEVICE_NOT_REGISTERED' then 'UNREGISTERED' else 'STALE' end,
+         revoked_at = now(), revoke_reason = $2, updated_at = now()
+     where token = any ($1::text[]) and status = 'ACTIVE'`,
     [tokens, reason],
   )
 }
