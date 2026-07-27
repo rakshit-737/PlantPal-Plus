@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native'
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native'
 
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
@@ -22,7 +22,15 @@ export function LoginScreen({ onRegister }: { onRegister: () => void }) {
     }
     setBusy(true)
     try {
-      await login(email.trim(), password)
+      const res = await login(email.trim(), password)
+      // FR-ACC-02 clause 5: signing in during the grace window is how a
+      // deletion is cancelled — the user must know they just did that.
+      if (res.account_pending_deletion) {
+        Alert.alert(
+          'Account scheduled for deletion',
+          'This account was scheduled for deletion. Signing in keeps it — visit Settings to review.',
+        )
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Sign-in failed. Try again.')
     } finally {

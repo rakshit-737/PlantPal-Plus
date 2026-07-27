@@ -11,10 +11,14 @@ const ACTIVITY_TYPES = ['WALK', 'RUN', 'CYCLE', 'SWIM', 'STRENGTH', 'YOGA', 'HII
 const INTENSITIES = ['LOW', 'MODERATE', 'VIGOROUS']
 
 function weekStart(): string {
+  // Monday of the current week in LOCAL wall-clock time; serialising through
+  // toISOString would shift the window for anyone not on UTC (FR-SYS-22).
   const d = new Date()
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  return new Date(d.setDate(diff)).toISOString().slice(0, 10)
+  const monday = new Date(d.getFullYear(), d.getMonth(), diff)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`
 }
 
 export function FitnessPage() {
@@ -51,7 +55,11 @@ export function FitnessPage() {
         perceived_intensity: intensity,
         steps: steps ? parseInt(steps, 10) : null,
         note: note || null,
-        local_date_str: new Date().toISOString().slice(0, 10),
+        local_date_str: (() => {
+          const d = new Date()
+          const pad = (n: number) => String(n).padStart(2, '0')
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+        })(),
       })
       const [w, s] = await Promise.all([listWorkouts(), getSummary(weekStart())])
       setWorkouts(w); setSummary(s)

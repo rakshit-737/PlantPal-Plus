@@ -8,6 +8,8 @@
  * inside the controller rather than delegating them to individual queries.
  */
 
+import { createHash } from 'node:crypto'
+
 import type { NextFunction, Request, Response } from 'express'
 
 import { env } from '../../config/env.js'
@@ -177,7 +179,12 @@ export async function register(req: Request, res: Response, next: NextFunction) 
     // BR-ACC-10 clause 2: registration returns success whether the account is
     // new or already existed, to prevent address enumeration. The email flow
     // handle tells the genuine owner.
-    logger.info({ email_normalised: normalised }, 'registration attempt')
+    // NFR-PRIV: no cleartext addresses in logs — a truncated digest still
+    // correlates repeat attempts without identifying anyone.
+    logger.info(
+      { email_digest: createHash('sha256').update(normalised).digest('hex').slice(0, 16) },
+      'registration attempt',
+    )
 
     // BR-ACC-10: duplicate and fresh registrations must be indistinguishable —
     // the duplicate path skips the profile/settings inserts, so pad both to a

@@ -134,8 +134,12 @@ export async function createSession(
   params: CreateSessionInput,
   client?: PoolClient,
 ): Promise<IssuedSession> {
-  const pool = client ?? getPool()
-  const caller = client ?? pool
+  // The cap check, eviction and insert must be one atomic unit: interleaved
+  // logins could otherwise exceed the 10-session cap or evict the wrong row.
+  if (!client) {
+    return transaction((tx) => createSession(params, tx))
+  }
+  const caller = client
 
   const expiresAt = refreshTokenExpiresAt()
   const familyId = params.installationId // reuse as family, stable per install

@@ -184,10 +184,15 @@ async function evaluateAchievements(client: PoolClient, userId: string): Promise
  */
 const PREDICATE_SQL: Record<ModuleScope, string> = {
   PLANT_CARE: `select (not exists (
-                 select 1 from plants
-                 where user_id = $1 and deleted_at is null
-                   and next_water_due_at is not null
-                   and next_water_due_at::date <= $2::date
+                 select 1 from plants p
+                 where p.user_id = $1 and p.deleted_at is null
+                   and p.next_water_due_at is not null
+                   -- The due instant is converted into the user's own
+                   -- timezone before taking its calendar date: a UTC cast
+                   -- flips the verdict near midnight for non-UTC users.
+                   and (p.next_water_due_at at time zone coalesce(
+                          (select timezone from user_settings where user_id = $1), 'UTC'
+                        ))::date <= $2::date
                )) as met`,
   FITNESS: `select (
               exists (
@@ -227,9 +232,15 @@ export async function recordDailyLog(
     if (met) {
       await advanceScope(client, userId, scope, localDateStr)
 
+      // Serialise the OVERALL decision: without FOR UPDATE two concurrent
+      // logs (one per scope) can each read the other's row as uncounted,
+      // both skip OVERALL, and the day is lost. The ORDER BY gives every
+      // transaction the same lock order, so they queue instead of deadlock.
       const { rows } = await client.query<{ streak_type: string; last_counted_date: string | null }>(
         `select streak_type, last_counted_date from streaks
-         where user_id = $1 and streak_type in ('PLANT_CARE', 'FITNESS', 'NUTRITION')`,
+         where user_id = $1 and streak_type in ('PLANT_CARE', 'FITNESS', 'NUTRITION')
+         order by streak_type
+         for update`,
         [userId],
       )
       const allMetToday =

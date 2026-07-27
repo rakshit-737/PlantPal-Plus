@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // The web app talks to the API at /api/*. In dev we proxy that to the local
@@ -11,16 +11,22 @@ import react from '@vitejs/plugin-react'
 //
 // VITE_BASE supports hosting under a subpath (GitHub Pages serves the site at
 // /<repo>/); BrowserRouter picks it up via import.meta.env.BASE_URL.
-export default defineConfig({
-  base: process.env.VITE_BASE ?? '/',
-  plugins: [react()],
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_TARGET ?? 'http://localhost:4000',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  // loadEnv merges .env / .env.local files with the shell environment —
+  // process.env alone silently ignored the .env file README tells users to
+  // create.
+  const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env }
+  return {
+    base: env.VITE_BASE ?? '/',
+    plugins: [react()],
+    server: {
+      port: 5173,
+      proxy: {
+        '/api': {
+          target: env.VITE_API_TARGET ?? 'http://localhost:4000',
+          changeOrigin: true,
+        },
       },
     },
-  },
+  }
 })

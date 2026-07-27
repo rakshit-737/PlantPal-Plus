@@ -37,7 +37,16 @@ import { findEntityIdByKey, markFailed, markProcessed, recordEvent } from './syn
 
 const MAX_BATCH = 50
 
-const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const dateStr = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((d) => {
+    // FR-SYS-03 clock rules, coarse server-side form: the server knows no
+    // user timezone, so it allows one day of forward skew and 365 days back.
+    // Anything outside that mints or bricks streaks and is TERMINAL.
+    const t = Date.parse(d)
+    return t > Date.now() - 366 * 86_400_000 && t < Date.now() + 2 * 86_400_000
+  }, 'local_date_str outside the accepted window')
 
 const plantCarePayload = z
   .object({

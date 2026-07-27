@@ -43,6 +43,23 @@ export async function registerToken(
   userId: string,
   input: RegisterTokenInput,
 ): Promise<{ id: string; devices: DeviceView[] }> {
+  try {
+    return await registerTokenOnce(userId, input)
+  } catch (err) {
+    // Two devices registering the same brand-new token concurrently: the
+    // loser's INSERT hits the ACTIVE-only unique index. One retry lands on
+    // the update path and succeeds.
+    if (typeof err === 'object' && err !== null && (err as { code?: string }).code === '23505') {
+      return registerTokenOnce(userId, input)
+    }
+    throw err
+  }
+}
+
+async function registerTokenOnce(
+  userId: string,
+  input: RegisterTokenInput,
+): Promise<{ id: string; devices: DeviceView[] }> {
   return transaction(async (client) => {
     // Revoked audit rows may share the token string; the live row (or, absent
     // one, the newest) is the row this registration acts on.

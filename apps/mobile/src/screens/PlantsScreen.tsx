@@ -35,6 +35,7 @@ export function PlantsScreen() {
   const [plants, setPlants] = useState<Plant[]>([])
   const [loading, setLoading] = useState(true)
   const [wateringId, setWateringId] = useState<string | null>(null)
+  const [careError, setCareError] = useState('')
 
   const [addOpen, setAddOpen] = useState(false)
   const [nickname, setNickname] = useState('')
@@ -118,11 +119,12 @@ export function PlantsScreen() {
 
   async function water(plant: Plant) {
     setWateringId(plant.id)
+    setCareError('')
     try {
       await logCare(plant.id, { action_type: 'WATER', local_date_str: localDateStr() })
       await load()
     } catch {
-      // Errors surface on the next refresh; watering is offline-queueable by design.
+      setCareError(`Could not log watering for ${plant.nickname}. Check your connection and retry.`)
     } finally {
       setWateringId(null)
     }
@@ -139,6 +141,7 @@ export function PlantsScreen() {
       ListHeaderComponent={
         <View style={{ gap: space.sm }}>
           <PageHeader title="Plants" subtitle="Watering that adapts to each plant." />
+          <ErrorText message={careError} />
           {addOpen ? (
             <Card style={{ gap: space.sm }}>
               <Input label="Nickname" value={nickname} onChangeText={setNickname} placeholder="e.g. Monstera by the window" autoCapitalize="sentences" />
