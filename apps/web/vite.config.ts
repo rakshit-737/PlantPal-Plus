@@ -4,9 +4,15 @@ import react from '@vitejs/plugin-react'
 // The web app talks to the API at /api/*. In dev we proxy that to the local
 // Express server (default port 4000) so the browser makes same-origin requests
 // and the httpOnly refresh_token cookie (SameSite behaviour, path /api/auth)
-// works without cross-site cookie quirks. In production the web host rewrites
-// /api to the deployed API origin.
+// works without cross-site cookie quirks. In production either the web host
+// rewrites /api to the API origin (Vercel/Netlify), or a static host with no
+// rewrites (GitHub Pages) sets VITE_API_URL and the client calls the API
+// origin directly with CORS + credentialed cookies.
+//
+// VITE_BASE supports hosting under a subpath (GitHub Pages serves the site at
+// /<repo>/); BrowserRouter picks it up via import.meta.env.BASE_URL.
 export default defineConfig({
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   server: {
     port: 5173,

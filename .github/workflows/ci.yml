@@ -26,6 +26,23 @@ jobs:
       matrix:
         # 20.11 is the floor declared in package.json engines; 22 is current LTS.
         node: ['20.11', '22']
+    services:
+      # Real PostgreSQL for the auth integration suite (skipped when absent).
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: plantpal
+          POSTGRES_PASSWORD: plantpal
+          POSTGRES_DB: plantpal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U plantpal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://plantpal:plantpal@localhost:5432/plantpal_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4

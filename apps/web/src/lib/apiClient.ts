@@ -111,7 +111,10 @@ async function rawRequest<T>(path: string, options: RequestOptions): Promise<T> 
       credentials: 'include',
     }
     if (options.body !== undefined) init.body = JSON.stringify(options.body)
-    res = await fetch(`/api${path}`, init)
+    // Same-origin '/api' by default (dev proxy or host rewrite). A static
+    // host with no rewrite capability sets VITE_API_URL to the API origin.
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+    res = await fetch(`${apiBase}/api${path}`, init)
   } catch {
     throw ApiError.transport('Could not reach the server. Check your connection.')
   }

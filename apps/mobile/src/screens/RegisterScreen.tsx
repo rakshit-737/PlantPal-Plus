@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 
 import { ApiError } from '../api/client'
 import { register } from '../api/endpoints'
@@ -10,7 +10,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }) {
   const p = usePalette()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [dob, setDob] = useState('')
+  const [confirmedAge, setConfirmedAge] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -18,17 +18,17 @@ export function RegisterScreen({ onDone }: { onDone: () => void }) {
   async function handleRegister() {
     setError('')
     setMessage('')
-    if (!email.trim() || !password || !dob.trim()) {
-      setError('Email, password and date of birth are required.')
+    if (!email.trim() || !password) {
+      setError('Email and password are required.')
       return
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob.trim())) {
-      setError('Date of birth must be YYYY-MM-DD.')
+    if (!confirmedAge) {
+      setError('You must confirm you are 16 or older.')
       return
     }
     setBusy(true)
     try {
-      const res = await register(email.trim(), password, dob.trim())
+      const res = await register(email.trim(), password, confirmedAge)
       setMessage(res.message)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Registration failed. Try again.')
@@ -49,7 +49,30 @@ export function RegisterScreen({ onDone }: { onDone: () => void }) {
           </Text>
           <Input label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" />
           <Input label="Password" value={password} onChangeText={setPassword} placeholder="12+ characters" secureTextEntry />
-          <Input label="Date of birth" value={dob} onChangeText={setDob} placeholder="YYYY-MM-DD" />
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: confirmedAge }}
+            onPress={() => setConfirmedAge((v) => !v)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}
+          >
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: confirmedAge ? p.primary : p.border,
+                backgroundColor: confirmedAge ? p.primary : 'transparent',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {confirmedAge ? <Text style={{ color: '#fff', fontSize: 14 }}>✓</Text> : null}
+            </View>
+            <Text style={{ color: p.textMain, fontSize: 14, flex: 1 }}>
+              I confirm I am 16 years of age or older.
+            </Text>
+          </Pressable>
           <ErrorText message={error} />
           {message ? (
             <Text style={{ color: p.success, fontSize: 13 }}>{message}</Text>

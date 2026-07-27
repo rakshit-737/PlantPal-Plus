@@ -1,0 +1,33 @@
+# Render Blueprint — deploys the PlantPal+ API on the free tier.
+#
+# One-time setup: https://dashboard.render.com → New → Blueprint → point it at
+# this repository. Render reads this file, creates the service, generates the
+# JWT secret, and prompts once for DATABASE_URL (paste the Neon connection
+# string). Every push to main then deploys automatically; migrations and seeds
+# run at boot, so a deploy is fully hands-off.
+#
+# RSK-01: the free instance sleeps after 15 minutes idle and node-cron dies
+# with it. Point an external pinger (e.g. UptimeRobot, free) at /healthz every
+# 10 minutes to keep the reminder engine ticking.
+
+services:
+  - type: web
+    name: plantpal-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build --workspace @plantpal/shared && npm run build --workspace @plantpal/api
+    startCommand: node apps/api/dist/server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Neon connection string — set in the dashboard, never committed.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      # The web app's origins: GitHub Pages plus local dev.
+      - key: CORS_ORIGINS
+        value: https://rakshit-737.github.io,http://localhost:5173

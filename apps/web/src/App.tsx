@@ -15,7 +15,7 @@ import { SettingsPage } from './pages/SettingsPage'
 export function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           {/* Public auth routes */}
           <Route path="/login" element={<LoginPage />} />

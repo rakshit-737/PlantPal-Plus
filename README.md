@@ -125,7 +125,28 @@ npm install -g eas-cli
 eas build --platform android --profile preview   # produces an installable .apk
 ```
 
-Every push and pull request to `main` runs `npm run typecheck` and `npm test` on Node 20.11 and 22 via [GitHub Actions](.github/workflows/ci.yml).
+Every push and pull request to `main` runs `npm run typecheck` and `npm test` — including an auth integration suite against a real PostgreSQL service container — on Node 20.11 and 22 via [GitHub Actions](.github/workflows/ci.yml).
+
+---
+
+## Deployment
+
+Everything runs on permanently free tiers.
+
+**Website — deployed automatically.** Every push to `main` publishes the web app to GitHub Pages at **https://rakshit-737.github.io/PlantPal-Plus/** via [deploy-web.yml](.github/workflows/deploy-web.yml). The site needs a running API to sign in: set the `PLANTPAL_API_URL` repository variable (Settings → Secrets and variables → Actions → Variables) to the API origin once it is deployed, and keep that origin in the API's `CORS_ORIGINS`. Note: on GitHub Pages the refresh cookie is third-party (cross-origin API), which Safari blocks — use a host with `/api` rewrites (Vercel/Netlify) for a production deployment; Pages is the zero-signup demo path.
+
+**API — one-time Render setup.** [render.yaml](render.yaml) is a Render Blueprint: dashboard → New → Blueprint → select this repo. Render creates the service, generates `JWT_ACCESS_SECRET`, and asks once for `DATABASE_URL` (your Neon connection string). Migrations **and seeds run at boot**, so every subsequent push to `main` deploys hands-off. Free-tier reality (RSK-01): the instance sleeps after 15 idle minutes and the reminder cron dies with it — point a free pinger (UptimeRobot) at `/healthz` every 10 minutes.
+
+**Mobile app — EAS build.** [apps/mobile/eas.json](apps/mobile/eas.json) is configured; building needs a free [Expo account](https://expo.dev):
+
+```bash
+npm install -g eas-cli
+eas login
+cd apps/mobile
+eas build --platform android --profile preview   # installable .apk, API URL baked in
+```
+
+The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL=https://plantpal-api.onrender.com` — edit `eas.json` if your Render service has a different name.
 
 ---
 

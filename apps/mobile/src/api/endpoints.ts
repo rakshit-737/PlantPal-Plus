@@ -44,11 +44,13 @@ export interface RegisterResponse {
 export function register(
   email: string,
   password: string,
-  dateOfBirth: string,
+  confirmedAge: boolean,
 ): Promise<RegisterResponse> {
+  // The server contract is confirmed_age (16+ policy, OQ-09) — it never
+  // collects a date of birth.
   return apiRequest<RegisterResponse>('/auth/register', {
     method: 'POST',
-    body: { email, password, date_of_birth: dateOfBirth },
+    body: { email, password, confirmed_age: confirmedAge },
     skipRefresh: true,
   })
 }
