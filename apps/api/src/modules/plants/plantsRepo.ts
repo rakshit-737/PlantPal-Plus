@@ -119,12 +119,38 @@ export async function createPlant(userId: string, data: CreatePlantData): Promis
   return plant!
 }
 
+/**
+ * The only column names updatePlant may interpolate into SQL. Interpolating
+ * request-derived keys directly is an injection in the identifier position
+ * (NFR-SEC-10: zero request-derived string interpolation into SQL) — values
+ * being parameterised does not help there. user_id, id and timestamps are
+ * deliberately absent: they are never client-writable (mass assignment).
+ */
+const UPDATABLE_PLANT_COLUMNS = new Set([
+  'nickname',
+  'species_id',
+  'room',
+  'acquisition_date',
+  'light_exposure',
+  'placement',
+  'pot_material',
+  'has_drainage',
+  'soil_type',
+  'indoor_climate',
+  'base_interval_days',
+  'min_interval_days',
+  'max_interval_days',
+  'photo_url',
+])
+
 export async function updatePlant(
   id: string,
   userId: string,
   data: Partial<CreatePlantData>,
 ): Promise<PlantRow | null> {
-  const fields = Object.entries(data).filter(([, v]) => v !== undefined)
+  const fields = Object.entries(data).filter(
+    ([k, v]) => v !== undefined && UPDATABLE_PLANT_COLUMNS.has(k),
+  )
   if (fields.length === 0) return getPlant(id, userId)
 
   const setClauses = fields.map(([k], i) => `${k}=$${i + 3}`).join(', ')
@@ -180,13 +206,18 @@ export async function logCareEvent(
 
     if (!plant) throw Object.assign(new Error('Plant not found'), { __notFound: true })
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO plant_care_events
          (plant_id, user_id, action_type, note, local_date_str, interval_at_log_days, client_idempotency_key)
        VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (client_idempotency_key) DO NOTHING`,
       [plantId, userId, actionType, note ?? null, localDateStr, plant.effective_interval_days ?? null, clientIdempotencyKey ?? null],
     )
+
+    // Idempotent replay (same client key): the event already exists, so the
+    // schedule side effect already ran — re-running it would push
+    // next_water_due_at forward again on every outbox retry.
+    if ((inserted.rowCount ?? 0) === 0) return
 
     if (actionType === 'WATER') {
       const season = seasonForLocalDate(localDateStr, 'NORTHERN') as Season
