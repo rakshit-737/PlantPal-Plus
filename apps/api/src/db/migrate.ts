@@ -12,12 +12,24 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { getPool } from './pool.js'
+import { getPool, initPool } from './pool.js'
+import { loadEnv } from '../config/env.js'
 import { logger } from '../logging.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+/**
+ * SQL files are not compiled, so a dist build finds them back in src/. The
+ * repo always ships alongside the build on the target hosts, making the
+ * fallback safe; a packaged-only deploy would need a copy step instead.
+ */
+export function sqlDir(name: string): string {
+  const local = path.join(__dirname, name)
+  if (fs.existsSync(local)) return local
+  return path.join(__dirname, '..', '..', 'src', 'db', name)
+}
 
 const MIGRATIONS_TABLE = 'pp_migrations'
 
@@ -41,7 +53,7 @@ export async function runMigrations(): Promise<{ applied: number; skipped: numbe
     )
     const applied = new Set(appliedRows.map((r) => r.version))
 
-    const dir = path.join(__dirname, 'migrations')
+    const dir = sqlDir('migrations')
     const files = fs
       .readdirSync(dir)
       .filter((f) => /^\d{3}-.+\.sql$/.test(f))
@@ -80,4 +92,21 @@ export async function runMigrations(): Promise<{ applied: number; skipped: numbe
   } finally {
     client.release()
   }
+}
+
+// Allow `npm run migrate` to invoke this directly. The comparison goes
+// through pathToFileURL because a raw `file://${argv[1]}` never matches on
+// Windows (backslashes, drive letters and percent-encoding all differ).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const env = loadEnv()
+  initPool(env.DATABASE_URL)
+  runMigrations()
+    .then(({ applied, skipped }) => {
+      logger.info({ applied, skipped }, 'migration run finished')
+      process.exit(0)
+    })
+    .catch((err) => {
+      logger.error({ err }, 'migration run failed')
+      process.exit(1)
+    })
 }

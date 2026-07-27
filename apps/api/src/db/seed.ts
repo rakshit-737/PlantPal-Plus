@@ -14,9 +14,10 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { getPool, initPool } from './pool.js'
+import { sqlDir } from './migrate.js'
 import { loadEnv } from '../config/env.js'
 import { logger } from '../logging.js'
 
@@ -27,7 +28,7 @@ export async function runSeeds(): Promise<{ files: number }> {
   const client = await pool.connect()
 
   try {
-    const dir = path.join(__dirname, 'seeds')
+    const dir = sqlDir('seeds')
     const files = fs
       .readdirSync(dir)
       .filter((f) => /^\d{3}-.+\.sql$/.test(f))
@@ -48,8 +49,9 @@ export async function runSeeds(): Promise<{ files: number }> {
   }
 }
 
-// Allow `npm run seed` to invoke this directly.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Allow `npm run seed` to invoke this directly (pathToFileURL: the raw
+// string comparison never matches on Windows).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const env = loadEnv()
   initPool(env.DATABASE_URL)
   runSeeds()

@@ -15,7 +15,10 @@ export function initPool(connectionString: string, max = 10): pg.Pool {
     connectionString,
     max,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 5_000,
+    // Neon autosuspends when idle; the first connect after suspend performs a
+    // cold start that routinely exceeds 5s. 15s covers the wake without
+    // masking a genuinely unreachable database for long.
+    connectionTimeoutMillis: 15_000,
   })
   pool.on('error', (err) => {
     // Pool emits `error` on an idle client that the database terminated behind
