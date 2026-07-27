@@ -7,7 +7,11 @@ import {
   type Plant, type Species,
 } from '../lib/plantsApi'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
 function wateringLabel(due: string | null): { text: string; tone: 'danger' | 'warning' | 'success' | 'default' } {
   if (!due) return { text: 'No schedule', tone: 'default' }

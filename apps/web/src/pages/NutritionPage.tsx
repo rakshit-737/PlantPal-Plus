@@ -8,7 +8,10 @@ import {
 const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK']
 
 function dateStr(d: Date) {
-  return d.toISOString().slice(0, 10)
+  // Local wall-clock date (FR-SYS-22) — toISOString would shift the day for
+  // anyone east of UTC in the evening or west of UTC in the morning.
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 function addDays(d: Date, n: number) {
@@ -93,7 +96,7 @@ export function NutritionPage() {
   async function handleWater(ml: number) {
     setWaterSaving(true)
     try {
-      await logWater(ml)
+      await logWater(ml, ds)
       const updated = await getDailySummary(ds)
       setSummary(updated)
     } catch {

@@ -96,7 +96,10 @@ async function fetchSetsForWorkouts(workoutIds: string[]): Promise<Map<string, W
   if (workoutIds.length === 0) return new Map()
   const pool = getPool()
   const { rows } = await pool.query<WorkoutSetRow & { workout_id: string }>(
-    `select workout_id, id, set_index, reps, weight_kg, volume_kg, estimated_1rm_kg
+    `select workout_id, id, set_index, reps,
+            weight_kg::float8        as weight_kg,
+            volume_kg::float8        as volume_kg,
+            estimated_1rm_kg::float8 as estimated_1rm_kg
      from workout_sets
      where workout_id = any($1)
      order by workout_id, set_index`,
@@ -124,7 +127,10 @@ export async function listWorkouts(
   const pool = getPool()
   const { rows } = await pool.query<Omit<WorkoutRow, 'sets'>>(
     `select id, user_id, exercise_id, activity_type, duration_mins, perceived_intensity,
-            met_value_at_log, body_mass_at_log_kg, calories_burned, total_volume_kg,
+            met_value_at_log::float8      as met_value_at_log,
+            body_mass_at_log_kg::float8   as body_mass_at_log_kg,
+            calories_burned::float8       as calories_burned,
+            total_volume_kg::float8       as total_volume_kg,
             steps, note, logged_at_utc, local_date_str, client_idempotency_key
      from workouts
      where user_id = $1 and deleted_at is null
@@ -140,7 +146,10 @@ export async function getWorkout(id: string, userId: string): Promise<WorkoutRow
   const pool = getPool()
   const { rows } = await pool.query<Omit<WorkoutRow, 'sets'>>(
     `select id, user_id, exercise_id, activity_type, duration_mins, perceived_intensity,
-            met_value_at_log, body_mass_at_log_kg, calories_burned, total_volume_kg,
+            met_value_at_log::float8      as met_value_at_log,
+            body_mass_at_log_kg::float8   as body_mass_at_log_kg,
+            calories_burned::float8       as calories_burned,
+            total_volume_kg::float8       as total_volume_kg,
             steps, note, logged_at_utc, local_date_str, client_idempotency_key
      from workouts
      where id = $1 and user_id = $2 and deleted_at is null`,
@@ -187,7 +196,10 @@ export async function createWorkout(userId: string, data: CreateWorkoutData): Pr
         const { rows: setRows } = await client.query<WorkoutSetRow>(
           `insert into workout_sets (workout_id, set_index, reps, weight_kg, volume_kg, estimated_1rm_kg)
            values ($1,$2,$3,$4,$5,$6)
-           returning id, set_index, reps, weight_kg, volume_kg, estimated_1rm_kg`,
+           returning id, set_index, reps,
+               weight_kg::float8        as weight_kg,
+               volume_kg::float8        as volume_kg,
+               estimated_1rm_kg::float8 as estimated_1rm_kg`,
           [workout.id, s.set_index, s.reps, s.weight_kg, s.volume_kg, s.estimated_1rm_kg ?? null],
         )
         const setRow = setRows[0]

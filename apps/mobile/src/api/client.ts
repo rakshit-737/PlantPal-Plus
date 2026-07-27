@@ -149,9 +149,14 @@ async function tryRefresh(): Promise<boolean> {
         setAccessToken(body.access_token)
         if (body.refresh_token) await setRefreshToken(body.refresh_token)
         return true
-      } catch {
+      } catch (err) {
         setAccessToken(null)
-        await setRefreshToken(null)
+        // Only a definitive server rejection invalidates the stored token; a
+        // network drop or 5xx must not sign the user out of a device whose
+        // credential is still perfectly valid.
+        if (err instanceof ApiError && err.status === 401) {
+          await setRefreshToken(null)
+        }
         return false
       } finally {
         refreshInFlight = null

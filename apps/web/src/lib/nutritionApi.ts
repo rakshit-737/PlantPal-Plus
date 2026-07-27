@@ -68,8 +68,8 @@ export const logMeal = (data: {
   local_date_str: string
   items: MealItemInput[]
 }) => apiRequest<Meal>('/v1/nutrition/meals', { method: 'POST', body: data })
-export const logWater = (amount_ml: number) =>
+export const logWater = (amount_ml: number, local_date_str: string) =>
   apiRequest<{ id: string; amount_ml: number }>('/v1/nutrition/water', {
     method: 'POST',
-    body: { amount_ml, local_date_str: new Date().toISOString().slice(0, 10) },
+    body: { amount_ml, local_date_str },
   })

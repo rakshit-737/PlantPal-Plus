@@ -36,8 +36,11 @@ const userId = getUserId
 
 export async function listWorkoutsHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const limit = Math.min(Number(req.query.limit ?? 20), 100)
-    const offset = Number(req.query.offset ?? 0)
+    // NaN from a non-numeric query param must not reach the SQL layer.
+    const rawLimit = Number(req.query.limit ?? 20)
+    const rawOffset = Number(req.query.offset ?? 0)
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(1, Math.trunc(rawLimit)), 100) : 20
+    const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.trunc(rawOffset)) : 0
     const rows = await listWorkouts(userId(req), limit, offset)
     res.json({ workouts: rows })
   } catch (err) {
@@ -142,7 +145,13 @@ export async function logWorkout(req: Request, res: Response, next: NextFunction
       steps: body.steps as number | undefined,
       note: body.note as string | undefined,
       local_date_str: body.local_date_str as string,
-      client_idempotency_key: body.client_idempotency_key as string | undefined,
+      client_idempotency_key:
+        typeof body.client_idempotency_key === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{3,4}-[0-9a-f]{3,4}-[0-9a-f]{12}$/i.test(
+          body.client_idempotency_key,
+        )
+          ? body.client_idempotency_key
+          : undefined,
       sets: sets.length > 0 ? sets : undefined,
     })
 

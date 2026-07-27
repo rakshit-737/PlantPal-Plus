@@ -4,11 +4,16 @@ import { useAuth } from '../auth/AuthContext'
 import { getDashboard, type DashboardData } from '../lib/dashboardApi'
 import { dismissReminder, listReminders, type Reminder } from '../lib/remindersApi'
 
-const todayStr = () => new Date().toISOString().slice(0, 10)
+const todayStr = () => {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 
+// Keys match dashboardRepo's today_list item types.
 const listIcons: Record<string, string> = {
   PLANT_WATER: '💧',
-  MEAL_LOG: '🍽️',
+  LOG_MEAL: '🍽️',
   LOG_WORKOUT: '💪',
 }
 
@@ -28,13 +33,19 @@ export function DashboardPage() {
   }, [])
 
   async function handleDismiss(id: string) {
-    // Optimistic: the row disappears immediately; a failure restores it.
-    const prev = reminders
-    setReminders(prev.filter((r) => r.id !== id))
+    // Optimistic removal via functional updates: a stale-snapshot restore
+    // would resurrect rows dismissed concurrently.
+    let removed: Reminder | undefined
+    setReminders((current) => {
+      removed = current.find((r) => r.id === id)
+      return current.filter((r) => r.id !== id)
+    })
     try {
       await dismissReminder(id)
     } catch {
-      setReminders(prev)
+      setReminders((current) =>
+        removed && !current.some((r) => r.id === id) ? [...current, removed] : current,
+      )
     }
   }
 

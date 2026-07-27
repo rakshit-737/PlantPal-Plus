@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { RefreshControl, ScrollView, Text, View } from 'react-native'
 
 import { getDashboard, type DashboardData } from '../api/endpoints'
+
+function localDateStr(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
 import { Card, EmptyState, PageHeader, Spinner } from '../components/ui'
 import { usePalette, space } from '../theme'
 
@@ -24,7 +30,7 @@ export function DashboardScreen() {
 
   const load = useCallback(async () => {
     try {
-      setData(await getDashboard())
+      setData(await getDashboard(localDateStr()))
     } catch {
       setData(null)
     }

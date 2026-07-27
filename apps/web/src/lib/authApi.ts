@@ -63,3 +63,8 @@ export async function refreshSession(): Promise<{ access_token: string; expires_
     return null
   }
 }
+
+/** GET /api/auth/me — restore identity after a silent refresh. */
+export function getMe(): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>('/auth/me')
+}

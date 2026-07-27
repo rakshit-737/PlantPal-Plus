@@ -18,6 +18,7 @@ import {
 
 import { setAccessToken } from '../lib/apiClient'
 import {
+  getMe,
   login as loginApi,
   logout as logoutApi,
   refreshSession,
@@ -49,6 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session) {
         setAccessToken(session.access_token)
         setIsAuthenticated(true)
+        // The refresh endpoint returns tokens, not a profile — without this
+        // the shell renders a blank identity after every reload.
+        try {
+          const meRes = await getMe()
+          if (!cancelled) setUser(meRes.user)
+        } catch {
+          // Identity stays blank; the session itself is still valid.
+        }
       }
       setIsLoading(false)
     })()
