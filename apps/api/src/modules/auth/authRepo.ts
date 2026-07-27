@@ -301,13 +301,48 @@ export async function findActiveTokenByDigest(
   return rows[0] ?? null
 }
 
+/**
+ * Look a token up by digest regardless of consumption state (unexpired, on an
+ * ACTIVE session, owner not purged). The refresh path needs this second probe:
+ * a replayed token is by definition already consumed, so filtering on
+ * `consumed_at is null` alone would make reuse detection unreachable — the
+ * replay would 401 as TOKEN_EXPIRED and the stolen family would live on.
+ */
+export async function findTokenByDigestAnyState(
+  digest: string,
+  client?: PoolClient,
+): Promise<ActiveTokenRow | null> {
+  const caller = client ?? getPool()
+  const { rows } = await caller.query<ActiveTokenRow>(
+    `select t.id, t.session_id as "sessionId", t.token_family_id as "tokenFamilyId",
+            t.generation, t.refresh_token_digest as "refreshTokenDigest",
+            t.consumed_at as "consumedAt", t.expires_at as "expiresAt",
+            t.user_id as "userId", u.token_version as "tokenVersion"
+     from auth_tokens t
+     join users u on u.id = t.user_id
+     join auth_sessions s on s.id = t.session_id
+     where t.refresh_token_digest = $1
+       and t.expires_at > now()
+       and s.status = 'ACTIVE'
+       and u.purge_after is null`,
+    [digest],
+  )
+  return rows[0] ?? null
+}
+
 export async function consumeAndRotateToken(
   oldTokenId: string,
   tokenFamilyId: string,
   sessionId: string,
   userId: string,
 ): Promise<IssuedSession> {
-  return await transaction(async (client) => {
+  // Reuse detection must COMMIT its family revocation and only then surface
+  // the error: throwing from inside the transaction would roll the
+  // revocation back and leave the stolen family alive. The transaction
+  // returns a discriminated outcome; the throw happens after commit.
+  const outcome = await transaction<
+    { kind: 'ok'; session: IssuedSession } | { kind: 'reuse' }
+  >(async (client) => {
     // Atomically consume. `consumed_at IS NULL` is the guard.
     const { rowCount } = await client.query(
       `update auth_tokens
@@ -316,46 +351,46 @@ export async function consumeAndRotateToken(
       [oldTokenId],
     )
     if (rowCount === 0) {
-      // Already consumed — reuse detection. Check the replay grace window.
+      // Already consumed — reuse detection. The grace-window comparison runs
+      // entirely on the database clock: mixing local Date.now() with the
+      // server's consumed_at let ordinary clock skew widen or shrink the 15s
+      // window arbitrarily.
       const { rows: [row] } = await client.query<{
-        consumed_at: string; generation: number
+        in_grace: boolean; generation: number
       }>(
-        `select consumed_at::text, generation from auth_tokens where id = $1`,
+        `select (now() - consumed_at) <= interval '15 seconds' as in_grace, generation
+         from auth_tokens where id = $1`,
         [oldTokenId],
       )
       if (row) {
-        const consumedAt = new Date(row.consumed_at)
-        const elapsed = (Date.now() - consumedAt.getTime()) / 1000
-        if (elapsed <= 15) {
-          // Replay grace window: return the successor already minted.
-          const { rows: [succ] } = await client.query<ActiveTokenRow>(
-            `select t.id, t.session_id as "sessionId", t.token_family_id as "tokenFamilyId",
-                    t.generation, t.refresh_token_digest as "refreshTokenDigest",
-                    t.consumed_at as "consumedAt", t.expires_at as "expiresAt",
-                    t.user_id as "userId", u.token_version as "tokenVersion"
-             from auth_tokens t
-             join users u on u.id = t.user_id
-             join auth_sessions s on s.id = t.session_id
-             where t.token_family_id = $1
-               and t.parent_id = $2
-               and t.consumed_at is null
-               and s.status = 'ACTIVE'`,
-            [tokenFamilyId, oldTokenId],
+        if (row.in_grace) {
+          // Replay grace window: the usual cause is an honest client whose
+          // refresh response was lost in transit and which retried with the
+          // same token. The successor's raw token cannot be re-sent (only its
+          // digest is stored), so mint a sibling child of the consumed row —
+          // same family, so a genuine theft surfaces on the next reuse.
+          const expiresAt = refreshTokenExpiresAt()
+          const { token } = issueRefreshToken()
+          const newDigest = digestRefreshToken(token)
+          await client.query(
+            `insert into auth_tokens
+               (user_id, session_id, token_family_id, parent_id, generation,
+                refresh_token_digest, expires_at, family_created_at)
+             values ($1, $2, $3, $4,
+                     (select generation + 1 from auth_tokens where id = $4),
+                     $5, $6,
+                     (select family_created_at from auth_tokens where id = $4))`,
+            [userId, sessionId, tokenFamilyId, oldTokenId, newDigest, expiresAt],
           )
-          if (succ) {
-            const token = issueRefreshToken()
-            // Actually we return the *existing* successor digest.
-            // The client already received the successor token.
-            const successorDigest = succ.refreshTokenDigest
-            return { sessionId, tokenFamilyId, refreshToken: successorDigest, refreshTokenDigest: successorDigest }
+          return {
+            kind: 'ok' as const,
+            session: { sessionId, tokenFamilyId, refreshToken: token, refreshTokenDigest: newDigest },
           }
         }
       }
-      // Outside the grace window: revoke the family.
+      // Outside the grace window: revoke the family, commit, then throw.
       await revokeTokenFamily(client, tokenFamilyId, sessionId, 'REUSE_DETECTED')
-      throw Object.assign(new Error('Token reuse detected. All sessions on this device have been signed out.'), {
-        code: 'TOKEN_REUSE_DETECTED', status: 401, __appError: true,
-      })
+      return { kind: 'reuse' as const }
     }
 
     // Mint the next generation.
@@ -367,9 +402,11 @@ export async function consumeAndRotateToken(
       `insert into auth_tokens
          (user_id, session_id, token_family_id, parent_id, generation,
           refresh_token_digest, expires_at, family_created_at)
-       values ($1, $2, $3, $4, $5 + 1, $6, $7,
+       values ($1, $2, $3, $4,
+               (select generation + 1 from auth_tokens where id = $4),
+               $5, $6,
                (select family_created_at from auth_tokens where id = $4 for share))`,
-      [userId, sessionId, tokenFamilyId, oldTokenId, 1, newDigest, expiresAt],
+      [userId, sessionId, tokenFamilyId, oldTokenId, newDigest, expiresAt],
     )
 
     // Bump session last_used_at (amortised at 60s per BR-ACC-18 clause 3).
@@ -379,8 +416,19 @@ export async function consumeAndRotateToken(
       [sessionId],
     )
 
-    return { sessionId, tokenFamilyId, refreshToken: token, refreshTokenDigest: newDigest }
+    return {
+      kind: 'ok' as const,
+      session: { sessionId, tokenFamilyId, refreshToken: token, refreshTokenDigest: newDigest },
+    }
   })
+
+  if (outcome.kind === 'reuse') {
+    throw Object.assign(
+      new Error('Token reuse detected. All sessions on this device have been signed out.'),
+      { code: 'TOKEN_REUSE_DETECTED', status: 401, __appError: true },
+    )
+  }
+  return outcome.session
 }
 
 async function revokeTokenFamily(

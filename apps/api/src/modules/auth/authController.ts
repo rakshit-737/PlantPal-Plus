@@ -22,6 +22,7 @@ import {
   recordFailedLogin,
   recordLoginSuccess,
   findActiveTokenByDigest,
+  findTokenByDigestAnyState,
   consumeAndRotateToken,
   DUMMY_HASH,
 } from './authRepo.js'
@@ -329,7 +330,12 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     }
 
     const digest = digestRefreshToken(rawToken)
-    const row = await findActiveTokenByDigest(digest)
+    // First probe: the unconsumed happy path. Second probe: a consumed row is
+    // a REPLAY, which must reach consumeAndRotateToken so the replay grace
+    // window or the family revocation (BR-ACC-07 reuse detection) applies —
+    // filtering replays out here as TOKEN_EXPIRED would leave a stolen
+    // family alive.
+    const row = (await findActiveTokenByDigest(digest)) ?? (await findTokenByDigestAnyState(digest))
     if (!row) {
       throw new AppError('TOKEN_EXPIRED', 'Session expired. Please sign in again.')
     }

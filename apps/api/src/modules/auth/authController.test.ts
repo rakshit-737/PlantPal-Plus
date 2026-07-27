@@ -32,6 +32,7 @@ vi.mock('./authRepo.js', () => ({
   recordFailedLogin: vi.fn(async () => undefined),
   recordLoginSuccess: vi.fn(async () => undefined),
   findActiveTokenByDigest: vi.fn(),
+  findTokenByDigestAnyState: vi.fn(),
   consumeAndRotateToken: vi.fn(),
 }))
 

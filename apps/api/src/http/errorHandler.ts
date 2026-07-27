@@ -9,7 +9,7 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { ZodError } from 'zod'
 
-import { AppError, type ErrorDetail } from './errors.js'
+import { AppError, ERROR_CODES, type ErrorCode, type ErrorDetail } from './errors.js'
 import { getRequestId } from './requestId.js'
 import { logger } from '../logging.js'
 
@@ -40,6 +40,15 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(new AppError('NOT_FOUND', `No route matches ${req.method} ${req.path}`))
 }
 
+/** Duck-typed application error thrown by layers that avoid importing AppError. */
+function isMarkedAppError(err: unknown): err is Error & { code: ErrorCode } {
+  if (!(err instanceof Error)) return false
+  const marked = err as unknown as { __appError?: unknown; code?: unknown }
+  return (
+    marked.__appError === true && typeof marked.code === 'string' && marked.code in ERROR_CODES
+  )
+}
+
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   const requestId = getRequestId(req)
   const timestamp = new Date().toISOString()
@@ -54,6 +63,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   } else if (err instanceof SyntaxError && 'body' in err) {
     // express.json() surfaces malformed JSON as a SyntaxError carrying `body`.
     appError = new AppError('MALFORMED_REQUEST', 'The request body is not valid JSON.')
+  } else if (isMarkedAppError(err)) {
+    // Repository layers throw duck-typed application errors (`__appError`)
+    // rather than importing the HTTP error class; honour them so a domain
+    // outcome like TOKEN_REUSE_DETECTED reaches the client as its own code
+    // instead of collapsing into a 500.
+    appError = new AppError(err.code, err.message)
   } else {
     // Unknown throw: never surface its message, it may carry SQL or an upstream body.
     appError = new AppError('INTERNAL_ERROR', 'An unexpected error occurred.', { cause: err })
