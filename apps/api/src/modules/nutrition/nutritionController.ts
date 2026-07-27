@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express'
 
 import { AppError } from '../../http/errors.js'
 import { getUserId } from '../../http/requestUser.js'
-import { recordDailyLogSafe } from '../engagement/engagementService.js'
+import { evaluateAchievementsSafe, recordDailyLogSafe } from '../engagement/engagementService.js'
 import {
   searchFoods,
   getDailySummary,
@@ -138,6 +138,9 @@ export async function logWaterHandler(req: Request, res: Response, next: NextFun
       goal_ml_at_log: typeof body.goal_ml_at_log === 'number' ? body.goal_ml_at_log : undefined,
       client_idempotency_key: typeof body.client_idempotency_key === 'string' ? body.client_idempotency_key : undefined,
     })
+
+    // Water feeds no streak scope (BR-GAM-04), but hydration achievements move.
+    await evaluateAchievementsSafe(userId)
 
     res.status(201).json(entry)
   } catch (err) {

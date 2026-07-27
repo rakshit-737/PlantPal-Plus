@@ -244,6 +244,22 @@ export async function recordDailyLog(
   })
 }
 
+/**
+ * Evaluate achievements without advancing any streak — for logs that feed
+ * metrics but no day predicate (water: hydration_goals_met, BR-GAM-04 rules
+ * water out of the nutrition predicate). Non-fatal like recordDailyLogSafe.
+ */
+export async function evaluateAchievementsSafe(userId: string): Promise<void> {
+  try {
+    const unlocked = await transaction((client) => evaluateAchievements(client, userId))
+    if (unlocked.length > 0) {
+      logger.info({ userId, unlocked }, 'achievements unlocked')
+    }
+  } catch (err) {
+    logger.warn({ err, userId }, 'achievement evaluation failed (log write unaffected)')
+  }
+}
+
 /** Non-fatal wrapper: engagement must never fail the log write it decorates. */
 export async function recordDailyLogSafe(
   userId: string,

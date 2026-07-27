@@ -25,7 +25,11 @@ import {
 import { AppError } from '../../http/errors.js'
 import { getUserId } from '../../http/requestUser.js'
 import { logger } from '../../logging.js'
-import { recordDailyLogSafe, type ModuleScope } from '../engagement/engagementService.js'
+import {
+  evaluateAchievementsSafe,
+  recordDailyLogSafe,
+  type ModuleScope,
+} from '../engagement/engagementService.js'
 import { logCareEvent } from '../plants/plantsRepo.js'
 import { createWorkout } from '../fitness/fitnessRepo.js'
 import { logMeal, logWater } from '../nutrition/nutritionRepo.js'
@@ -227,8 +231,14 @@ export async function drainOutboxHandler(req: Request, res: Response, next: Next
       const key = event.client_idempotency_key.toLowerCase()
       const { row, replay } = await recordEvent(userId, key, event.entity_type, event.payload)
 
-      // Seen before: return the stored outcome, never reprocess (FR-SYS-03).
-      if (replay) {
+      // Seen before with a stored outcome: return it, never reprocess
+      // (FR-SYS-03). A replayed row still PENDING is different — the previous
+      // attempt died between ingest and processing (a routine free-tier
+      // restart), so no destination row exists and reporting PROCESSED would
+      // make the client clear an event that was never applied: permanent
+      // silent data loss. PENDING replays fall through and process now; the
+      // destination tables' unique idempotency keys make that safe.
+      if (replay && row.status !== 'PENDING') {
         results.push({
           client_idempotency_key: key,
           status: row.status === 'FAILED' ? 'FAILED' : 'PROCESSED',
@@ -245,6 +255,8 @@ export async function drainOutboxHandler(req: Request, res: Response, next: Next
         const scope = ENGAGEMENT_SCOPE[event.entity_type]
         const localDate = (event.payload as { local_date_str?: string }).local_date_str
         if (scope && localDate) await recordDailyLogSafe(userId, scope, localDate)
+        // Water feeds no streak scope, but hydration achievements still move.
+        else if (event.entity_type === 'WATER_LOG') await evaluateAchievementsSafe(userId)
         results.push({
           client_idempotency_key: key,
           status: 'PROCESSED',
@@ -256,16 +268,21 @@ export async function drainOutboxHandler(req: Request, res: Response, next: Next
         // The event may have reached the destination table through the online
         // path already (same key) — that is a successful replay, not a failure.
         if (isUniqueViolation(err)) {
+          // Only an idempotency-key collision counts as a replay; a 23505
+          // whose key is NOT in the destination table came from some other
+          // constraint and must surface as a failure, not a phantom success.
           const entityId = await findEntityIdByKey(DESTINATION_TABLE[event.entity_type], userId, key)
-          await markProcessed(row.id, entityId)
-          results.push({
-            client_idempotency_key: key,
-            status: 'PROCESSED',
-            replay: true,
-            entity_id: entityId,
-            error_code: null,
-          })
-          continue
+          if (entityId) {
+            await markProcessed(row.id, entityId)
+            results.push({
+              client_idempotency_key: key,
+              status: 'PROCESSED',
+              replay: true,
+              entity_id: entityId,
+              error_code: null,
+            })
+            continue
+          }
         }
 
         // TERMINAL classification (FR-SYS-05): bad payloads and missing
