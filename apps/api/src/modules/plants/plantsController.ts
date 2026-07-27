@@ -3,6 +3,7 @@ import { authenticate } from '../auth/authController.js'
 import { notFound, badRequest } from '../../http/errors.js'
 import { getUserId } from '../../http/requestUser.js'
 import { recordDailyLogSafe } from '../engagement/engagementService.js'
+import { cancelForTarget } from '../reminders/remindersRepo.js'
 import {
   listPlants,
   getPlant,
@@ -85,6 +86,8 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
     const userId = getUserId(req)
     const deleted = await softDeletePlant(req.params.id!, userId)
     if (!deleted) throw notFound()
+    // FR-NOT-22 / E-14: reminders for a deleted subject must not fire.
+    await cancelForTarget(userId, req.params.id!).catch(() => undefined)
     res.json({ status: 'deleted' })
   } catch (err) {
     next(err)
@@ -122,6 +125,11 @@ export async function logCare(req: Request, res: Response, next: NextFunction) {
         throw notFound()
       }
       throw err
+    }
+    // FR-NOT-22: the watering resolves the nag — a live reminder for this
+    // plant must not keep firing.
+    if (actionType === 'WATER') {
+      await cancelForTarget(userId, req.params.id!).catch(() => undefined)
     }
     // BR-GAM-02: a resolved care task may complete the plant-care day.
     await recordDailyLogSafe(userId, 'PLANT_CARE', localDateStr)

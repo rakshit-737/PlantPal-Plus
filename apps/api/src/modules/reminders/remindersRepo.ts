@@ -26,7 +26,14 @@ export async function findPlantsNeedingReminder(horizonHours: number): Promise<D
          where r.user_id = p.user_id
            and r.reminder_type = 'WATER_PLANT'
            and r.target_entity_id = p.id
-           and r.status = 'PENDING'
+           and (
+             r.status = 'PENDING'
+             -- A reminder already fired for the CURRENT due date must not be
+             -- re-created every tick: suppress while a sent/delivered row is
+             -- newer than the last watering (i.e. the nag is still standing).
+             or (r.status in ('SENT', 'DELIVERED')
+                 and r.created_at > coalesce(p.last_watered_at, '-infinity'::timestamptz))
+           )
        )`,
     [horizonHours],
   )
@@ -42,7 +49,8 @@ export async function insertReminders(inserts: ReminderInsert[]): Promise<number
       `insert into reminders
          (user_id, reminder_type, target_entity_id, target_entity_type, title, body, due_at_utc)
        values ($1, $2, $3, $4, $5, $6, $7)
-       on conflict (user_id, reminder_type, target_entity_id) where status = 'PENDING'
+       on conflict (user_id, reminder_type, target_entity_id)
+         where status = 'PENDING' and target_entity_id is not null
        do nothing`,
       [r.user_id, r.reminder_type, r.target_entity_id, r.target_entity_type, r.title, r.body, r.due_at_utc],
     )
@@ -89,7 +97,7 @@ export async function markSent(ids: string[]): Promise<void> {
   await pool.query(
     `update reminders
      set status = 'SENT', sent_at = now(), attempts = attempts + 1, updated_at = now()
-     where id = any ($1::uuid[])`,
+     where id = any ($1::uuid[]) and status = 'PENDING'`,
     [ids],
   )
 }
@@ -100,7 +108,7 @@ export async function markFailed(ids: string[]): Promise<void> {
   await pool.query(
     `update reminders
      set status = 'FAILED', last_error = 'delivery attempts exhausted', updated_at = now()
-     where id = any ($1::uuid[])`,
+     where id = any ($1::uuid[]) and status = 'PENDING'`,
     [ids],
   )
 }
@@ -142,4 +150,21 @@ export async function dismiss(userId: string, reminderId: string): Promise<boole
     [reminderId, userId],
   )
   return (result.rowCount ?? 0) > 0
+}
+
+/**
+ * Cancel live reminders for one target entity — called when the task they
+ * nag about is resolved (a watering logged) or the subject disappears (plant
+ * soft-deleted). FR-NOT-22: a reminder for a done or deleted task must not
+ * fire, and a fired one must not linger in the client list.
+ */
+export async function cancelForTarget(userId: string, targetEntityId: string): Promise<number> {
+  const pool = getPool()
+  const result = await pool.query(
+    `update reminders
+     set status = 'CANCELLED', updated_at = now()
+     where user_id = $1 and target_entity_id = $2 and status in ('PENDING', 'SENT')`,
+    [userId, targetEntityId],
+  )
+  return result.rowCount ?? 0
 }
