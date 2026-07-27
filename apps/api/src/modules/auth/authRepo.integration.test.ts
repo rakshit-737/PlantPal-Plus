@@ -117,17 +117,20 @@ describe.skipIf(!TEST_DB)('auth against a real PostgreSQL', () => {
     expect(second.status).toBe(200)
   }, 60_000)
 
-  it('an immediate replay (lost response, honest retry) gets a sibling token, family intact', async () => {
+  it('an honest lost-response retry within the grace window gets a replacement, chain continues', async () => {
     const email = freshEmail()
     const { refreshToken } = await registerAndLogin(email)
 
-    const first = await request(app)
+    // The client "loses" this response — it never sees the successor.
+    const lost = await request(app)
       .post('/api/auth/refresh')
       .set('x-plantpal-client', 'ANDROID')
       .send({ refresh_token: refreshToken })
-    expect(first.status).toBe(200)
+    expect(lost.status).toBe(200)
 
-    // Same token again, within the 15s grace window.
+    // Retry with the same token within 15s: the unclaimed successor is
+    // retired and a replacement is minted (BR-ACC-08 clause 3) — the family
+    // keeps exactly one live leaf.
     const replay = await request(app)
       .post('/api/auth/refresh')
       .set('x-plantpal-client', 'ANDROID')
@@ -136,12 +139,46 @@ describe.skipIf(!TEST_DB)('auth against a real PostgreSQL', () => {
     expect(replay.body.refresh_token).toBeTruthy()
     expect(replay.body.refresh_token).not.toBe(refreshToken)
 
-    // Both leaves stay usable — the family was not revoked.
-    const successor = await request(app)
+    // The replacement continues the chain normally.
+    const next = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: replay.body.refresh_token })
+    expect(next.status).toBe(200)
+  }, 60_000)
+
+  it('a replay whose successor was already used revokes the family (E-18)', async () => {
+    const email = freshEmail()
+    const { refreshToken } = await registerAndLogin(email)
+
+    // Attacker-first scenario: the stolen original rotates, then its
+    // successor is genuinely used — the chain has advanced.
+    const first = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: refreshToken })
+    expect(first.status).toBe(200)
+    const second = await request(app)
       .post('/api/auth/refresh')
       .set('x-plantpal-client', 'ANDROID')
       .send({ refresh_token: first.body.refresh_token })
-    expect(successor.status).toBe(200)
+    expect(second.status).toBe(200)
+
+    // Replaying the original now — even inside the 15s window — must revoke
+    // the whole family: the successor is consumed, so this is not a lost
+    // response, it is a second party holding the token.
+    const replay = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: refreshToken })
+    expect(replay.status).toBe(401)
+    expect(replay.body.error.code).toBe('TOKEN_REUSE_DETECTED')
+
+    const survivor = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: second.body.refresh_token })
+    expect(survivor.status).toBe(401)
   }, 60_000)
 
   it('revokes the whole family on token reuse outside the replay grace window', async () => {
@@ -239,6 +276,29 @@ describe.skipIf(!TEST_DB)('auth against a real PostgreSQL', () => {
       .send({ email, password: PASSWORD })
     expect(res.status).toBe(401)
   }, 60_000)
+
+  it('locks the account after 5 consecutive failures with 429 + Retry-After (FR-ACC-07)', async () => {
+    const email = freshEmail()
+    await registerAndLogin(email)
+
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .set('x-plantpal-client', 'ANDROID')
+        .send({ email, password: 'Wrong-Password-1!' })
+      expect(res.status).toBe(401)
+    }
+
+    // The sixth attempt — even with the CORRECT password — must be refused
+    // while the lock window is open (BR-ACC-09 boundary: 5 failures → 60s).
+    const locked = await request(app)
+      .post('/api/auth/login')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ email, password: PASSWORD })
+    expect(locked.status).toBe(429)
+    expect(locked.body.error.code).toBe('ACC_ACCOUNT_LOCKED')
+    expect(Number(locked.headers['retry-after'])).toBeGreaterThan(0)
+  }, 120_000)
 
   it('logout consumes the refresh token and revokes the session', async () => {
     const email = freshEmail()

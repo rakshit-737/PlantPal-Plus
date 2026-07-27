@@ -101,6 +101,18 @@ export async function findUserForAuth(emailNormalised: string): Promise<UserForA
   return rows[0] ?? null
 }
 
+/** Minimal profile for GET /auth/me — lets a client restore identity after a silent refresh. */
+export async function findUserById(
+  id: string,
+): Promise<{ id: string; email: string; status: string } | null> {
+  const pool = getPool()
+  const { rows } = await pool.query<{ id: string; email: string; status: string }>(
+    `select id, email, status from users where id = $1 and status <> 'DELETED'`,
+    [id],
+  )
+  return rows[0] ?? null
+}
+
 export interface CreateSessionInput {
   userId: string
   platform: string
@@ -217,31 +229,25 @@ export interface LockoutState {
 export async function computeLockoutState(emailNormalised: string): Promise<LockoutState> {
   const pool = getPool()
 
-  // Consecutive failures since the last success or 30-minute gap.
+  // Consecutive failures = failure rows since the most recent SUCCESS
+  // (BR-ACC-09: the counter clears on successful authentication), bounded to
+  // 24h so ancient history cannot lock anyone out. The previous version
+  // grouped by attempted_at — a per-insert now() — so every group held one
+  // row and the count could never exceed 1, which made the >= 5 lockout gate
+  // unreachable and allowed unlimited online password guessing (FR-ACC-07).
+  // LOCKED_OUT probe rows are excluded so hammering a locked account does not
+  // extend its own lock indefinitely.
   const { rows: [row] } = await pool.query<{ failures: string; last_failure_at: string | null }>(
-    `with ordered as (
-       select outcome, attempted_at,
-              lag(outcome) over (order by attempted_at desc) as prev_outcome,
-              lag(attempted_at) over (order by attempted_at desc) as prev_at
-       from login_attempts
-       where email_normalised = $1
-         and attempted_at > now() - interval '30 days'
-       order by attempted_at desc
-     ),
-     streak as (
-       select count(*) filter (where outcome in ('BAD_PASSWORD','NO_ACCOUNT','LOCKED_OUT')) as failures,
-              attempted_at as last_failure_at
-       from ordered
-       where (outcome = 'SUCCESS' or prev_outcome = 'SUCCESS') is false
-         and (prev_at is null or attempted_at - prev_at < interval '30 minutes')
-       group by attempted_at
-       order by attempted_at desc
-       limit 1
-     )
-     select coalesce(failures, 0)::text as failures, last_failure_at::text
-     from streak
-     union all select '0'::text, null::text where not exists (select 1 from streak)
-     limit 1`,
+    `select count(*)::text as failures, max(attempted_at)::text as last_failure_at
+     from login_attempts
+     where email_normalised = $1
+       and outcome in ('BAD_PASSWORD', 'NO_ACCOUNT')
+       and attempted_at > coalesce(
+         (select max(attempted_at) from login_attempts
+          where email_normalised = $1 and outcome = 'SUCCESS'),
+         now() - interval '24 hours'
+       )
+       and attempted_at > now() - interval '24 hours'`,
     [emailNormalised],
   )
 
@@ -294,6 +300,9 @@ export async function findActiveTokenByDigest(
      where t.refresh_token_digest = $1
        and t.consumed_at is null
        and t.expires_at > now()
+       -- BR-ACC-07 clause 6: absolute 180-day family lifetime, regardless of
+       -- how recently the chain rotated (expires_at alone re-arms every use).
+       and t.family_created_at > now() - interval '180 days'
        and s.status = 'ACTIVE'
        and u.purge_after is null`,
     [digest],
@@ -323,6 +332,9 @@ export async function findTokenByDigestAnyState(
      join auth_sessions s on s.id = t.session_id
      where t.refresh_token_digest = $1
        and t.expires_at > now()
+       -- BR-ACC-07 clause 6: absolute 180-day family lifetime, regardless of
+       -- how recently the chain rotated (expires_at alone re-arms every use).
+       and t.family_created_at > now() - interval '180 days'
        and s.status = 'ACTIVE'
        and u.purge_after is null`,
     [digest],
@@ -362,13 +374,24 @@ export async function consumeAndRotateToken(
          from auth_tokens where id = $1`,
         [oldTokenId],
       )
-      if (row) {
-        if (row.in_grace) {
-          // Replay grace window: the usual cause is an honest client whose
-          // refresh response was lost in transit and which retried with the
-          // same token. The successor's raw token cannot be re-sent (only its
-          // digest is stored), so mint a sibling child of the consumed row —
-          // same family, so a genuine theft surfaces on the next reuse.
+      if (row?.in_grace) {
+        // Replay grace window — but ONLY while the direct successor is still
+        // unconsumed (BR-ACC-08 clause 3): that is the honest lost-response
+        // case, where the client retried because it never received the
+        // successor. The raw successor cannot be re-sent (digest-only
+        // storage), so the untouched successor is consumed here and a
+        // replacement sibling is minted — the family keeps exactly ONE live
+        // leaf, so a genuinely stolen token still trips REUSE_DETECTED on its
+        // next use (E-17). A successor that has itself been consumed means
+        // the chain advanced — someone used it — and the spec mandates
+        // family revocation (E-18): fall through to the revoke below.
+        const { rows: successorRows } = await client.query<{ id: string }>(
+          `update auth_tokens set consumed_at = now()
+           where parent_id = $1 and consumed_at is null
+           returning id`,
+          [oldTokenId],
+        )
+        if (successorRows.length > 0) {
           const expiresAt = refreshTokenExpiresAt()
           const { token } = issueRefreshToken()
           const newDigest = digestRefreshToken(token)
@@ -388,7 +411,8 @@ export async function consumeAndRotateToken(
           }
         }
       }
-      // Outside the grace window: revoke the family, commit, then throw.
+      // Outside the grace window, or the successor was already consumed
+      // (E-18): revoke the family, commit, then throw.
       await revokeTokenFamily(client, tokenFamilyId, sessionId, 'REUSE_DETECTED')
       return { kind: 'reuse' as const }
     }

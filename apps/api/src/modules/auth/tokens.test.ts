@@ -44,7 +44,7 @@ describe('access tokens', () => {
 
   it('reports expiry distinctly from invalidity, so a client can refresh instead of signing out', () => {
     const longAgo = Math.floor(Date.now() / 1000) - ACCESS_TOKEN_TTL_SECONDS - 60
-    const expired = signAccessToken(USER, SESSION, SECRET, longAgo)
+    const expired = signAccessToken(USER, SESSION, SECRET, 1, longAgo)
     const result = verifyAccessToken(expired, SECRET)
     expect(result).toEqual({ ok: false, reason: 'expired' })
   })

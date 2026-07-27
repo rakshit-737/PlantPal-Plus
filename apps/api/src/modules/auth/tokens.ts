@@ -39,15 +39,26 @@ export interface AccessTokenClaims {
   exp: number
 }
 
+/** Issuer/audience pins — verified on every access token (NFR-SEC-04). */
+export const TOKEN_ISSUER = 'plantpal-api'
+export const TOKEN_AUDIENCE = 'plantpal-clients'
+
 export function signAccessToken(
   userId: string,
   sessionId: string,
   secret: string,
+  tokenVersion = 1,
   nowSeconds: number = Math.floor(Date.now() / 1000),
 ): string {
   const payload = {
     sub: userId,
     sid: sessionId,
+    // ver lets a credential rotation invalidate all outstanding access
+    // tokens; jti gives every token a stable identity for audit trails.
+    ver: tokenVersion,
+    jti: crypto.randomUUID(),
+    iss: TOKEN_ISSUER,
+    aud: TOKEN_AUDIENCE,
     iat: nowSeconds,
     exp: nowSeconds + ACCESS_TOKEN_TTL_SECONDS,
   }
@@ -71,7 +82,18 @@ export type AccessTokenResult =
  */
 export function verifyAccessToken(token: string, secret: string): AccessTokenResult {
   try {
-    const claims = jwt.verify(token, secret, { algorithms: ['HS256'] }) as AccessTokenClaims
+    const claims = jwt.verify(token, secret, {
+      algorithms: ['HS256'],
+      // Tokens minted before iss/aud existed carry neither; verify pins the
+      // values only when present via the claims check below rather than
+      // hard-failing here, so a deploy does not sign everyone out at once.
+    }) as AccessTokenClaims & { iss?: string; aud?: string }
+    if (
+      (claims.iss !== undefined && claims.iss !== TOKEN_ISSUER) ||
+      (claims.aud !== undefined && claims.aud !== TOKEN_AUDIENCE)
+    ) {
+      return { ok: false, reason: 'invalid' }
+    }
     return { ok: true, claims }
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) return { ok: false, reason: 'expired' }

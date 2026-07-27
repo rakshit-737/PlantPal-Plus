@@ -23,6 +23,7 @@ import {
   recordLoginSuccess,
   findActiveTokenByDigest,
   findTokenByDigestAnyState,
+  findUserById,
   consumeAndRotateToken,
   DUMMY_HASH,
 } from './authRepo.js'
@@ -98,11 +99,40 @@ export async function enforceTimingFloor(
   }
 }
 
+/**
+ * CSRF gate for the cookie-authenticated session endpoints (BR-ACC-07
+ * clause 9). The refresh cookie is SameSite=None so any origin can *send* it;
+ * what stops a hostile page redeeming it is this check: when the credential
+ * arrives via cookie, the request's Origin (or Referer origin) must be on the
+ * configured allow-list. Body-token requests (mobile) carry no ambient
+ * credential and need no gate. Fetch/XHR always attach Origin on POST, so a
+ * missing header on a cookie-bearing POST is itself suspect and is refused.
+ */
+function assertTrustedOriginForCookieAuth(req: Request): void {
+  const hasCookieCredential = Boolean(req.cookies?.refresh_token)
+  if (!hasCookieCredential) return
+  let origin = req.get('origin')
+  if (!origin) {
+    const referer = req.get('referer')
+    if (referer) {
+      try {
+        origin = new URL(referer).origin
+      } catch {
+        origin = undefined
+      }
+    }
+  }
+  if (!origin || !env().CORS_ORIGINS.includes(origin)) {
+    throw new AppError('FORBIDDEN', 'Cross-origin session request refused.')
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Register
 // ---------------------------------------------------------------------------
 
 export async function register(req: Request, res: Response, next: NextFunction) {
+  const startedAt = Date.now()
   try {
     const { email, password, confirmed_age: confirmedAge } = req.body as {
       email?: string; password?: string; confirmed_age?: boolean
@@ -148,6 +178,11 @@ export async function register(req: Request, res: Response, next: NextFunction) 
     // new or already existed, to prevent address enumeration. The email flow
     // handle tells the genuine owner.
     logger.info({ email_normalised: normalised }, 'registration attempt')
+
+    // BR-ACC-10: duplicate and fresh registrations must be indistinguishable —
+    // the duplicate path skips the profile/settings inserts, so pad both to a
+    // common floor exactly as login does.
+    await enforceTimingFloor(startedAt)
 
     res.status(202).json({
       status: 'registered',
@@ -277,7 +312,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     await recordLoginSuccess(user.id)
     await recordLoginAttempt(normalised, prefix, 'SUCCESS')
 
-    const accessToken = signAccessToken(user.id, session.sessionId, accessSecret())
+    const accessToken = signAccessToken(user.id, session.sessionId, accessSecret(), user.token_version)
 
     const body: Record<string, unknown> = {
       access_token: accessToken,
@@ -321,6 +356,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
 export async function refresh(req: Request, res: Response, next: NextFunction) {
   try {
+    assertTrustedOriginForCookieAuth(req)
     // Accept the token from the cookie (web) or the body (mobile).
     const rawToken: string | undefined =
       req.cookies?.refresh_token ?? req.body?.refresh_token
@@ -350,11 +386,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
       row.userId,
     )
 
-    const accessToken = signAccessToken(
-      row.userId,
-      row.sessionId,
-      accessSecret(),
-    )
+    const accessToken = signAccessToken(row.userId, row.sessionId, accessSecret(), row.tokenVersion)
 
     const isWeb = platform(req) === 'WEB'
     const body: Record<string, unknown> = {
@@ -387,6 +419,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
 
 export async function logout(req: Request, res: Response, next: NextFunction) {
   try {
+    assertTrustedOriginForCookieAuth(req)
     const rawToken: string | undefined =
       req.cookies?.refresh_token ?? req.body?.refresh_token
 
@@ -412,6 +445,22 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 
     res.clearCookie('refresh_token', { path: '/api/auth' })
     res.status(200).json({ status: 'logged_out' })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Me — restore identity after a silent refresh (no profile data, just the
+// fields the shell renders; clients bootstrap from the refresh token alone).
+// ---------------------------------------------------------------------------
+
+export async function me(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as unknown as Record<string, string>).userId
+    const user = userId ? await findUserById(userId) : null
+    if (!user) throw new AppError('AUTHENTICATION_REQUIRED', 'Authentication is required.')
+    res.status(200).json({ user })
   } catch (err) {
     next(err)
   }
