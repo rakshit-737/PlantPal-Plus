@@ -57,7 +57,7 @@ export async function searchFoods(
      order by (lower(name) = lower($1)) desc,
               (lower(name) like lower($1) || '%') desc,
               name asc
-     limit 60`,
+     limit 200`,
     [query, userId],
   )
   return rows

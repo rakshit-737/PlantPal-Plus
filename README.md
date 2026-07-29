@@ -21,9 +21,9 @@ This is a full software-engineering project delivered phase by phase, with every
 |---|---|
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
 | 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
-| 3 — Implementation | ✅ Core complete — REST API (auth, plants, fitness, nutrition, dashboard, achievements, reminders + Expo Push, offline sync outbox, engagement loop), web app, Expo mobile app. Open: photo upload pipeline, email digest |
+| 3 — Implementation | ✅ Core complete — REST API (auth, plants, fitness, nutrition, dashboard, achievements, reminders + Expo Push, offline sync outbox, engagement loop), web app (responsive, mobile bottom nav), Expo mobile app. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: photo upload pipeline, email digest |
 | 4 — Testing | 🟡 In progress — 136 tests incl. a 10-test auth integration suite against real PostgreSQL (in CI via a service container); an adversarial multi-agent audit found and closed 6 critical defects |
-| 5 — Documentation | 🟡 In progress — README covers install + deployment; API reference pending |
+| 5 — Documentation | ✅ Complete — install + deployment in this README, endpoint index in [docs/api-reference.md](docs/api-reference.md), OpenAPI 3.1 in [docs/architecture/](docs/architecture/) |
 | 6 — Deployment | 🟡 In progress — website live on GitHub Pages ([demo](https://rakshit-737.github.io/PlantPal-Plus/)); API one-click via render.yaml; mobile via EAS |
 
 ### Phase 1 at a glance

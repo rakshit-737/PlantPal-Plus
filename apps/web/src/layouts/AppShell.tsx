@@ -75,9 +75,31 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-lg md:p-xl">
+      <main className="flex-1 overflow-y-auto p-lg pb-[84px] md:p-xl md:pb-xl">
         <Outlet />
       </main>
+
+      {/* Mobile: bottom tab bar mirrors the sidebar (same NAV_ITEMS). */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden"
+        aria-label="Primary"
+      >
+        {visibleItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === '/'}
+            className={({ isActive }) =>
+              `flex flex-1 flex-col items-center gap-[2px] py-sm text-[10px] font-medium ${
+                isActive ? 'text-primary' : 'text-text-muted'
+              }`
+            }
+          >
+            {item.icon}
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
     </div>
   )
 }

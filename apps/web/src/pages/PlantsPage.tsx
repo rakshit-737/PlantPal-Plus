@@ -157,6 +157,13 @@ export function PlantsPage() {
                   <Badge tone={statusTone[p.status] ?? 'default'}>{p.status.replace('_', ' ')}</Badge>
                 </div>
                 <Badge tone={wl.tone}>{wl.text}</Badge>
+                <p className="font-mono text-xs text-text-muted">
+                  every ~{p.effective_interval_days ?? p.base_interval_days}d
+                  {' · '}
+                  {p.last_watered_at
+                    ? `last ${new Date(p.last_watered_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+                    : 'never watered'}
+                </p>
                 <Button
                   variant="secondary"
                   loading={watering === p.id}
