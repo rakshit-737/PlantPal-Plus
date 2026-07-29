@@ -30,12 +30,17 @@ export function AppShell() {
   return (
     <div className="flex min-h-full bg-background">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface p-md md:flex">
-        <div className="mb-xl flex items-center gap-sm px-sm">
+        <div className="mb-sm flex items-center gap-sm px-sm">
           <span className="text-2xl" aria-hidden>
             🌱
           </span>
-          <span className="font-heading text-xl font-bold text-text-main">PlantPal+</span>
+          <span className="font-heading text-xl font-extrabold tracking-tight text-text-main">
+            PlantPal+
+          </span>
         </div>
+        <p className="mb-xl px-sm text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">
+          Daily care ledger
+        </p>
         <nav className="flex flex-1 flex-col gap-xs" aria-label="Primary">
           {visibleItems.map((item) => (
             <NavLink
@@ -43,9 +48,9 @@ export function AppShell() {
               to={item.to}
               end={item.to === '/'}
               className={({ isActive }) =>
-                `flex items-center gap-sm rounded-md px-md py-sm text-sm font-medium transition-colors ${
+                `flex items-center gap-sm rounded-sm px-md py-sm text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-primary/10 text-primary-hover'
+                    ? 'bg-text-main text-background'
                     : 'text-text-muted hover:bg-background hover:text-text-main'
                 }`
               }

@@ -10,7 +10,7 @@
  * summary does not re-sum every item on every dashboard read.
  */
 
-import { getPool, transaction } from '../../db/pool.js'
+import { getPool, transaction } from '../../db/pool.ts'
 
 /* -----------------------------------------------------------------------
  * Food search — FR-NUT search
@@ -57,7 +57,7 @@ export async function searchFoods(
      order by (lower(name) = lower($1)) desc,
               (lower(name) like lower($1) || '%') desc,
               name asc
-     limit 20`,
+     limit 60`,
     [query, userId],
   )
   return rows

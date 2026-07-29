@@ -3,35 +3,37 @@
 @tailwind utilities;
 
 /*
- * Theme tokens from docs/design/01-design-language.md.
- * Light is the default; [data-theme="dark"] on <html> flips every token.
- * Tailwind utilities (bg-background, text-text-main, …) resolve to these.
+ * Theme tokens — "field notebook" direction (2026-07 redesign).
+ * A gardener's ledger: green-tinted ink on paper white, one deep leaf accent,
+ * sharp corners, hairline borders. Metrics render in mono (font-mono) so the
+ * numbers read like ledger entries. Light is the default; [data-theme="dark"]
+ * on <html> flips every token to a near-black neutral tinted the same green.
  */
 :root,
 [data-theme='light'] {
-  --color-background: #f9fafb;
+  --color-background: #f6f7f4;
   --color-surface: #ffffff;
-  --color-primary: #10b981;
-  --color-primary-hover: #059669;
-  --color-secondary: #3b82f6;
-  --color-tertiary: #f59e0b;
-  --color-accent: #ef4444;
-  --color-text-main: #1f2937;
-  --color-text-muted: #6b7280;
-  --color-border: #e5e7eb;
+  --color-primary: #226d3c;
+  --color-primary-hover: #1a5530;
+  --color-secondary: #38708f;
+  --color-tertiary: #9a6b0f;
+  --color-accent: #b3402e;
+  --color-text-main: #1b241e;
+  --color-text-muted: #5d6a61;
+  --color-border: #dce1da;
 }
 
 [data-theme='dark'] {
-  --color-background: #111827;
-  --color-surface: #1f2937;
-  --color-primary: #34d399;
-  --color-primary-hover: #10b981;
-  --color-secondary: #60a5fa;
-  --color-tertiary: #fbbf24;
-  --color-accent: #f87171;
-  --color-text-main: #f9fafb;
-  --color-text-muted: #9ca3af;
-  --color-border: #374151;
+  --color-background: #0b0e0c;
+  --color-surface: #141815;
+  --color-primary: #46a96c;
+  --color-primary-hover: #5fbf80;
+  --color-secondary: #6fa7c7;
+  --color-tertiary: #c99a3c;
+  --color-accent: #d96c57;
+  --color-text-main: #ecf0ec;
+  --color-text-muted: #8b968d;
+  --color-border: #242a25;
 }
 
 html,
@@ -46,4 +48,19 @@ body {
   background-color: var(--color-background);
   color: var(--color-text-main);
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

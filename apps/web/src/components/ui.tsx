@@ -2,6 +2,10 @@
  * Base UI primitives — the web side of docs/design/02-component-inventory.md.
  * Deliberately dependency-free (no component library) so the design tokens stay
  * the single source of styling truth.
+ *
+ * Field-notebook rules: sharp corners (rounded-sm/md only), hairline borders
+ * instead of shadows, uppercase letterspaced eyebrows for labels, and every
+ * metric in font-mono so numbers line up like ledger entries.
  */
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { forwardRef, useEffect, useId } from 'react'
@@ -12,7 +16,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
   primary:
     'bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary',
   secondary:
-    'bg-surface text-text-main border border-border hover:bg-background focus-visible:ring-secondary',
+    'bg-surface text-text-main border border-border hover:border-text-muted focus-visible:ring-primary',
   ghost: 'bg-transparent text-text-muted hover:text-text-main hover:bg-surface',
 }
 
@@ -31,7 +35,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-sm rounded-md px-md py-sm text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-sm rounded-sm px-md py-sm text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariants[variant]} ${className}`}
       disabled={disabled || loading}
       aria-busy={loading}
       {...rest}
@@ -59,7 +63,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       : undefined
   return (
     <div className="flex flex-col gap-xs">
-      <label htmlFor={inputId} className="text-sm font-medium text-text-main">
+      <label htmlFor={inputId} className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
         {label}
       </label>
       <input
@@ -67,7 +71,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         id={inputId}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`rounded-md border bg-surface px-md py-sm text-base text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${error ? 'border-accent' : 'border-border'} ${className}`}
+        className={`rounded-sm border bg-surface px-md py-sm text-base text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${error ? 'border-accent' : 'border-border'} ${className}`}
         {...rest}
       />
       {error ? (
@@ -91,9 +95,7 @@ export function Card({
   className?: string
 }) {
   return (
-    <div
-      className={`rounded-lg border border-border bg-surface p-lg shadow-sm ${className}`}
-    >
+    <div className={`rounded-md border border-border bg-surface p-lg ${className}`}>
       {children}
     </div>
   )
@@ -113,7 +115,7 @@ export function Alert({
     info: 'border-secondary/40 bg-secondary/10 text-secondary',
   }
   return (
-    <div role="alert" className={`rounded-md border px-md py-sm text-sm ${tones[tone]}`}>
+    <div role="alert" className={`rounded-sm border px-md py-sm text-sm ${tones[tone]}`}>
       {children}
     </div>
   )
@@ -133,7 +135,7 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 
 type BadgeTone = 'default' | 'success' | 'warning' | 'danger' | 'info'
 
-/** A small pill for statuses, tiers and counts. */
+/** A small tag for statuses, tiers and counts — squared, ledger-stamp style. */
 export function Badge({
   children,
   tone = 'default',
@@ -150,7 +152,7 @@ export function Badge({
   }
   return (
     <span
-      className={`inline-flex items-center gap-xs rounded-full border px-sm py-xs text-xs font-medium ${tones[tone]}`}
+      className={`inline-flex items-center gap-xs rounded-sm border px-sm py-xs text-[11px] font-medium uppercase tracking-[0.06em] ${tones[tone]}`}
     >
       {children}
     </span>
@@ -182,19 +184,19 @@ export function Progress({
       {label ? (
         <div className="flex items-center justify-between text-sm text-text-muted">
           <span>{label}</span>
-          <span>
+          <span className="font-mono text-xs">
             {value} / {max}
           </span>
         </div>
       ) : null}
-      <div className="h-2 w-full overflow-hidden rounded-full bg-background">
+      <div className="h-1.5 w-full overflow-hidden bg-border/60">
         <div
           role="progressbar"
           aria-valuenow={value}
           aria-valuemin={0}
           aria-valuemax={max}
           aria-label={label}
-          className={`h-full rounded-full transition-all ${fills[tone]}`}
+          className={`h-full transition-all ${fills[tone]}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -217,7 +219,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center gap-sm px-lg py-lg text-center">
       {icon ? <div className="text-text-muted">{icon}</div> : null}
-      <h3 className="text-base font-semibold text-text-main">{title}</h3>
+      <h3 className="font-heading text-base font-semibold text-text-main">{title}</h3>
       {body ? <p className="max-w-sm text-sm text-text-muted">{body}</p> : null}
       {action ? <div className="mt-sm">{action}</div> : null}
     </div>
@@ -246,17 +248,17 @@ export function Modal({
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-md"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal
         aria-labelledby={titleId}
-        className="relative w-full max-w-md rounded-lg border border-border bg-surface p-lg shadow-lg"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border border-border bg-surface p-lg"
         onClick={e => e.stopPropagation()}
       >
-        <h2 id={titleId} className="mb-md text-lg font-semibold text-text-main">
+        <h2 id={titleId} className="mb-md font-heading text-lg font-bold text-text-main">
           {title}
         </h2>
         {children}
@@ -265,7 +267,7 @@ export function Modal({
   )
 }
 
-/** A dashboard stat tile — matches the local StatCard in DashboardPage. */
+/** A dashboard stat tile: eyebrow label, mono ledger value, quiet context line. */
 export function StatCard({
   label,
   value,
@@ -279,8 +281,8 @@ export function StatCard({
 }) {
   return (
     <Card>
-      <p className="text-sm font-medium text-text-muted">{label}</p>
-      <p className={`mt-xs font-heading text-3xl font-bold ${accent}`}>{value}</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">{label}</p>
+      <p className={`mt-xs font-mono text-3xl font-semibold tracking-tight ${accent}`}>{value}</p>
       <p className="mt-xs text-sm text-text-muted">{sub}</p>
     </Card>
   )
@@ -299,7 +301,7 @@ export function PageHeader({
   return (
     <div className="flex items-start justify-between gap-md">
       <div>
-        <h1 className="text-2xl font-bold text-text-main">{title}</h1>
+        <h1 className="font-heading text-[26px] font-bold tracking-tight text-text-main">{title}</h1>
         {subtitle ? <p className="mt-xs text-sm text-text-muted">{subtitle}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}

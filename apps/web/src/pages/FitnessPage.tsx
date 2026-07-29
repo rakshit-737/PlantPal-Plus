@@ -155,8 +155,8 @@ export function FitnessPage() {
       <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Log Workout">
         <div className="flex flex-col gap-md">
           <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-main">Activity type</label>
-            <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={activityType} onChange={(e) => setActivityType(e.target.value)}>
+            <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Activity type</label>
+            <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={activityType} onChange={(e) => setActivityType(e.target.value)}>
               {ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
@@ -167,8 +167,8 @@ export function FitnessPage() {
             )}
           </div>
           <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-main">Intensity</label>
-            <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={intensity} onChange={(e) => setIntensity(e.target.value)}>
+            <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Intensity</label>
+            <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={intensity} onChange={(e) => setIntensity(e.target.value)}>
               {INTENSITIES.map((i) => <option key={i}>{i}</option>)}
             </select>
           </div>

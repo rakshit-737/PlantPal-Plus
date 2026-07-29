@@ -1,4 +1,4 @@
-import { getPool, transaction } from '../../db/pool.js'
+import { getPool, transaction } from '../../db/pool.ts'
 import { computeWateringInterval, seasonForLocalDate } from '@plantpal/shared'
 import type { Season, LightExposure, Placement, PotMaterial, SoilType, IndoorClimate } from '@plantpal/shared'
 
@@ -270,7 +270,7 @@ export async function listSpecies(search?: string): Promise<SpeciesRow[]> {
     const { rows } = await pool.query<SpeciesRow>(
       `SELECT id, common_name, scientific_name, base_interval_days, min_interval_days,
               max_interval_days, default_light, default_soil, care_notes, image_url
-       FROM species WHERE lower(common_name) ILIKE $1 AND NOT is_custom ORDER BY common_name LIMIT 50`,
+       FROM species WHERE lower(common_name) ILIKE $1 AND NOT is_custom ORDER BY common_name LIMIT 200`,
       [`%${search.toLowerCase()}%`],
     )
     return rows
@@ -278,7 +278,7 @@ export async function listSpecies(search?: string): Promise<SpeciesRow[]> {
   const { rows } = await pool.query<SpeciesRow>(
     `SELECT id, common_name, scientific_name, base_interval_days, min_interval_days,
             max_interval_days, default_light, default_soil, care_notes, image_url
-     FROM species WHERE NOT is_custom ORDER BY common_name LIMIT 50`,
+     FROM species WHERE NOT is_custom ORDER BY common_name LIMIT 200`,
   )
   return rows
 }

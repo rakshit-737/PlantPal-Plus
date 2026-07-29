@@ -1,14 +1,14 @@
 import type { NextFunction, Request, Response } from 'express'
 
-import { AppError } from '../../http/errors.js'
-import { getUserId } from '../../http/requestUser.js'
-import { evaluateAchievementsSafe, recordDailyLogSafe } from '../engagement/engagementService.js'
+import { AppError } from '../../http/errors.ts'
+import { getUserId } from '../../http/requestUser.ts'
+import { evaluateAchievementsSafe, recordDailyLogSafe } from '../engagement/engagementService.ts'
 import {
   searchFoods,
   getDailySummary,
   logMeal,
   logWater,
-} from './nutritionRepo.js'
+} from './nutritionRepo.ts'
 
 const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'] as const
 const VALID_SERVING_UNITS = ['GRAM', 'MILLILITRE', 'PIECE', 'CUP', 'TABLESPOON', 'SLICE', 'CUSTOM'] as const
@@ -23,12 +23,14 @@ function isValidDateStr(s: unknown): s is string {
 
 export async function searchFoodsHandler(req: Request, res: Response, next: NextFunction) {
   try {
+    // An absent/empty q means "browse the catalogue" — the repo's ILIKE with an
+    // empty needle matches every non-deleted food, alphabetically.
     const q = req.query.q
-    if (!q || typeof q !== 'string' || q.trim().length === 0) {
-      throw new AppError('VALIDATION_FAILED', 'Query parameter q is required.')
+    if (q !== undefined && typeof q !== 'string') {
+      throw new AppError('VALIDATION_FAILED', 'Query parameter q must be a string.')
     }
     const userId = getUserId(req)
-    const results = await searchFoods(q.trim(), userId)
+    const results = await searchFoods((q ?? '').trim(), userId)
     res.status(200).json({ foods: results })
   } catch (err) {
     next(err)

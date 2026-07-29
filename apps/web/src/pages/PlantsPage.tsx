@@ -60,13 +60,20 @@ export function PlantsPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  // The full catalogue is small enough to fetch once when the modal opens and
+  // filter locally — browsing by scroll works without typing a query.
   useEffect(() => {
-    if (!speciesQuery) { setSpeciesList([]); return }
-    const t = setTimeout(() => {
-      searchSpecies(speciesQuery).then(setSpeciesList).catch(() => setSpeciesList([]))
-    }, 300)
-    return () => clearTimeout(t)
-  }, [speciesQuery])
+    if (!addOpen) return
+    searchSpecies('').then(setSpeciesList).catch(() => setSpeciesList([]))
+  }, [addOpen])
+
+  const speciesMatches = speciesQuery
+    ? speciesList.filter((s) =>
+        `${s.common_name} ${s.scientific_name}`
+          .toLowerCase()
+          .includes(speciesQuery.toLowerCase()),
+      )
+    : speciesList
 
   async function handleWater(plantId: string) {
     setWatering(plantId)
@@ -173,50 +180,73 @@ export function PlantsPage() {
             placeholder="e.g. Monstera"
           />
           <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-main">Species (optional)</label>
+            <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
+              Species (optional)
+            </label>
             <input
-              className="rounded-md border border-border bg-surface px-md py-sm text-base text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="Search species…"
+              className="rounded-sm border border-border bg-surface px-md py-sm text-base text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              placeholder="Search or scroll — Tulsi, Monstera, Curry Leaf…"
               value={speciesQuery}
               onChange={(e) => { setSpeciesQuery(e.target.value); setSelectedSpecies(null) }}
             />
-            {speciesList.length > 0 && !selectedSpecies && (
-              <div className="rounded-md border border-border bg-surface shadow-sm">
-                {speciesList.map((s) => (
+            {speciesMatches.length > 0 && !selectedSpecies && (
+              <div className="max-h-64 overflow-y-auto rounded-sm border border-border bg-surface">
+                {speciesMatches.map((s) => (
                   <button
                     key={s.id}
-                    className="w-full px-md py-sm text-left text-sm text-text-main hover:bg-background"
-                    onClick={() => { setSelectedSpecies(s); setSpeciesQuery(s.common_name); setSpeciesList([]) }}
+                    className="flex w-full items-center justify-between gap-sm border-b border-border px-md py-sm text-left text-sm last:border-b-0 hover:bg-background"
+                    onClick={() => {
+                      setSelectedSpecies(s)
+                      setSpeciesQuery(s.common_name)
+                      // Pull the species' care defaults into the form so the
+                      // watering schedule starts from catalogue truth.
+                      setLightExposure(s.default_light)
+                      setSoilType(s.default_soil)
+                      setBaseInterval(String(s.base_interval_days))
+                      setMinInterval(String(s.min_interval_days))
+                      setMaxInterval(String(s.max_interval_days))
+                    }}
                   >
-                    {s.common_name} <span className="text-text-muted">({s.scientific_name})</span>
+                    <span className="min-w-0 truncate">
+                      <span className="text-text-main">{s.common_name}</span>{' '}
+                      <span className="text-text-muted">· {s.scientific_name}</span>
+                    </span>
+                    <span className="shrink-0 font-mono text-xs text-text-muted">
+                      ~{s.base_interval_days}d
+                    </span>
                   </button>
                 ))}
               </div>
             )}
+            {speciesQuery && speciesMatches.length === 0 && !selectedSpecies && (
+              <p className="text-sm text-text-muted">
+                No species matches “{speciesQuery}”. Leave it blank and set intervals below.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-sm">
             <div className="flex flex-col gap-xs">
-              <label className="text-sm font-medium text-text-main">Light</label>
-              <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={lightExposure} onChange={(e) => setLightExposure(e.target.value)}>
+              <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Light</label>
+              <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={lightExposure} onChange={(e) => setLightExposure(e.target.value)}>
                 {LIGHT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-xs">
-              <label className="text-sm font-medium text-text-main">Placement</label>
-              <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={placement} onChange={(e) => setPlacement(e.target.value)}>
+              <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Placement</label>
+              <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={placement} onChange={(e) => setPlacement(e.target.value)}>
                 {PLACEMENT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-xs">
-              <label className="text-sm font-medium text-text-main">Pot material</label>
-              <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={potMaterial} onChange={(e) => setPotMaterial(e.target.value)}>
+              <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Pot material</label>
+              <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={potMaterial} onChange={(e) => setPotMaterial(e.target.value)}>
                 <option value="">— optional —</option>
                 {POT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-xs">
-              <label className="text-sm font-medium text-text-main">Soil type</label>
-              <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={soilType} onChange={(e) => setSoilType(e.target.value)}>
+              <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Soil type</label>
+              <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={soilType} onChange={(e) => setSoilType(e.target.value)}>
                 <option value="">— optional —</option>
                 {SOIL_OPTIONS.map((o) => <option key={o}>{o}</option>)}
               </select>

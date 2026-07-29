@@ -48,13 +48,15 @@ export function NutritionPage() {
       .finally(() => setLoading(false))
   }, [ds])
 
+  // Empty query = browse the catalogue alphabetically; typing narrows it.
+  // The list loads as soon as the modal opens so scrolling works without a query.
   useEffect(() => {
-    if (!foodQuery) { setFoodResults([]); return }
+    if (!logOpen) { setFoodResults([]); return }
     const t = setTimeout(() => {
       searchFoods(foodQuery).then(setFoodResults).catch(() => setFoodResults([]))
-    }, 300)
+    }, foodQuery ? 250 : 0)
     return () => clearTimeout(t)
-  }, [foodQuery])
+  }, [foodQuery, logOpen])
 
   async function handleLogMeal() {
     setFormError('')
@@ -154,7 +156,7 @@ export function NutritionPage() {
 
             <Card className="flex flex-col gap-md">
               <p className="text-sm font-medium text-text-muted">Hydration</p>
-              <p className="font-heading text-2xl font-bold text-secondary">
+              <p className="font-mono text-2xl font-semibold tracking-tight text-secondary">
                 {summary?.water_ml_total ?? 0} ml
               </p>
               <Progress value={summary?.water_ml_total ?? 0} max={summary?.water_goal_ml ?? 2000} tone="secondary" />
@@ -194,7 +196,7 @@ export function NutritionPage() {
                     {meals.flatMap((m) => m.items).map((item) => (
                       <div key={item.id} className="flex items-center justify-between py-xs text-sm">
                         <span className="text-text-main">{item.food_name_at_log}</span>
-                        <span className="text-text-muted">{item.grams}g · {Math.round(item.kcal)} kcal</span>
+                        <span className="font-mono text-xs text-text-muted">{item.grams}g · {Math.round(item.kcal)} kcal</span>
                       </div>
                     ))}
                   </Card>
@@ -208,35 +210,56 @@ export function NutritionPage() {
       <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Log Meal">
         <div className="flex flex-col gap-md">
           <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-main">Meal type</label>
-            <select className="rounded-md border border-border bg-surface px-md py-sm text-sm text-text-main" value={mealType} onChange={(e) => setMealType(e.target.value)}>
+            <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Meal type</label>
+            <select className="rounded-sm border border-border bg-surface px-md py-sm text-sm text-text-main" value={mealType} onChange={(e) => setMealType(e.target.value)}>
               {MEAL_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-xs">
-            <label className="text-sm font-medium text-text-main">Food</label>
+            <label className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">Food</label>
             <input
-              className="rounded-md border border-border bg-surface px-md py-sm text-base text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="Search foods…"
+              className="rounded-sm border border-border bg-surface px-md py-sm text-base text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              placeholder="Search or scroll — dal, dosa, paneer…"
               value={foodQuery}
               onChange={(e) => { setFoodQuery(e.target.value); setSelectedFood(null) }}
             />
             {foodResults.length > 0 && !selectedFood && (
-              <div className="rounded-md border border-border bg-surface shadow-sm">
+              <div className="max-h-60 overflow-y-auto rounded-sm border border-border bg-surface">
                 {foodResults.map((f) => (
                   <button
                     key={f.id}
-                    className="w-full px-md py-sm text-left text-sm text-text-main hover:bg-background"
-                    onClick={() => { setSelectedFood(f); setFoodQuery(f.name); setFoodResults([]) }}
+                    className="flex w-full items-center justify-between gap-sm border-b border-border px-md py-sm text-left text-sm last:border-b-0 hover:bg-background"
+                    onClick={() => {
+                      setSelectedFood(f)
+                      setFoodQuery(f.name)
+                      setQuantity(String(f.default_serving_grams ?? 100))
+                    }}
                   >
-                    {f.name} {f.brand ? `(${f.brand})` : ''} — {f.kcal_per_100g} kcal/100g
+                    <span className="min-w-0 truncate text-text-main">
+                      {f.name}
+                      {f.brand ? <span className="text-text-muted"> · {f.brand}</span> : null}
+                    </span>
+                    <span className="shrink-0 font-mono text-xs text-text-muted">
+                      {Math.round(f.kcal_per_100g)} kcal/100g
+                    </span>
                   </button>
                 ))}
               </div>
             )}
           </div>
           {selectedFood && (
-            <Input label="Quantity (grams)" type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+            <Input
+              label="Quantity (grams)"
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              hint={
+                selectedFood.default_serving_grams
+                  ? `1 ${selectedFood.default_serving_unit.toLowerCase()} ≈ ${selectedFood.default_serving_grams} g`
+                  : undefined
+              }
+            />
           )}
           {formError && <Alert tone="error">{formError}</Alert>}
           <div className="flex justify-end gap-sm">

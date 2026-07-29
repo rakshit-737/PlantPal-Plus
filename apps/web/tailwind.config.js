@@ -1,10 +1,12 @@
 /**
- * Tailwind tokens per docs/design/01-design-language.md.
+ * Tailwind tokens per docs/design/01-design-language.md, revised by the 2026-07
+ * "field notebook" redesign.
  *
  * Colours are wired to CSS custom properties (declared in index.css) so a single
  * `data-theme` switch flips the whole palette between light and dark without
- * duplicating utility classes. Radii and the 8pt spacing scale come straight
- * from the design language doc.
+ * duplicating utility classes. Radii are deliberately tight — sharp corners and
+ * hairline borders are the design's signature; `full` survives only for the
+ * spinner. Metrics use font-mono so numbers read like ledger entries.
  */
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -25,14 +27,15 @@ export default {
         border: 'var(--color-border)',
       },
       borderRadius: {
-        lg: '16px',
-        md: '12px',
-        sm: '8px',
+        lg: '8px',
+        md: '4px',
+        sm: '2px',
         full: '9999px',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        heading: ['"Bricolage Grotesque"', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
       },
       spacing: {
         // 8pt grid aliases from the design language doc.
