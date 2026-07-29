@@ -6,7 +6,7 @@ import {
   tick,
   type DuePlantRow,
   type PendingReminderRow,
-} from './reminderEngine.js'
+} from './reminderEngine.ts'
 
 const NOW = new Date('2026-07-25T12:00:00Z')
 

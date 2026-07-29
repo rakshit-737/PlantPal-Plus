@@ -8,7 +8,7 @@
  * key collides there and the stored outcome is returned instead of reprocessing.
  */
 
-import { getPool } from '../../db/pool.js'
+import { getPool } from '../../db/pool.ts'
 
 export interface SyncEventRow {
   id: string

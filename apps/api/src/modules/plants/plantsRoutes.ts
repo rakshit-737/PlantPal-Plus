@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import { authenticate } from '../auth/authController.js'
-import { list, get, create, update, remove, logCare, getCareHistory, searchSpecies } from './plantsController.js'
+import { authenticate } from '../auth/authController.ts'
+import { list, get, create, update, remove, logCare, getCareHistory, searchSpecies } from './plantsController.ts'
 
 const router = Router()
 router.use(authenticate)

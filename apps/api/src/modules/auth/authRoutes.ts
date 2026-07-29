@@ -4,8 +4,8 @@
 
 import { Router } from 'express'
 
-import { register, login, refresh, logout, me, authenticate } from './authController.js'
-import { rateLimit } from '../../http/rateLimit.js'
+import { register, login, refresh, logout, me, authenticate } from './authController.ts'
+import { rateLimit } from '../../http/rateLimit.ts'
 
 const router = Router()
 

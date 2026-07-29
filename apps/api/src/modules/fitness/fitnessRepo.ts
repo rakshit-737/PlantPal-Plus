@@ -2,7 +2,7 @@
  * Fitness repository — database operations for ENT-12 through ENT-15.
  */
 
-import { getPool, transaction } from '../../db/pool.js'
+import { getPool, transaction } from '../../db/pool.ts'
 
 /* -----------------------------------------------------------------------
  * Types

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 
-import { getUserId } from '../../http/requestUser.js'
-import { getDashboard } from './dashboardRepo.js'
+import { getUserId } from '../../http/requestUser.ts'
+import { getDashboard } from './dashboardRepo.ts'
 
 function todayUtcDateStr(): string {
   return new Date().toISOString().slice(0, 10)

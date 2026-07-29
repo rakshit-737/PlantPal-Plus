@@ -7,7 +7,7 @@ import {
   assertPasswordPolicy,
   hashPassword,
   verifyPassword,
-} from './password.js'
+} from './password.ts'
 
 const VALID = 'correct horse battery staple'
 

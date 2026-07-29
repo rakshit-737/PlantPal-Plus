@@ -4,8 +4,8 @@
 
 import { Router } from 'express'
 
-import { authenticate } from '../auth/authController.js'
-import { drainOutboxHandler } from './syncController.js'
+import { authenticate } from '../auth/authController.ts'
+import { drainOutboxHandler } from './syncController.ts'
 
 const router = Router()
 

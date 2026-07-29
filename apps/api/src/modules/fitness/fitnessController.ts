@@ -16,10 +16,10 @@ import {
   totalVolumeKg,
 } from '@plantpal/shared'
 
-import { badRequest, notFound } from '../../http/errors.js'
-import { authenticate } from '../auth/authController.js'
-import { getUserId } from '../../http/requestUser.js'
-import { recordDailyLogSafe } from '../engagement/engagementService.js'
+import { badRequest, notFound } from '../../http/errors.ts'
+import { authenticate } from '../auth/authController.ts'
+import { getUserId } from '../../http/requestUser.ts'
+import { recordDailyLogSafe } from '../engagement/engagementService.ts'
 import {
   listWorkouts,
   getWorkout,
@@ -28,7 +28,7 @@ import {
   listExercises,
   getPersonalRecords,
   type CreateWorkoutData,
-} from './fitnessRepo.js'
+} from './fitnessRepo.ts'
 
 export { authenticate }
 

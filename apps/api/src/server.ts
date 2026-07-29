@@ -6,13 +6,13 @@
  * replacing an instance. Without it, in-flight requests are cut mid-response.
  */
 
-import { createApp } from './app.js'
-import { loadEnv } from './config/env.js'
-import { initPool } from './db/pool.js'
-import { runMigrations } from './db/migrate.js'
-import { runSeeds } from './db/seed.js'
-import { logger } from './logging.js'
-import { startReminderEngine, stopReminderEngine } from './modules/reminders/reminderService.js'
+import { createApp } from './app.ts'
+import { loadEnv } from './config/env.ts'
+import { initPool } from './db/pool.ts'
+import { runMigrations } from './db/migrate.ts'
+import { runSeeds } from './db/seed.ts'
+import { logger } from './logging.ts'
+import { startReminderEngine, stopReminderEngine } from './modules/reminders/reminderService.ts'
 
 const env = loadEnv()
 const pool = initPool(env.DATABASE_URL)

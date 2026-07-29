@@ -6,10 +6,10 @@ import type { NextFunction, Request, Response } from 'express'
 import { Router } from 'express'
 import { z } from 'zod'
 
-import { AppError } from '../../http/errors.js'
-import { getUserId } from '../../http/requestUser.js'
-import { authenticate } from '../auth/authController.js'
-import { registerToken } from './devicesRepo.js'
+import { AppError } from '../../http/errors.ts'
+import { getUserId } from '../../http/requestUser.ts'
+import { authenticate } from '../auth/authController.ts'
+import { registerToken } from './devicesRepo.ts'
 
 const registerSchema = z
   .object({

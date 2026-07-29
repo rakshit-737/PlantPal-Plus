@@ -13,8 +13,8 @@ import {
   MAX_ACTIVE_SESSIONS,
   refreshDigestsMatch,
   refreshTokenExpiresAt,
-} from './tokens.js'
-import { getPool, transaction } from '../../db/pool.js'
+} from './tokens.ts'
+import { getPool, transaction } from '../../db/pool.ts'
 import type { PoolClient } from 'pg'
 
 /* -----------------------------------------------------------------------

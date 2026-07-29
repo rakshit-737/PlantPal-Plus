@@ -10,10 +10,10 @@
 
 import cron from 'node-cron'
 
-import { logger } from '../../logging.js'
-import { activeTokensForUsers, revokeTokens } from '../notifications/devicesRepo.js'
-import { sendPushMessages, type PushMessage } from '../notifications/expoPush.js'
-import { planWateringReminders, tick } from './reminderEngine.js'
+import { logger } from '../../logging.ts'
+import { activeTokensForUsers, revokeTokens } from '../notifications/devicesRepo.ts'
+import { sendPushMessages, type PushMessage } from '../notifications/expoPush.ts'
+import { planWateringReminders, tick } from './reminderEngine.ts'
 import {
   findDuePending,
   findPlantsNeedingReminder,
@@ -22,7 +22,7 @@ import {
   markFailed,
   markSent,
   type DispatchableReminder,
-} from './remindersRepo.js'
+} from './remindersRepo.ts'
 
 export const REMINDER_HORIZON_HOURS = 24
 

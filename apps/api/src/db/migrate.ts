@@ -14,9 +14,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { getPool, initPool } from './pool.js'
-import { loadEnv } from '../config/env.js'
-import { logger } from '../logging.js'
+import { getPool, initPool } from './pool.ts'
+import { loadEnv } from '../config/env.ts'
+import { logger } from '../logging.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 

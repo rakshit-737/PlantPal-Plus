@@ -1,9 +1,9 @@
 import type { NextFunction, Request, Response } from 'express'
-import { authenticate } from '../auth/authController.js'
-import { notFound, badRequest } from '../../http/errors.js'
-import { getUserId } from '../../http/requestUser.js'
-import { recordDailyLogSafe } from '../engagement/engagementService.js'
-import { cancelForTarget } from '../reminders/remindersRepo.js'
+import { authenticate } from '../auth/authController.ts'
+import { notFound, badRequest } from '../../http/errors.ts'
+import { getUserId } from '../../http/requestUser.ts'
+import { recordDailyLogSafe } from '../engagement/engagementService.ts'
+import { cancelForTarget } from '../reminders/remindersRepo.ts'
 import {
   listPlants,
   getPlant,
@@ -13,7 +13,7 @@ import {
   logCareEvent,
   listCareEvents,
   listSpecies,
-} from './plantsRepo.js'
+} from './plantsRepo.ts'
 
 const VALID_ACTION_TYPES = ['WATER', 'FERTILIZE', 'PRUNE', 'REPOT', 'MIST', 'ROTATE', 'TREAT']
 

@@ -21,10 +21,10 @@ process.env['NODE_ENV'] = 'test'
 process.env['DATABASE_URL'] = TEST_DB ?? 'postgresql://unused:unused@localhost:5432/unused'
 process.env['JWT_ACCESS_SECRET'] ??= 'integration-secret-at-least-32-characters-long'
 
-const { initPool, getPool } = await import('../../db/pool.js')
-const { runMigrations } = await import('../../db/migrate.js')
-const { createApp } = await import('../../app.js')
-const { digestRefreshToken } = await import('./tokens.js')
+const { initPool, getPool } = await import('../../db/pool.ts')
+const { runMigrations } = await import('../../db/migrate.ts')
+const { createApp } = await import('../../app.ts')
+const { digestRefreshToken } = await import('./tokens.ts')
 
 const PASSWORD = 'Correct-Horse-Battery-9!'
 const createdEmails: string[] = []

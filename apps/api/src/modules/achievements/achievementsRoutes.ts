@@ -4,12 +4,12 @@
 
 import { Router } from 'express'
 
-import { authenticate } from '../auth/authController.js'
+import { authenticate } from '../auth/authController.ts'
 import {
   listAchievementsHandler,
   listStreaksHandler,
   markSeenHandler,
-} from './achievementsController.js'
+} from './achievementsController.ts'
 
 const router = Router()
 

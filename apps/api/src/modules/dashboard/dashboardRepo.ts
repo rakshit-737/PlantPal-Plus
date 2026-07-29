@@ -6,7 +6,7 @@
  * wall clock without server-timezone math (§1).
  */
 
-import { getPool } from '../../db/pool.js'
+import { getPool } from '../../db/pool.ts'
 
 export interface DashboardData {
   streak: { current: number; longest: number }

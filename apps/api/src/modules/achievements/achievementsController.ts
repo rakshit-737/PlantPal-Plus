@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from 'express'
 
-import { getUserId } from '../../http/requestUser.js'
+import { getUserId } from '../../http/requestUser.ts'
 
-import { listForUser, listStreaks, markSeen } from './achievementsRepo.js'
+import { listForUser, listStreaks, markSeen } from './achievementsRepo.ts'
 
 export async function listAchievementsHandler(req: Request, res: Response, next: NextFunction) {
   try {

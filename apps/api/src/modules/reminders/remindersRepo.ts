@@ -4,8 +4,8 @@
  * References: migrations/005-engagement-schema.sql, modules/notifications.md.
  */
 
-import { getPool } from '../../db/pool.js'
-import type { DuePlantRow, PendingReminderRow, ReminderInsert } from './reminderEngine.js'
+import { getPool } from '../../db/pool.ts'
+import type { DuePlantRow, PendingReminderRow, ReminderInsert } from './reminderEngine.ts'
 
 /**
  * Plants due for water within the horizon that have no live PENDING reminder.

@@ -10,7 +10,7 @@ import {
   refreshDigestsMatch,
   signAccessToken,
   verifyAccessToken,
-} from './tokens.js'
+} from './tokens.ts'
 
 const SECRET = 'a'.repeat(48)
 const USER = '11111111-1111-4111-8111-111111111111'

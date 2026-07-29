@@ -10,25 +10,25 @@ import cookieParser from 'cookie-parser'
 import express, { type Express } from 'express'
 import helmet from 'helmet'
 
-import authRoutes from './modules/auth/authRoutes.js'
-import plantsRoutes from './modules/plants/plantsRoutes.js'
-import fitnessRoutes from './modules/fitness/fitnessRoutes.js'
-import nutritionRoutes from './modules/nutrition/nutritionRoutes.js'
-import dashboardRoutes from './modules/dashboard/dashboardRoutes.js'
-import achievementsRoutes from './modules/achievements/achievementsRoutes.js'
-import remindersRoutes from './modules/reminders/remindersRoutes.js'
-import devicesRoutes from './modules/notifications/devicesRoutes.js'
-import syncRoutes from './modules/sync/syncRoutes.js'
-import { errorHandler, notFoundHandler } from './http/errorHandler.js'
-import { requestId } from './http/requestId.js'
-import { logger } from './logging.js'
+import authRoutes from './modules/auth/authRoutes.ts'
+import plantsRoutes from './modules/plants/plantsRoutes.ts'
+import fitnessRoutes from './modules/fitness/fitnessRoutes.ts'
+import nutritionRoutes from './modules/nutrition/nutritionRoutes.ts'
+import dashboardRoutes from './modules/dashboard/dashboardRoutes.ts'
+import achievementsRoutes from './modules/achievements/achievementsRoutes.ts'
+import remindersRoutes from './modules/reminders/remindersRoutes.ts'
+import devicesRoutes from './modules/notifications/devicesRoutes.ts'
+import syncRoutes from './modules/sync/syncRoutes.ts'
+import { errorHandler, notFoundHandler } from './http/errorHandler.ts'
+import { requestId } from './http/requestId.ts'
+import { logger } from './logging.ts'
 
 export interface AppOptions {
   corsOrigins: string[]
   /** FR-SYS-21 — request body size limit. */
   bodyLimit?: string
   /** Authentication middleware, optionally replaced in tests. */
-  authenticate?: typeof import('./modules/auth/authController.js').authenticate
+  authenticate?: typeof import('./modules/auth/authController.ts').authenticate
 }
 
 export function createApp(options: AppOptions): Express {

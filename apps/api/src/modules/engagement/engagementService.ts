@@ -15,8 +15,8 @@
 
 import { advanceStreakOnLog, type StreakState } from '@plantpal/shared'
 
-import { transaction } from '../../db/pool.js'
-import { logger } from '../../logging.js'
+import { transaction } from '../../db/pool.ts'
+import { logger } from '../../logging.ts'
 import type { PoolClient } from 'pg'
 
 export type ModuleScope = 'PLANT_CARE' | 'FITNESS' | 'NUTRITION'

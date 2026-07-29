@@ -10,7 +10,7 @@
  * no user_achievements rows still sees every badge at progress 0.
  */
 
-import { getPool } from '../../db/pool.js'
+import { getPool } from '../../db/pool.ts'
 
 export interface AchievementView {
   id: string

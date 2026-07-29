@@ -18,7 +18,7 @@
 
 import bcrypt from 'bcryptjs'
 
-import { logger } from '../../logging.js'
+import { logger } from '../../logging.ts'
 
 /** NFR-SEC-03 — password length bounds, never trimmed and never truncated. */
 export const PASSWORD_MIN_LENGTH = 12

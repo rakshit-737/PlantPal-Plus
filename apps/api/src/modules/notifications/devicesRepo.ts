@@ -8,7 +8,7 @@
  * DeviceNotRegistered; STALE = revoked by policy with revoke_reason recorded.
  */
 
-import { transaction, getPool } from '../../db/pool.js'
+import { transaction, getPool } from '../../db/pool.ts'
 
 export const MAX_ACTIVE_TOKENS_PER_USER = 5
 

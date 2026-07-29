@@ -4,7 +4,7 @@
 
 import { Router } from 'express'
 
-import { authenticate } from '../auth/authController.js'
+import { authenticate } from '../auth/authController.ts'
 import {
   listWorkoutsHandler,
   getWorkoutHandler,
@@ -12,7 +12,7 @@ import {
   getSummary,
   searchExercises,
   getPersonalRecordsHandler,
-} from './fitnessController.js'
+} from './fitnessController.ts'
 
 const router = Router()
 

@@ -2,10 +2,10 @@ import express from 'express'
 import request from 'supertest'
 import { describe, expect, it } from 'vitest'
 
-import { createApp } from '../app.js'
-import { errorHandler } from './errorHandler.js'
-import { AppError } from './errors.js'
-import { requestId, REQUEST_ID_HEADER } from './requestId.js'
+import { createApp } from '../app.ts'
+import { errorHandler } from './errorHandler.ts'
+import { AppError } from './errors.ts'
+import { requestId, REQUEST_ID_HEADER } from './requestId.ts'
 
 const app = createApp({ corsOrigins: ['http://localhost:5173'] })
 

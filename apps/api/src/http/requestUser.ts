@@ -12,7 +12,7 @@
 
 import type { Request } from 'express'
 
-import { AppError } from './errors.js'
+import { AppError } from './errors.ts'
 
 export function getUserId(req: Request): string {
   const userId = (req as { userId?: unknown }).userId

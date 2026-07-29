@@ -8,10 +8,10 @@
 import type { NextFunction, Request, Response } from 'express'
 import { Router } from 'express'
 
-import { AppError } from '../../http/errors.js'
-import { getUserId } from '../../http/requestUser.js'
-import { authenticate } from '../auth/authController.js'
-import { dismiss, listForUser } from './remindersRepo.js'
+import { AppError } from '../../http/errors.ts'
+import { getUserId } from '../../http/requestUser.ts'
+import { authenticate } from '../auth/authController.ts'
+import { dismiss, listForUser } from './remindersRepo.ts'
 
 const router = Router()
 

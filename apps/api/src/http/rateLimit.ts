@@ -9,7 +9,7 @@
 
 import type { NextFunction, Request, Response } from 'express'
 
-import { AppError } from './errors.js'
+import { AppError } from './errors.ts'
 
 interface Window {
   count: number

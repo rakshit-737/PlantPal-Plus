@@ -5,7 +5,7 @@
  * https://docs.expo.dev/push-notifications/sending-notifications/
  */
 
-import { logger } from '../../logging.js'
+import { logger } from '../../logging.ts'
 
 export interface PushMessage {
   to: string

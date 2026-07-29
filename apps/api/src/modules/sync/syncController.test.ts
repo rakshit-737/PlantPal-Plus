@@ -15,29 +15,29 @@ process.env['NODE_ENV'] = 'test'
 process.env['DATABASE_URL'] ??= 'postgresql://test:test@localhost:5432/plantpal_test'
 process.env['JWT_ACCESS_SECRET'] ??= 'test-secret-that-is-at-least-32-characters-long'
 
-vi.mock('./syncRepo.js', () => ({
+vi.mock('./syncRepo.ts', () => ({
   recordEvent: vi.fn(),
   markProcessed: vi.fn(async () => undefined),
   markFailed: vi.fn(async () => undefined),
   findEntityIdByKey: vi.fn(async () => 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'),
 }))
 
-vi.mock('../plants/plantsRepo.js', () => ({
+vi.mock('../plants/plantsRepo.ts', () => ({
   logCareEvent: vi.fn(async () => undefined),
 }))
 
-vi.mock('../fitness/fitnessRepo.js', () => ({
+vi.mock('../fitness/fitnessRepo.ts', () => ({
   createWorkout: vi.fn(async () => ({ id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' })),
 }))
 
-vi.mock('../nutrition/nutritionRepo.js', () => ({
+vi.mock('../nutrition/nutritionRepo.ts', () => ({
   logMeal: vi.fn(async () => ({ id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' })),
   logWater: vi.fn(async () => ({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })),
 }))
 
 // The routes mount the real authenticate middleware; bypass it and stamp a
 // fixed subject so the tests exercise the controller, not token verification.
-vi.mock('../auth/authController.js', () => ({
+vi.mock('../auth/authController.ts', () => ({
   authenticate: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     ;(req as unknown as Record<string, unknown>).userId =
       '22222222-2222-4222-8222-222222222222'
@@ -45,11 +45,11 @@ vi.mock('../auth/authController.js', () => ({
   },
 }))
 
-const syncRepo = await import('./syncRepo.js')
-const plantsRepo = await import('../plants/plantsRepo.js')
-const { errorHandler } = await import('../../http/errorHandler.js')
-const { requestId } = await import('../../http/requestId.js')
-const syncRoutes = (await import('./syncRoutes.js')).default
+const syncRepo = await import('./syncRepo.ts')
+const plantsRepo = await import('../plants/plantsRepo.ts')
+const { errorHandler } = await import('../../http/errorHandler.ts')
+const { requestId } = await import('../../http/requestId.ts')
+const syncRoutes = (await import('./syncRoutes.ts')).default
 
 const app = express()
 app.use(requestId)
@@ -153,7 +153,7 @@ describe('POST /api/v1/sync/outbox', () => {
 
   it('reconciles a unique violation as a successful replay of the destination row', async () => {
     const uniqueViolation = Object.assign(new Error('duplicate key'), { code: '23505' })
-    const nutrition = await import('../nutrition/nutritionRepo.js')
+    const nutrition = await import('../nutrition/nutritionRepo.ts')
     vi.mocked(nutrition.logWater).mockRejectedValueOnce(uniqueViolation)
 
     const res = await request(app).post('/api/v1/sync/outbox').send({ events: [WATER_EVENT] })

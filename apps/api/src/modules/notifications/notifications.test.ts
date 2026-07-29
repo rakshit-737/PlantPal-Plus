@@ -13,14 +13,14 @@ process.env['NODE_ENV'] = 'test'
 process.env['DATABASE_URL'] ??= 'postgresql://test:test@localhost:5432/plantpal_test'
 process.env['JWT_ACCESS_SECRET'] ??= 'test-secret-that-is-at-least-32-characters-long'
 
-vi.mock('./devicesRepo.js', () => ({
+vi.mock('./devicesRepo.ts', () => ({
   registerToken: vi.fn(async () => ({
     id: '55555555-5555-4555-8555-555555555555',
     devices: [],
   })),
 }))
 
-vi.mock('../auth/authController.js', () => ({
+vi.mock('../auth/authController.ts', () => ({
   authenticate: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     ;(req as unknown as Record<string, unknown>).userId =
       '22222222-2222-4222-8222-222222222222'
@@ -28,11 +28,11 @@ vi.mock('../auth/authController.js', () => ({
   },
 }))
 
-const repo = await import('./devicesRepo.js')
-const { errorHandler } = await import('../../http/errorHandler.js')
-const { requestId } = await import('../../http/requestId.js')
-const devicesRoutes = (await import('./devicesRoutes.js')).default
-const { chunkMessages, EXPO_PUSH_BATCH_LIMIT } = await import('./expoPush.js')
+const repo = await import('./devicesRepo.ts')
+const { errorHandler } = await import('../../http/errorHandler.ts')
+const { requestId } = await import('../../http/requestId.ts')
+const devicesRoutes = (await import('./devicesRoutes.ts')).default
+const { chunkMessages, EXPO_PUSH_BATCH_LIMIT } = await import('./expoPush.ts')
 
 const app = express()
 app.use(requestId)

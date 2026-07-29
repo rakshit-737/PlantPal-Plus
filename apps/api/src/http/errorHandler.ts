@@ -9,9 +9,9 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { ZodError } from 'zod'
 
-import { AppError, ERROR_CODES, type ErrorCode, type ErrorDetail } from './errors.js'
-import { getRequestId } from './requestId.js'
-import { logger } from '../logging.js'
+import { AppError, ERROR_CODES, type ErrorCode, type ErrorDetail } from './errors.ts'
+import { getRequestId } from './requestId.ts'
+import { logger } from '../logging.ts'
 
 export interface ErrorEnvelope {
   error: {

@@ -22,18 +22,18 @@ import {
   workoutEnergyKcal,
 } from '@plantpal/shared'
 
-import { AppError } from '../../http/errors.js'
-import { getUserId } from '../../http/requestUser.js'
-import { logger } from '../../logging.js'
+import { AppError } from '../../http/errors.ts'
+import { getUserId } from '../../http/requestUser.ts'
+import { logger } from '../../logging.ts'
 import {
   evaluateAchievementsSafe,
   recordDailyLogSafe,
   type ModuleScope,
-} from '../engagement/engagementService.js'
-import { logCareEvent } from '../plants/plantsRepo.js'
-import { createWorkout } from '../fitness/fitnessRepo.js'
-import { logMeal, logWater } from '../nutrition/nutritionRepo.js'
-import { findEntityIdByKey, markFailed, markProcessed, recordEvent } from './syncRepo.js'
+} from '../engagement/engagementService.ts'
+import { logCareEvent } from '../plants/plantsRepo.ts'
+import { createWorkout } from '../fitness/fitnessRepo.ts'
+import { logMeal, logWater } from '../nutrition/nutritionRepo.ts'
+import { findEntityIdByKey, markFailed, markProcessed, recordEvent } from './syncRepo.ts'
 
 const MAX_BATCH = 50
 

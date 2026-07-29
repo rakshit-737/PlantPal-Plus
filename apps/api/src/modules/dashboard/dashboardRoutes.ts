@@ -1,7 +1,7 @@
 import { Router } from 'express'
 
-import { authenticate } from '../auth/authController.js'
-import { getDashboardHandler } from './dashboardController.js'
+import { authenticate } from '../auth/authController.ts'
+import { getDashboardHandler } from './dashboardController.ts'
 
 const router = Router()
 

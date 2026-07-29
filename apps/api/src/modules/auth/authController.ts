@@ -12,9 +12,9 @@ import { createHash } from 'node:crypto'
 
 import type { NextFunction, Request, Response } from 'express'
 
-import { env } from '../../config/env.js'
-import { AppError, type ErrorDetail, ERROR_CODES } from '../../http/errors.js'
-import { logger } from '../../logging.js'
+import { env } from '../../config/env.ts'
+import { AppError, type ErrorDetail, ERROR_CODES } from '../../http/errors.ts'
+import { logger } from '../../logging.ts'
 import {
   createUser,
   createSession,
@@ -28,17 +28,17 @@ import {
   findUserById,
   consumeAndRotateToken,
   DUMMY_HASH,
-} from './authRepo.js'
+} from './authRepo.ts'
 import {
   assertPasswordPolicy,
   hashPassword,
   verifyPassword,
-} from './password.js'
+} from './password.ts'
 import {
   digestRefreshToken,
   signAccessToken,
   verifyAccessToken,
-} from './tokens.js'
+} from './tokens.ts'
 
 function normaliseEmail(raw: string): string {
   return raw.trim().toLowerCase()
@@ -432,7 +432,7 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 
     if (rawToken) {
       const digest = digestRefreshToken(rawToken)
-      const pool = (await import('../../db/pool.js')).getPool()
+      const pool = (await import('../../db/pool.ts')).getPool()
       await pool.query(
         `update auth_tokens
          set consumed_at = coalesce(consumed_at, now())

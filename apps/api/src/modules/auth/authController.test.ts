@@ -22,7 +22,7 @@ process.env['NODE_ENV'] = 'test'
 process.env['DATABASE_URL'] ??= 'postgresql://test:test@localhost:5432/plantpal_test'
 process.env['JWT_ACCESS_SECRET'] ??= 'test-secret-that-is-at-least-32-characters-long'
 
-vi.mock('./authRepo.js', () => ({
+vi.mock('./authRepo.ts', () => ({
   DUMMY_HASH: '$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXlzYWx0MTIzNA$ZHVtbXloYXNoZHVtbXloYXNoZHVtbXloYQ',
   createUser: vi.fn(),
   createSession: vi.fn(),
@@ -36,17 +36,17 @@ vi.mock('./authRepo.js', () => ({
   consumeAndRotateToken: vi.fn(),
 }))
 
-vi.mock('./password.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./password.js')>()
+vi.mock('./password.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./password.ts')>()
   return { ...actual, verifyPassword: vi.fn(async () => true) }
 })
 
-const repo = await import('./authRepo.js')
-const passwordModule = await import('./password.js')
-const { errorHandler } = await import('../../http/errorHandler.js')
-const { requestId } = await import('../../http/requestId.js')
-const authRoutes = (await import('./authRoutes.js')).default
-const { enforceTimingFloor, LOGIN_TIMING_FLOOR_MS } = await import('./authController.js')
+const repo = await import('./authRepo.ts')
+const passwordModule = await import('./password.ts')
+const { errorHandler } = await import('../../http/errorHandler.ts')
+const { requestId } = await import('../../http/requestId.ts')
+const authRoutes = (await import('./authRoutes.ts')).default
+const { enforceTimingFloor, LOGIN_TIMING_FLOOR_MS } = await import('./authController.ts')
 
 const app = express()
 app.use(requestId)

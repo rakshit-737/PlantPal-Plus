@@ -1,12 +1,12 @@
 import { Router } from 'express'
 
-import { authenticate } from '../auth/authController.js'
+import { authenticate } from '../auth/authController.ts'
 import {
   searchFoodsHandler,
   getDailySummaryHandler,
   logMealHandler,
   logWaterHandler,
-} from './nutritionController.js'
+} from './nutritionController.ts'
 
 const router = Router()
 
