@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { Button } from '../components/ui'
 import { useTheme } from '../hooks/useTheme'
 import { NAV_ITEMS } from '../navigation/navItems'
+import { useSettings } from '../settings/SettingsContext'
 
 /**
  * The authenticated shell: persistent left sidebar on desktop, per
@@ -20,9 +21,13 @@ export function AppShell() {
     navigate('/login')
   }
 
-  // Module gating: fitness/nutrition tabs are hidden if the user disabled them.
-  // Until we load real settings, all modules are considered enabled.
-  const enabledModules = { fitness: true, nutrition: true }
+  // Module gating: fitness/nutrition tabs hide when the user disables them in
+  // Settings. While settings load (null), everything stays visible — fail-open.
+  const { settings } = useSettings()
+  const enabledModules = {
+    fitness: settings?.fitness_enabled ?? true,
+    nutrition: settings?.nutrition_enabled ?? true,
+  }
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.module || enabledModules[item.module],
   )

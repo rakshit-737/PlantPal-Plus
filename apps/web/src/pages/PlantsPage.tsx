@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Button, Card, Badge, Spinner, EmptyState, Modal, PageHeader, Input,
 } from '../components/ui'
@@ -151,7 +152,12 @@ export function PlantsPage() {
               <Card key={p.id} className="flex flex-col gap-sm">
                 <div className="flex items-start justify-between gap-sm">
                   <div>
-                    <p className="font-semibold text-text-main">{p.nickname}</p>
+                    <Link
+                      to={`/plants/${p.id}`}
+                      className="font-semibold text-text-main hover:text-primary hover:underline"
+                    >
+                      {p.nickname}
+                    </Link>
                     <p className="text-xs text-text-muted">{p.room ?? 'No room set'}</p>
                   </div>
                   <Badge tone={statusTone[p.status] ?? 'default'}>{p.status.replace('_', ' ')}</Badge>
