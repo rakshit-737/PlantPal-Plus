@@ -11,6 +11,7 @@ import { FitnessPage } from './pages/FitnessPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { NutritionPage } from './pages/NutritionPage'
+import { OnboardingPage } from './pages/OnboardingPage'
 import { PlantDetailPage } from './pages/PlantDetailPage'
 import { PlantsPage } from './pages/PlantsPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -49,6 +50,14 @@ export function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
+            {/*
+              Onboarding lives inside the shell and is reached by link only.
+              Nothing redirects into it: no endpoint exposes
+              profiles.onboarding_completed_at (see OnboardingPage's header),
+              so the app cannot distinguish a new account from a returning one.
+              Once the API surfaces that flag, gate the redirect here.
+            */}
+            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/plants" element={<PlantsPage />} />
             <Route path="/plants/:id" element={<PlantDetailPage />} />
             <Route path="/fitness" element={<FitnessPage />} />

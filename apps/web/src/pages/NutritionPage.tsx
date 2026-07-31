@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Alert,
@@ -18,8 +18,9 @@ import {
 } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
 import {
-  getDailySummary, logMeal, logWater, searchFoods,
-  type DailySummary, type Food,
+  createCustomFood, CustomFoodLimitError, getDailySummary, logMeal, logWater,
+  searchFoods, SERVING_UNITS,
+  type CreateCustomFoodInput, type DailySummary, type Food, type ServingUnit,
 } from '../lib/nutritionApi'
 
 const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'] as const
@@ -50,6 +51,114 @@ const UNIT_SINGULAR: Record<string, string> = {
   TABLESPOON: 'tablespoon',
   SLICE: 'slice',
   CUSTOM: 'serving',
+}
+
+/* ------------------------------------------------- custom food form model */
+
+/** The create form's raw text state — every field is a string until submit. */
+interface CustomFoodForm {
+  name: string
+  brand: string
+  kcal: string
+  protein: string
+  carbs: string
+  fat: string
+  unit: ServingUnit
+  grams: string
+  barcode: string
+}
+
+type CustomFoodErrors = Partial<Record<keyof CustomFoodForm, string>>
+
+const EMPTY_CUSTOM_FOOD: CustomFoodForm = {
+  name: '', brand: '', kcal: '', protein: '', carbs: '', fat: '',
+  unit: 'GRAM', grams: '', barcode: '',
+}
+
+/** Parse an optional numeric field: blank is absent, anything else must fit. */
+function optionalNumber(
+  raw: string,
+  min: number,
+  max: number,
+  rangeMessage: string,
+): { value: number | undefined } | { error: string } {
+  const text = raw.trim()
+  if (!text) return { value: undefined }
+  const n = Number(text)
+  if (!Number.isFinite(n)) return { error: 'Enter a number.' }
+  if (n < min || n > max) return { error: rangeMessage }
+  return { value: n }
+}
+
+const MACRO_RANGE = 'Enter a value between 0 and 100.'
+
+/**
+ * Mirror of customFoodSchema in nutritionController — every bound here matches a
+ * bound there, so a form that passes cannot come back as a 422 the user has to
+ * decode from a toast. Returns the request body only when nothing is wrong.
+ */
+function validateCustomFood(
+  form: CustomFoodForm,
+): { errors: CustomFoodErrors; input?: CreateCustomFoodInput } {
+  const errors: CustomFoodErrors = {}
+
+  const name = form.name.trim()
+  if (!name) errors.name = 'Enter a name.'
+  else if (name.length > 120) errors.name = 'Use 120 characters or fewer.'
+
+  const brand = form.brand.trim()
+  if (brand.length > 80) errors.brand = 'Use 80 characters or fewer.'
+
+  const kcalText = form.kcal.trim()
+  let kcal: number | null = null
+  if (!kcalText) {
+    errors.kcal = 'Enter the calories in 100 g.'
+  } else {
+    const parsed = Number(kcalText)
+    if (!Number.isFinite(parsed)) errors.kcal = 'Enter a number.'
+    else if (parsed < 0 || parsed > 9000) errors.kcal = 'Enter a value between 0 and 9,000.'
+    else kcal = parsed
+  }
+
+  const protein = optionalNumber(form.protein, 0, 100, MACRO_RANGE)
+  if ('error' in protein) errors.protein = protein.error
+  const carbs = optionalNumber(form.carbs, 0, 100, MACRO_RANGE)
+  if ('error' in carbs) errors.carbs = carbs.error
+  const fat = optionalNumber(form.fat, 0, 100, MACRO_RANGE)
+  if ('error' in fat) errors.fat = fat.error
+
+  const grams = optionalNumber(
+    form.grams, 0.1, 5000, 'Enter a weight between 0.1 and 5,000 g.',
+  )
+  if ('error' in grams) errors.grams = grams.error
+  else if (grams.value === undefined && form.unit !== 'GRAM') {
+    // Not a server rule, but a household unit with no gram weight cannot be
+    // converted, so the food would only ever be loggable in grams.
+    errors.grams = `Enter the weight of one ${UNIT_SINGULAR[form.unit] ?? 'serving'}.`
+  }
+
+  const barcode = form.barcode.trim()
+  if (barcode && !/^\d{8,14}$/.test(barcode)) errors.barcode = 'Enter 8 to 14 digits.'
+
+  if (Object.keys(errors).length > 0 || kcal === null) return { errors }
+  if ('error' in protein || 'error' in carbs || 'error' in fat || 'error' in grams) {
+    return { errors }
+  }
+
+  const input: CreateCustomFoodInput = {
+    name,
+    kcal_per_100g: kcal,
+    // The macros default to 0 server-side; sending them explicitly keeps the
+    // created row identical to what the form showed.
+    protein_per_100g: protein.value ?? 0,
+    carbs_per_100g: carbs.value ?? 0,
+    fat_per_100g: fat.value ?? 0,
+    default_serving_unit: form.unit,
+  }
+  if (brand) input.brand = brand
+  if (grams.value !== undefined) input.default_serving_grams = grams.value
+  if (barcode) input.barcode = barcode
+  return { errors, input }
 }
 
 function dateStr(d: Date) {
@@ -123,6 +232,21 @@ export function NutritionPage() {
   const [servingUnit, setServingUnit] = useState('GRAM')
   const [quantity, setQuantity] = useState('100')
 
+  // The modal has two panes rather than two Modals: the shared Modal traps Tab
+  // on `document`, so a second open instance would fight the first for focus.
+  const [modalPane, setModalPane] = useState<'log' | 'create'>('log')
+  const [customFood, setCustomFood] = useState<CustomFoodForm>(EMPTY_CUSTOM_FOOD)
+  const [customErrors, setCustomErrors] = useState<CustomFoodErrors>({})
+  const [customFormError, setCustomFormError] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const logPaneRef = useRef<HTMLDivElement>(null)
+  const customNameRef = useRef<HTMLInputElement>(null)
+  const quantityRef = useRef<HTMLInputElement>(null)
+  // Where focus lands when the create pane hands control back.
+  const returnFocusRef = useRef<'search' | 'quantity'>('search')
+  const prevPaneRef = useRef<'log' | 'create'>('log')
+
   // Each water button carries its own busy flag so +250 spinning never locks +500.
   const [water250Busy, setWater250Busy] = useState(false)
   const [water500Busy, setWater500Busy] = useState(false)
@@ -179,8 +303,33 @@ export function NutritionPage() {
     setQuantity('100')
     setFormError('')
     setSearchError('')
+    setModalPane('log')
+    setCustomFood(EMPTY_CUSTOM_FOOD)
+    setCustomErrors({})
+    setCustomFormError('')
     setLogOpen(true)
   }, [])
+
+  // Move focus with the pane, and only when the pane actually changes — on the
+  // first open the Modal's own focus handling stands.
+  useEffect(() => {
+    if (!logOpen) {
+      prevPaneRef.current = 'log'
+      return
+    }
+    if (prevPaneRef.current === modalPane) return
+    prevPaneRef.current = modalPane
+    if (modalPane === 'create') {
+      customNameRef.current?.focus()
+      return
+    }
+    if (returnFocusRef.current === 'quantity' && quantityRef.current) {
+      quantityRef.current.focus()
+      return
+    }
+    // The shared Combobox takes no ref, so reach its input through the pane.
+    logPaneRef.current?.querySelector<HTMLInputElement>('input[role="combobox"]')?.focus()
+  }, [logOpen, modalPane])
 
   useEffect(() => {
     if (searchParams.get('log') !== '1') return
@@ -234,14 +383,8 @@ export function NutritionPage() {
     [foodResults],
   )
 
-  function handleFoodSelect(option: ComboOption | null) {
-    if (!option) {
-      // The user edited the text after selecting — drop the stale food.
-      setSelectedFood(null)
-      return
-    }
-    const food = foodResults.find((f) => f.id === option.id)
-    if (!food) return
+  /** Put a food on the meal line, in its most natural unit. */
+  const selectFood = useCallback((food: Food) => {
     setSelectedFood(food)
     setFoodQuery(food.name)
     if (food.default_serving_unit !== 'GRAM' && food.default_serving_grams) {
@@ -252,6 +395,17 @@ export function NutritionPage() {
       setServingUnit('GRAM')
       setQuantity(String(food.default_serving_grams ?? 100))
     }
+  }, [])
+
+  function handleFoodSelect(option: ComboOption | null) {
+    if (!option) {
+      // The user edited the text after selecting — drop the stale food.
+      setSelectedFood(null)
+      return
+    }
+    const food = foodResults.find((f) => f.id === option.id)
+    if (!food) return
+    selectFood(food)
   }
 
   // Units we can honestly convert: grams always; the food's own default unit
@@ -289,6 +443,16 @@ export function NutritionPage() {
   const kcalPreview = selectedFood
     ? (gramsForQty / 100) * selectedFood.kcal_per_100g
     : 0
+
+  // A search that found nothing — not a failed one, which the Combobox reports
+  // as an error, and not the browse-everything state of an empty query.
+  const noMatches =
+    !selectedFood &&
+    !searchLoading &&
+    !searchError &&
+    foodQuery.trim().length > 0 &&
+    foodResults.length === 0
+  const hasCustomFieldErrors = Object.keys(customErrors).length > 0
 
   async function handleLogMeal() {
     setFormError('')
@@ -329,6 +493,69 @@ export function NutritionPage() {
       setFormError('The meal was not saved. Check your connection and try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  function setCustomField<K extends keyof CustomFoodForm>(key: K, value: CustomFoodForm[K]) {
+    setCustomFood((prev) => ({ ...prev, [key]: value }))
+    // Editing a field clears its error; submit re-checks everything anyway.
+    setCustomErrors((prev) => {
+      if (!(key in prev)) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  function openCustomFood() {
+    // The draft survives stepping back to the search and returning; only the
+    // name follows the search box, because that is the user's latest intent.
+    setCustomFood((prev) => ({ ...prev, name: foodQuery.trim().slice(0, 120) }))
+    setCustomErrors({})
+    setCustomFormError('')
+    returnFocusRef.current = 'search'
+    setModalPane('create')
+  }
+
+  function closeCustomFood() {
+    setCustomErrors({})
+    setCustomFormError('')
+    returnFocusRef.current = 'search'
+    setModalPane('log')
+  }
+
+  async function handleCreateCustomFood() {
+    setCustomFormError('')
+    const { errors, input } = validateCustomFood(customFood)
+    setCustomErrors(errors)
+    if (!input) return
+
+    setCreating(true)
+    try {
+      const food = await createCustomFood(input)
+      // The endpoint answers in the search shape precisely so this needs no
+      // second search — keep it in the result list too, so re-picking it works
+      // before the background re-search lands.
+      setFoodResults((prev) => (prev.some((f) => f.id === food.id) ? prev : [food, ...prev]))
+      selectFood(food)
+      setCustomFood(EMPTY_CUSTOM_FOOD)
+      setCustomErrors({})
+      returnFocusRef.current = 'quantity'
+      setModalPane('log')
+      toast.success(`${food.name} saved to your foods`)
+    } catch (err) {
+      if (err instanceof CustomFoodLimitError) {
+        // Stated as a fact, not as advice: nothing in the API deletes a custom
+        // food yet, so "remove one" would be an instruction nobody can follow.
+        setCustomFormError(
+          `You've reached the limit of ${err.ceiling} custom foods, and this one was not saved. ` +
+            'Custom foods cannot be removed yet, so search the catalogue for the closest match.',
+        )
+      } else {
+        setCustomFormError('The food was not saved. Check your connection and try again.')
+      }
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -605,78 +832,246 @@ export function NutritionPage() {
 
       <Modal
         open={logOpen}
-        onClose={() => setLogOpen(false)}
-        title="Log meal"
-        busy={saving}
+        // In the create pane, Escape and the backdrop step back to the meal
+        // form rather than throwing away a half-filled food.
+        onClose={() => (modalPane === 'create' ? closeCustomFood() : setLogOpen(false))}
+        title={modalPane === 'create' ? 'Add custom food' : 'Log meal'}
+        busy={saving || creating}
       >
-        <div className="flex flex-col gap-md">
-          <Select
-            label="Meal type"
-            value={mealType}
-            onChange={(e) => setMealType(e.target.value as MealType)}
+        {modalPane === 'log' ? (
+          <div className="flex flex-col gap-md" ref={logPaneRef}>
+            <Select
+              label="Meal type"
+              value={mealType}
+              onChange={(e) => setMealType(e.target.value as MealType)}
+            >
+              {MEAL_TYPES.map((t) => (
+                <option key={t} value={t}>{MEAL_LABELS[t]}</option>
+              ))}
+            </Select>
+
+            <Combobox
+              label="Food"
+              query={foodQuery}
+              onQueryChange={setFoodQuery}
+              options={foodOptions}
+              onSelect={handleFoodSelect}
+              placeholder="Search the catalogue — dal, dosa, paneer…"
+              loading={searchLoading}
+              error={searchError || undefined}
+              emptyText="No foods match — add it as a custom food below"
+            />
+
+            {noMatches ? (
+              <div className="rounded-sm border border-border">
+                <EmptyState
+                  title={`No food matches “${foodQuery.trim()}”`}
+                  body="Add it once with its per-100 g values and it stays in your searches."
+                  action={
+                    <Button variant="secondary" onClick={openCustomFood}>
+                      Add it as a custom food
+                    </Button>
+                  }
+                />
+              </div>
+            ) : null}
+
+            {selectedFood ? (
+              <div className="grid grid-cols-2 gap-md">
+                <Select
+                  label="Unit"
+                  value={servingUnit}
+                  onChange={(e) => handleUnitChange(e.target.value)}
+                >
+                  {unitOptions.map((u) => (
+                    <option key={u} value={u}>{UNIT_PLURAL[u] ?? u.toLowerCase()}</option>
+                  ))}
+                </Select>
+                <Input
+                  ref={quantityRef}
+                  label="Quantity"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  className="font-mono"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  hint={
+                    servingUnit !== 'GRAM' && selectedFood.default_serving_grams
+                      ? `1 ${UNIT_SINGULAR[servingUnit] ?? 'serving'} ≈ ${selectedFood.default_serving_grams} g`
+                      : undefined
+                  }
+                />
+              </div>
+            ) : null}
+
+            {selectedFood && Number.isFinite(gramsForQty) && gramsForQty > 0 ? (
+              <p className="text-sm text-text-muted">
+                Adds <span className="font-mono">{Math.round(gramsForQty)}</span> g ·{' '}
+                <span className="font-mono">{Math.round(kcalPreview)}</span> kcal
+              </p>
+            ) : null}
+
+            {formError ? <Alert tone="error">{formError}</Alert> : null}
+
+            <div className="flex justify-end gap-sm">
+              <Button variant="secondary" disabled={saving} onClick={() => setLogOpen(false)}>
+                Cancel
+              </Button>
+              <Button loading={saving} onClick={handleLogMeal}>Log</Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            className="flex flex-col gap-md"
+            // The min/max attributes stay for the spinners and mobile keypads,
+            // but native constraint validation is off: it would block submit
+            // with an unstyled browser tooltip before our own field errors —
+            // which carry the same ranges, in this app's voice — could render.
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleCreateCustomFood()
+            }}
           >
-            {MEAL_TYPES.map((t) => (
-              <option key={t} value={t}>{MEAL_LABELS[t]}</option>
-            ))}
-          </Select>
+            <p className="text-sm text-text-muted">
+              Only you can see this food, and it appears in your searches from now on. Enter
+              the values printed for <span className="font-mono">100 g</span>.
+            </p>
 
-          <Combobox
-            label="Food"
-            query={foodQuery}
-            onQueryChange={setFoodQuery}
-            options={foodOptions}
-            onSelect={handleFoodSelect}
-            placeholder="Search the catalogue — dal, dosa, paneer…"
-            loading={searchLoading}
-            error={searchError || undefined}
-            emptyText="No foods match"
-          />
+            <Input
+              ref={customNameRef}
+              label="Name"
+              name="cf-name"
+              maxLength={120}
+              value={customFood.name}
+              onChange={(e) => setCustomField('name', e.target.value)}
+              error={customErrors.name}
+            />
 
-          {selectedFood ? (
+            <Input
+              label="Brand"
+              name="cf-brand"
+              maxLength={80}
+              value={customFood.brand}
+              onChange={(e) => setCustomField('brand', e.target.value)}
+              error={customErrors.brand}
+              hint="Optional."
+            />
+
+            <Input
+              label="Calories (kcal / 100 g)"
+              name="cf-kcal"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={9000}
+              step="any"
+              className="font-mono"
+              value={customFood.kcal}
+              onChange={(e) => setCustomField('kcal', e.target.value)}
+              error={customErrors.kcal}
+            />
+
+            <div className="grid grid-cols-3 gap-sm">
+              <Input
+                label="Protein (g)"
+                name="cf-protein"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={100}
+                step="any"
+                className="font-mono"
+                value={customFood.protein}
+                onChange={(e) => setCustomField('protein', e.target.value)}
+                error={customErrors.protein}
+              />
+              <Input
+                label="Carbs (g)"
+                name="cf-carbs"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={100}
+                step="any"
+                className="font-mono"
+                value={customFood.carbs}
+                onChange={(e) => setCustomField('carbs', e.target.value)}
+                error={customErrors.carbs}
+              />
+              <Input
+                label="Fat (g)"
+                name="cf-fat"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={100}
+                step="any"
+                className="font-mono"
+                value={customFood.fat}
+                onChange={(e) => setCustomField('fat', e.target.value)}
+                error={customErrors.fat}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-md">
               <Select
-                label="Unit"
-                value={servingUnit}
-                onChange={(e) => handleUnitChange(e.target.value)}
+                label="Serving unit"
+                name="cf-unit"
+                value={customFood.unit}
+                onChange={(e) => setCustomField('unit', e.target.value as ServingUnit)}
               >
-                {unitOptions.map((u) => (
+                {SERVING_UNITS.map((u) => (
                   <option key={u} value={u}>{UNIT_PLURAL[u] ?? u.toLowerCase()}</option>
                 ))}
               </Select>
               <Input
-                label="Quantity"
+                label="Serving weight (g)"
+                name="cf-grams"
                 type="number"
                 inputMode="decimal"
-                min={0}
+                min={0.1}
+                max={5000}
                 step="any"
                 className="font-mono"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                value={customFood.grams}
+                onChange={(e) => setCustomField('grams', e.target.value)}
+                error={customErrors.grams}
                 hint={
-                  servingUnit !== 'GRAM' && selectedFood.default_serving_grams
-                    ? `1 ${UNIT_SINGULAR[servingUnit] ?? 'serving'} ≈ ${selectedFood.default_serving_grams} g`
-                    : undefined
+                  customFood.unit === 'GRAM'
+                    ? 'Optional — your usual portion.'
+                    : `Weight of one ${UNIT_SINGULAR[customFood.unit] ?? 'serving'}.`
                 }
               />
             </div>
-          ) : null}
 
-          {selectedFood && Number.isFinite(gramsForQty) && gramsForQty > 0 ? (
-            <p className="text-sm text-text-muted">
-              Adds <span className="font-mono">{Math.round(gramsForQty)}</span> g ·{' '}
-              <span className="font-mono">{Math.round(kcalPreview)}</span> kcal
-            </p>
-          ) : null}
+            <Input
+              label="Barcode"
+              name="cf-barcode"
+              inputMode="numeric"
+              className="font-mono"
+              value={customFood.barcode}
+              onChange={(e) => setCustomField('barcode', e.target.value)}
+              error={customErrors.barcode}
+              hint="Optional — 8 to 14 digits."
+            />
 
-          {formError ? <Alert tone="error">{formError}</Alert> : null}
+            {customFormError ? (
+              <Alert tone="error">{customFormError}</Alert>
+            ) : hasCustomFieldErrors ? (
+              <Alert tone="error">Check the highlighted fields.</Alert>
+            ) : null}
 
-          <div className="flex justify-end gap-sm">
-            <Button variant="secondary" disabled={saving} onClick={() => setLogOpen(false)}>
-              Cancel
-            </Button>
-            <Button loading={saving} onClick={handleLogMeal}>Log</Button>
-          </div>
-        </div>
+            <div className="flex justify-end gap-sm">
+              <Button type="button" variant="secondary" disabled={creating} onClick={closeCustomFood}>
+                Back
+              </Button>
+              <Button type="submit" loading={creating}>Save food</Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   )

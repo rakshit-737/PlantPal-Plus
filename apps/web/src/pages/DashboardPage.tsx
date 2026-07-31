@@ -148,18 +148,23 @@ export function DashboardPage() {
   const streak = data?.streak.current ?? 0
 
   // Fail-open while settings load: treat every module as enabled.
+  const plantCareOn = settings?.plant_care_enabled ?? true
   const fitnessOn = settings?.fitness_enabled ?? true
   const nutritionOn = settings?.nutrition_enabled ?? true
 
   const todayList = (data?.today_list ?? []).filter((item) =>
-    item.type === 'LOG_MEAL'
-      ? nutritionOn
-      : item.type === 'LOG_WORKOUT'
-        ? fitnessOn
-        : true,
+    item.type === 'PLANT_WATER'
+      ? plantCareOn
+      : item.type === 'LOG_MEAL'
+        ? nutritionOn
+        : item.type === 'LOG_WORKOUT'
+          ? fitnessOn
+          : true,
   )
 
-  const tileCount = 2 + (fitnessOn ? 1 : 0) + (nutritionOn ? 1 : 0)
+  // Streak is cross-module and always shows; the rest follow their toggle.
+  // Invariant 34 keeps at least one module on, so the minimum is two tiles.
+  const tileCount = 1 + (plantCareOn ? 1 : 0) + (fitnessOn ? 1 : 0) + (nutritionOn ? 1 : 0)
   const tileCols =
     tileCount === 4 ? 'lg:grid-cols-4' : tileCount === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
 
@@ -247,12 +252,14 @@ export function DashboardPage() {
                 }
                 accent="text-primary"
               />
-              <StatCard
-                label="Plants due"
-                value={String(data.plants.due_today)}
-                sub={`${data.plants.overdue} overdue`}
-                accent="text-primary-hover"
-              />
+              {plantCareOn && (
+                <StatCard
+                  label="Plants due"
+                  value={String(data.plants.due_today)}
+                  sub={`${data.plants.overdue} overdue`}
+                  accent="text-primary-hover"
+                />
+              )}
               {fitnessOn && (
                 <StatCard
                   label="Steps"

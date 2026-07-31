@@ -22,6 +22,18 @@ export interface UserSettings {
   fitness_enabled: boolean
   nutrition_enabled: boolean
   quiet_hours_mode: QuietHoursMode
+  /**
+   * Wall-clock "HH:MM" (24-hour) in the user's own timezone, or null when the
+   * boundary is unset. Rows created lazily start as WINDOW with both times
+   * null, so null is a state the UI must render, not an impossible case.
+   *
+   * The server validates the triple as a unit: with quiet_hours_mode WINDOW
+   * both times are required (details[].issue 'window_requires_start_and_end')
+   * and they must differ ('window_start_equals_end'). Send the mode and both
+   * times in one PUT so a switch to WINDOW never lands mid-edit.
+   */
+  quiet_start_time: string | null
+  quiet_end_time: string | null
   /** Integer 1–20, enforced server-side. */
   daily_notification_cap: number
   reduce_motion: boolean

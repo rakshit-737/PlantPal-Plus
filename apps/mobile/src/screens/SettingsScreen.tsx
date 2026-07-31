@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ScrollView, Switch, Text, View } from 'react-native'
+import { Alert, ScrollView, Switch, Text, View } from 'react-native'
 
 import { API_URL, ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { OfflineNotice } from '../components/OfflineNotice'
 import { Badge, Button, Card, ErrorText, PageHeader, Spinner } from '../components/ui'
 import { getSettings, updateSettings, type UserSettings } from '../lib/settingsApi'
+import { drainOutbox, getOutboxSnapshot } from '../offline'
 import { usePalette, space } from '../theme'
 
 // Field names match apps/api settingsController.ts, same as the web client.
@@ -91,6 +92,29 @@ export function SettingsScreen() {
   async function handleLogout() {
     setBusy(true)
     try {
+      // Sign-out clears the outbox (queued events are filed against whichever
+      // account drains them), so this is the last moment the session can still
+      // deliver them. Drain first, then ask before discarding what is left —
+      // silently destroying logs the user believes are saved is the worst
+      // outcome available here.
+      if (getOutboxSnapshot().pending > 0) {
+        await drainOutbox().catch(() => {})
+      }
+      const stranded = getOutboxSnapshot().pending
+      if (stranded > 0) {
+        const confirmed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Unsynced entries',
+            `${stranded} ${stranded === 1 ? 'entry has' : 'entries have'} not reached the server yet. Signing out discards ${stranded === 1 ? 'it' : 'them'}.`,
+            [
+              { text: 'Stay signed in', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Sign out anyway', style: 'destructive', onPress: () => resolve(true) },
+            ],
+            { onDismiss: () => resolve(false) },
+          )
+        })
+        if (!confirmed) return
+      }
       await logout()
     } finally {
       setBusy(false)

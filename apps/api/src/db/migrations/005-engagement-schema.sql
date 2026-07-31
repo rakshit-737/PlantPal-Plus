@@ -31,9 +31,12 @@ create table if not exists reminders (
   attempts           integer     not null default 0 check (attempts >= 0),
   sent_at            timestamptz,
   last_error         text        check (length(last_error) <= 300),
-  -- Quiet-hours and the daily cap (user_settings.daily_notification_cap) are
-  -- applied at dispatch; a reminder deferred by quiet hours keeps its row and is
-  -- re-evaluated on the next tick rather than being dropped.
+  -- Quiet hours and the daily cap (user_settings.daily_notification_cap) are
+  -- RECORDED PREFERENCES ONLY as of v1.0 — the dispatcher does not consult
+  -- either one. Nothing in the reminders module reads quiet_hours_mode,
+  -- quiet_start_time, quiet_end_time or daily_notification_cap, so no reminder
+  -- is currently deferred or suppressed on their account. The 'SUPPRESSED'
+  -- status above is reserved for that behaviour, not yet produced by it.
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );

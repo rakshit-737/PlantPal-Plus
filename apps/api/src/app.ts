@@ -20,6 +20,7 @@ import remindersRoutes from './modules/reminders/remindersRoutes.ts'
 import devicesRoutes from './modules/notifications/devicesRoutes.ts'
 import syncRoutes from './modules/sync/syncRoutes.ts'
 import settingsRoutes from './modules/settings/settingsRoutes.ts'
+import accountRoutes from './modules/account/accountRoutes.ts'
 import { errorHandler, notFoundHandler } from './http/errorHandler.ts'
 import { requestId } from './http/requestId.ts'
 import { logger } from './logging.ts'
@@ -65,6 +66,7 @@ export function createApp(options: AppOptions): Express {
   app.use('/api/v1/devices', devicesRoutes)
   app.use('/api/v1/sync', syncRoutes)
   app.use('/api/v1/settings', settingsRoutes)
+  app.use('/api/v1/account', accountRoutes)
 
   /**
    * FR-SYS-25 — health and readiness.

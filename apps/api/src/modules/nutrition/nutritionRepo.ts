@@ -64,6 +64,119 @@ export async function searchFoods(
 }
 
 /* -----------------------------------------------------------------------
+ * Create a custom food — FR-NUT-10
+ * --------------------------------------------------------------------- */
+
+/**
+ * Per-user ceiling on user-created foods.
+ *
+ * NFR-SCAL-03 fixes this at 200 ("User-created custom foods | 200 | Server-side
+ * count check at create | LIMIT_EXCEEDED"). FR-NUT-10's inputs table still says
+ * 500; the NFR table is the quantified, verifiable target and is the tighter of
+ * the two, so it wins — ceilings exist so one enthusiastic account cannot
+ * exhaust the ~0.5 GB free-tier database (CON-07) for the whole pilot cohort.
+ */
+export const MAX_CUSTOM_FOODS_PER_USER = 200
+
+/**
+ * Fields a client may supply. `is_custom`, `created_by` and `source` are
+ * deliberately absent: they are derived from the authenticated caller and
+ * written as SQL constants below, so no request body can set them.
+ */
+export interface CreateCustomFoodInput {
+  name: string
+  brand?: string | undefined
+  kcal_per_100g: number
+  protein_per_100g: number
+  carbs_per_100g: number
+  fat_per_100g: number
+  default_serving_unit: string
+  default_serving_grams?: number | undefined
+  barcode?: string | undefined
+}
+
+/**
+ * Discriminated outcome rather than a thrown error: hitting the ceiling is an
+ * expected product state with its own HTTP mapping, and the controller owns the
+ * error envelope (FR-SYS-19).
+ */
+export type CreateCustomFoodResult =
+  | { status: 'CREATED'; food: FoodSearchResult }
+  | { status: 'LIMIT_EXCEEDED'; current: number; ceiling: number }
+
+/**
+ * Insert one private food owned by `userId` (FR-NUT-10 clause 3).
+ *
+ * The ceiling is enforced *inside* the insert rather than by a separate count
+ * round-trip: `insert ... select ... where (count) < ceiling` yields zero rows
+ * when the account is full, so the check and the write share one statement and
+ * one snapshot. Two creates racing at exactly the boundary can still both see
+ * 199 under READ COMMITTED — closing that would need SERIALIZABLE or a counter
+ * table, which is not worth it for a storage-abuse guard that may overshoot by
+ * the number of genuinely simultaneous requests.
+ *
+ * Soft-deleted rows are counted on purpose: NFR-SCAL-03's conditions state that
+ * records inside the 30-day retention window still occupy storage and still
+ * count toward every ceiling.
+ *
+ * Returned columns are exactly those of searchFoods, including the ::float8
+ * casts, so a freshly created food can be logged straight away without a
+ * second round-trip through search.
+ */
+export async function createCustomFood(
+  userId: string,
+  data: CreateCustomFoodInput,
+): Promise<CreateCustomFoodResult> {
+  const pool = getPool()
+  const { rows } = await pool.query<FoodSearchResult>(
+    `insert into foods
+       (name, brand, kcal_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g,
+        default_serving_unit, default_serving_grams, barcode, source, is_custom, created_by)
+     select $1::text, $2::text, $3::numeric, $4::numeric, $5::numeric, $6::numeric,
+            $7::text, $8::numeric, $9::text, 'CUSTOM', true, $10::uuid
+     where (select count(*) from foods where created_by = $10::uuid and is_custom) < $11::int
+     returning id, name, brand,
+               kcal_per_100g::float8    as kcal_per_100g,
+               protein_per_100g::float8 as protein_per_100g,
+               carbs_per_100g::float8   as carbs_per_100g,
+               fat_per_100g::float8     as fat_per_100g,
+               default_serving_unit,
+               default_serving_grams::float8 as default_serving_grams`,
+    [
+      data.name,
+      data.brand ?? null,
+      data.kcal_per_100g,
+      data.protein_per_100g,
+      data.carbs_per_100g,
+      data.fat_per_100g,
+      data.default_serving_unit,
+      data.default_serving_grams ?? null,
+      data.barcode ?? null,
+      userId,
+      MAX_CUSTOM_FOODS_PER_USER,
+    ],
+  )
+
+  const food = rows[0]
+  if (food) return { status: 'CREATED', food }
+
+  // Zero rows means the guard predicate was false. The count is re-read only on
+  // this cold path, because NFR-SCAL-03 requires the refusal to state the
+  // current count and the ceiling rather than just saying no (NFR-USAB-03).
+  const { rows: [countRow] } = await pool.query<{ current: number }>(
+    `select count(*)::int as current
+     from foods
+     where created_by = $1 and is_custom`,
+    [userId],
+  )
+  return {
+    status: 'LIMIT_EXCEEDED',
+    current: countRow?.current ?? MAX_CUSTOM_FOODS_PER_USER,
+    ceiling: MAX_CUSTOM_FOODS_PER_USER,
+  }
+}
+
+/* -----------------------------------------------------------------------
  * Daily summary — FR-NUT diary read
  * --------------------------------------------------------------------- */
 

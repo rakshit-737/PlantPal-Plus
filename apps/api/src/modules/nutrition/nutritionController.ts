@@ -1,10 +1,12 @@
 import type { NextFunction, Request, Response } from 'express'
+import { z } from 'zod'
 
 import { AppError } from '../../http/errors.ts'
 import { getUserId } from '../../http/requestUser.ts'
 import { evaluateAchievementsSafe, recordDailyLogSafe } from '../engagement/engagementService.ts'
 import {
   searchFoods,
+  createCustomFood,
   getDailySummary,
   logMeal,
   logWater,
@@ -32,6 +34,101 @@ export async function searchFoodsHandler(req: Request, res: Response, next: Next
     const userId = getUserId(req)
     const results = await searchFoods((q ?? '').trim(), userId)
     res.status(200).json({ foods: results })
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * Custom food body — FR-NUT-10.
+ *
+ * Every bound mirrors a CHECK constraint in 004-nutrition-schema.sql, so a body
+ * that passes here cannot be rejected by the database: a constraint violation
+ * would surface as an opaque INTERNAL_ERROR (the handler never leaks SQL text),
+ * which tells the user nothing about which field to fix.
+ *
+ * `.strict()` — the ownership columns (`is_custom`, `created_by`, `source`) are
+ * server-derived, so a body that mentions them is an attempt to set them and is
+ * refused loudly rather than silently ignored. Stripping would hide the attempt
+ * from the caller and from the logs.
+ *
+ * Not enforced here: BR-NUT-09's macro-sum plausibility rule (protein + carbs +
+ * fat <= 100.5 g per 100 g) and BR-NUT-08's Atwater cross-check, which
+ * FR-NUT-10 clause 2 wants surfaced as a *non-blocking* confirmation in the
+ * editor. Both need UI that does not exist yet; this endpoint's contract is the
+ * database's own constraint set.
+ */
+const customFoodSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    brand: z.string().trim().max(80).optional(),
+    kcal_per_100g: z.number().min(0).max(9000),
+    // Macros default to 0 exactly as the columns do, so a water-like food needs
+    // only a name and an energy value.
+    protein_per_100g: z.number().min(0).max(100).default(0),
+    carbs_per_100g: z.number().min(0).max(100).default(0),
+    fat_per_100g: z.number().min(0).max(100).default(0),
+    default_serving_unit: z.enum(VALID_SERVING_UNITS).default('GRAM'),
+    default_serving_grams: z.number().min(0.1).max(5000).optional(),
+    // EAN-8 through GTIN-14; the column's regex is the same '^\d{8,14}$'.
+    barcode: z.string().regex(/^\d{8,14}$/, 'must be 8 to 14 digits').optional(),
+  })
+  .strict()
+
+/**
+ * POST /api/v1/nutrition/foods — create a private custom food (FR-NUT-10).
+ *
+ * Ownership is taken from the authenticated subject and never from the body,
+ * and the repo writes `is_custom = true` / `source = 'CUSTOM'` as SQL constants.
+ * The created row is returned in the searchFoods shape so the client can log it
+ * without a follow-up search (FR-NUT-10 outputs).
+ */
+export async function createCustomFoodHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Resolved before validation: an unauthenticated caller must not learn the
+    // shape of the payload from a field-level 422.
+    const userId = getUserId(req)
+
+    const parsed = customFoodSchema.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_FAILED', 'The request failed validation.', {
+        details: parsed.error.issues.slice(0, 20).map((i) => ({
+          field: i.path.join('.') || '(root)',
+          issue: i.message,
+        })),
+      })
+    }
+
+    const input = parsed.data
+    const result = await createCustomFood(userId, {
+      ...input,
+      // An empty brand is legal under the CHECK but stores a meaningless empty
+      // string; keep the column null so "no brand" has one representation.
+      brand: input.brand ? input.brand : undefined,
+    })
+
+    if (result.status === 'LIMIT_EXCEEDED') {
+      // NFR-SCAL-03 names this LIMIT_EXCEEDED at HTTP 409; the closed code
+      // registry (FR-SYS-19) has no such member, and CONFLICT is its 409. The
+      // count and ceiling ride in the details so the client can say exactly how
+      // full the account is (NFR-USAB-03: never refuse without a recovery route).
+      throw new AppError(
+        'CONFLICT',
+        `You have reached your limit of ${result.ceiling} custom foods.`,
+        {
+          details: [
+            {
+              field: 'foods',
+              issue: 'limit_exceeded',
+              current: result.current,
+              ceiling: result.ceiling,
+            },
+          ],
+        },
+      )
+    }
+
+    res.status(201).json(result.food)
   } catch (err) {
     next(err)
   }

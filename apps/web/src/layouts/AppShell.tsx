@@ -56,10 +56,13 @@ export function AppShell() {
     navigate('/login')
   }
 
-  // Module gating: fitness/nutrition tabs hide when the user disables them in
-  // Settings. While settings load (null), everything stays visible — fail-open.
+  // Module gating: the plant care/fitness/nutrition tabs hide when the user
+  // disables them in Settings. While settings load (null), everything stays
+  // visible — fail-open. The server's Invariant 34 refuses a state with every
+  // module off, so this can never empty the navigation.
   const { settings } = useSettings()
   const enabledModules = {
+    plant_care: settings?.plant_care_enabled ?? true,
     fitness: settings?.fitness_enabled ?? true,
     nutrition: settings?.nutrition_enabled ?? true,
   }

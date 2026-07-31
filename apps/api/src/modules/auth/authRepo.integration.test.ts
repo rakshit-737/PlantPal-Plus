@@ -259,6 +259,65 @@ describe.skipIf(!TEST_DB)('auth against a real PostgreSQL', () => {
     expect(res.body.user.status).toBe('PENDING_DELETION')
   }, 60_000)
 
+  it('keeps refreshing during the deletion grace window (BR-ACC-20 clause 2)', async () => {
+    // The regression this guards: findActiveTokenByDigest and
+    // findTokenByDigestAnyState filtered on `u.purge_after is null`. Requesting
+    // a deletion stamps purge_after immediately, so every session — including
+    // the one FR-ACC-21 rule 3 spares so the user can still cancel — stopped
+    // being able to refresh, and the user was signed out within one access-token
+    // lifetime. BR-ACC-20 clause 2 keeps the account fully usable for the whole
+    // 30 days; the gate is the purge instant having PASSED, not merely being set.
+    const email = freshEmail()
+    const { userId, refreshToken } = await registerAndLogin(email)
+
+    await getPool().query(
+      `update users
+       set status = 'PENDING_DELETION',
+           deletion_requested_at = now(),
+           purge_after = now() + interval '30 days'
+       where id = $1`,
+      [userId],
+    )
+
+    const refreshed = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: refreshToken })
+    expect(refreshed.status).toBe(200)
+    expect(refreshed.body.refresh_token).toBeTruthy()
+
+    // And the rotated token keeps working, so the whole window is usable rather
+    // than just the first hop.
+    const again = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: refreshed.body.refresh_token })
+    expect(again.status).toBe(200)
+  }, 60_000)
+
+  it('stops refreshing once the purge instant has passed', async () => {
+    // The other half of the same predicate: a row the FR-ACC-22 sweep should
+    // already have taken must not keep minting access tokens just because the
+    // sweep is late. DELETED and never-existed stay indistinguishable.
+    const email = freshEmail()
+    const { userId, refreshToken } = await registerAndLogin(email)
+
+    await getPool().query(
+      `update users
+       set status = 'PENDING_DELETION',
+           deletion_requested_at = now() - interval '31 days',
+           purge_after = now() - interval '1 hour'
+       where id = $1`,
+      [userId],
+    )
+
+    const refreshed = await request(app)
+      .post('/api/auth/refresh')
+      .set('x-plantpal-client', 'ANDROID')
+      .send({ refresh_token: refreshToken })
+    expect(refreshed.status).toBe(401)
+  }, 60_000)
+
   it('refuses a user whose purge date has passed', async () => {
     const email = freshEmail()
     const { userId } = await registerAndLogin(email)

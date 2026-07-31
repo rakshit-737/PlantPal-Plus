@@ -21,8 +21,8 @@ This is a full software-engineering project delivered phase by phase, with every
 |---|---|
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
 | 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
-| 3 — Implementation | ✅ Core complete — REST API (auth, plants, fitness, nutrition, dashboard, achievements, reminders + Expo Push, offline sync outbox, engagement loop), web app (responsive, mobile bottom nav), Expo mobile app. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: photo upload pipeline, email digest |
-| 4 — Testing | 🟡 In progress — 136 tests incl. a 10-test auth integration suite against real PostgreSQL (in CI via a service container); an adversarial multi-agent audit found and closed 6 critical defects |
+| 3 — Implementation | ✅ Core complete — REST API (auth, account lifecycle, plants + growth log, fitness, nutrition + custom foods, dashboard, achievements, reminders + Expo Push, offline sync outbox, settings, engagement loop), web app (responsive, toasts, full error/retry states, accessible pickers), Expo mobile app with a durable offline outbox. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: binary photo upload (the growth log stores image links — see [Known gaps](#known-gaps)), email digest |
+| 4 — Testing | ✅ 307 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 158 API incl. a 12-test auth integration suite against real PostgreSQL (skipped without a `DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 72 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
 | 5 — Documentation | ✅ Complete — install + deployment in this README, endpoint index in [docs/api-reference.md](docs/api-reference.md), OpenAPI 3.1 in [docs/architecture/](docs/architecture/) |
 | 6 — Deployment | 🟡 In progress — website live on GitHub Pages ([demo](https://rakshit-737.github.io/PlantPal-Plus/)); API one-click via render.yaml; mobile via EAS |
 
@@ -66,7 +66,8 @@ git clone https://github.com/rakshit-737/PlantPal-Plus.git
 cd PlantPal-Plus
 npm install
 
-npm test            # run every workspace's tests (92)
+npm test            # run every workspace's tests (307; the 12 auth integration
+                    # tests skip themselves unless DATABASE_URL is set)
 npm run typecheck   # strict TypeScript across all packages
 ```
 
@@ -78,7 +79,7 @@ You will need a PostgreSQL database — a free [Neon](https://neon.tech) or [Sup
 cp apps/api/.env.example apps/api/.env
 # fill in DATABASE_URL and JWT_ACCESS_SECRET (32+ chars), then:
 
-npm run migrate --workspace @plantpal/api   # apply schema migrations 001–006
+npm run migrate --workspace @plantpal/api   # apply schema migrations 001–007
 npm run seed --workspace @plantpal/api      # load species, exercise and achievement catalogues
 npm run dev --workspace @plantpal/api       # API on http://localhost:4000
 ```
@@ -152,7 +153,9 @@ The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL=https://plantpal-a
 
 ## Technology
 
-TypeScript monorepo throughout. **Mobile:** React Native (Expo) + Expo Push. **Web:** React + Vite. **Backend:** Node.js + Express, REST. **Database:** PostgreSQL. **Storage:** Supabase Storage / Cloudinary. **Scheduling:** node-cron. **CI/CD:** GitHub Actions. Everything is designed to run on permanently free tiers.
+TypeScript monorepo throughout. **Mobile:** React Native (Expo) + Expo Push. **Web:** React + Vite. **Backend:** Node.js + Express, REST. **Database:** PostgreSQL. **Scheduling:** node-cron. **CI/CD:** GitHub Actions. Everything is designed to run on permanently free tiers.
+
+**Object storage is not integrated.** Supabase Storage / Cloudinary are the intended providers for binary uploads, but nothing in the repo talks to either one — there is no bucket, no SDK dependency and no upload endpoint. Growth-log photos are stored as `http(s)` links to images the user already hosts (see [Known gaps](#known-gaps)).
 
 ---
 
@@ -163,6 +166,20 @@ TypeScript monorepo throughout. **Mobile:** React Native (Expo) + Expo Push. **W
 **Tests assert against the specification, not the implementation.** The requirements publish worked examples — `7 × 0.80 × 1.10 × 0.80 × 1.00 = 4.928 → 5 days`, `BMR 1345 × 1.375 → 1849 kcal`, `100 kg × (1 + 5/30) = 116.7`. Those exact vectors are the test cases, so a behaviour change fails against the requirement rather than against a number the code chose for itself.
 
 **The free-tier reality is designed for, not wished away.** A sleeping instance means `node-cron` never fires and reminders silently die. That is recorded as the project's highest-impact risk with an explicit keep-alive mitigation and its residual risk stated honestly.
+
+**A failed request never masquerades as an empty one.** Every screen keeps its error state separate from its empty state: an unreachable server produces a retryable notice, not "No plants yet". The distinction matters most on a mobile connection, which is where the app is actually used.
+
+---
+
+## Known gaps
+
+Stated plainly rather than left to be discovered:
+
+- **Photos are links, not uploads.** The growth log stores an image URL; there is no object-storage bucket, so a file picker would need a Supabase/Cloudinary/R2 account. The API validates that the link is `http(s)`.
+- **Quiet hours are recorded but not yet enforced.** The setting persists and the UI says only that; the reminder dispatcher does not read those columns yet.
+- **No purge sweep.** Requesting account deletion schedules a 30-day window and blocks session renewal, and cancelling restores the account — but no job yet deletes rows once `purge_after` has passed.
+- **No password reset or email verification delivery.** Both token tables exist; there is no mail provider wired, so the UI does not offer a flow it cannot complete.
+- **Custom foods cannot be deleted** (200 per account), and reminders have no retry after a failed push — the in-app list is the delivery baseline.
 
 ---
 

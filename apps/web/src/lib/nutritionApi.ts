@@ -1,4 +1,19 @@
-import { apiRequest } from './apiClient'
+import { ApiError, apiRequest } from './apiClient'
+
+/**
+ * The serving units the API's enum accepts, in the order the create form offers
+ * them (nutritionController.VALID_SERVING_UNITS).
+ */
+export const SERVING_UNITS = [
+  'GRAM',
+  'MILLILITRE',
+  'PIECE',
+  'CUP',
+  'TABLESPOON',
+  'SLICE',
+  'CUSTOM',
+] as const
+export type ServingUnit = (typeof SERVING_UNITS)[number]
 
 export interface Food {
   id: string
@@ -10,6 +25,26 @@ export interface Food {
   fat_per_100g: number
   default_serving_unit: string
   default_serving_grams: number | null
+  // No is_custom / source flag: the search and create queries both project a
+  // fixed column list that omits them (nutritionRepo.searchFoods), so the client
+  // cannot tell a catalogue row from the user's own food.
+}
+
+/**
+ * Postgres `numeric` reaches the client as a string unless the query casts it.
+ * The nutrition repo casts to float8 today, but formatting a string as a number
+ * fails silently if that ever regresses — so coerce once, at the boundary.
+ */
+function normalizeFood(food: Food): Food {
+  return {
+    ...food,
+    kcal_per_100g: Number(food.kcal_per_100g),
+    protein_per_100g: Number(food.protein_per_100g),
+    carbs_per_100g: Number(food.carbs_per_100g),
+    fat_per_100g: Number(food.fat_per_100g),
+    default_serving_grams:
+      food.default_serving_grams == null ? null : Number(food.default_serving_grams),
+  }
 }
 
 export interface MealItem {
@@ -58,8 +93,103 @@ export interface MealItemInput {
 // The API wraps the list as { foods } (nutritionController.searchFoodsHandler).
 export const searchFoods = (q: string) =>
   apiRequest<{ foods: Food[] }>(`/v1/nutrition/foods/search?q=${encodeURIComponent(q)}`).then(
-    (r) => r.foods,
+    (r) => r.foods.map(normalizeFood),
   )
+
+/* ------------------------------------------------------ custom foods */
+
+/** Body accepted by POST /v1/nutrition/foods (customFoodSchema, `.strict()`). */
+export interface CreateCustomFoodInput {
+  /** 1–120 characters after trimming. */
+  name: string
+  /** Up to 80 characters. */
+  brand?: string | undefined
+  /** 0–9000. */
+  kcal_per_100g: number
+  /** 0–100, defaults to 0 server-side. */
+  protein_per_100g?: number | undefined
+  /** 0–100, defaults to 0 server-side. */
+  carbs_per_100g?: number | undefined
+  /** 0–100, defaults to 0 server-side. */
+  fat_per_100g?: number | undefined
+  /** Defaults to GRAM server-side. */
+  default_serving_unit?: ServingUnit | undefined
+  /** 0.1–5000. */
+  default_serving_grams?: number | undefined
+  /** 8 to 14 digits. */
+  barcode?: string | undefined
+}
+
+/** The per-user ceiling the API enforces (NFR-SCAL-03), used as a fallback. */
+export const CUSTOM_FOOD_CEILING = 200
+
+/**
+ * The account already holds as many custom foods as it may. The API answers 409
+ * CONFLICT with a `foods / limit_exceeded` detail carrying the current count and
+ * the ceiling; this is its own type so callers can say something specific
+ * instead of matching on status codes at the call site.
+ */
+export class CustomFoodLimitError extends Error {
+  readonly ceiling: number
+  /** The account's current custom-food count, when the API reported it. */
+  readonly current: number | null
+
+  constructor(ceiling: number, current: number | null) {
+    super(`Custom food limit of ${ceiling} reached.`)
+    this.name = 'CustomFoodLimitError'
+    this.ceiling = ceiling
+    this.current = current
+  }
+}
+
+function toLimitError(err: ApiError): CustomFoodLimitError {
+  // The limit row carries numeric `current`/`ceiling` members that the shared
+  // envelope type does not model, so read them defensively.
+  const row = err.details.find((d) => d.issue === 'limit_exceeded') as
+    | { current?: unknown; ceiling?: unknown }
+    | undefined
+  return new CustomFoodLimitError(
+    typeof row?.ceiling === 'number' ? row.ceiling : CUSTOM_FOOD_CEILING,
+    typeof row?.current === 'number' ? row.current : null,
+  )
+}
+
+/**
+ * Create a private custom food (FR-NUT-10).
+ *
+ * Resolves with the created row in the *search* shape, so the caller can log it
+ * immediately without a second round-trip. Rejects with CustomFoodLimitError at
+ * the per-user ceiling; anything else propagates as a normal ApiError.
+ *
+ * The body is assembled key by key rather than spread from form state: the
+ * endpoint validates with `.strict()`, so one stray key (`is_custom`, an empty
+ * `brand`) turns a good submission into a 422.
+ */
+export async function createCustomFood(input: CreateCustomFoodInput): Promise<Food> {
+  const body: Record<string, unknown> = {
+    name: input.name,
+    kcal_per_100g: input.kcal_per_100g,
+  }
+  if (input.brand !== undefined) body.brand = input.brand
+  if (input.protein_per_100g !== undefined) body.protein_per_100g = input.protein_per_100g
+  if (input.carbs_per_100g !== undefined) body.carbs_per_100g = input.carbs_per_100g
+  if (input.fat_per_100g !== undefined) body.fat_per_100g = input.fat_per_100g
+  if (input.default_serving_unit !== undefined) {
+    body.default_serving_unit = input.default_serving_unit
+  }
+  if (input.default_serving_grams !== undefined) {
+    body.default_serving_grams = input.default_serving_grams
+  }
+  if (input.barcode !== undefined) body.barcode = input.barcode
+
+  try {
+    const food = await apiRequest<Food>('/v1/nutrition/foods', { method: 'POST', body })
+    return normalizeFood(food)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) throw toLimitError(err)
+    throw err
+  }
+}
 export const getDailySummary = (date?: string) =>
   apiRequest<DailySummary>(`/v1/nutrition/summary${date ? `?date=${date}` : ''}`)
 export const logMeal = (data: {

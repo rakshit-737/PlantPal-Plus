@@ -1,20 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 
-import {
-  getDailySummary,
-  logMeal,
-  logWater,
-  searchFoods,
-  type DailySummary,
-  type Food,
-} from '../api/endpoints'
+import { getDailySummary, searchFoods, type DailySummary, type Food } from '../api/endpoints'
 import { MealType } from '@plantpal/shared'
 
 import { OfflineNotice } from '../components/OfflineNotice'
 import { Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
 import { localDateStr } from '../lib/dates'
 import { monoFont } from '../lib/fonts'
+import { describeWriteError, logMealWriteThrough, logWaterWriteThrough } from '../offline'
 import { usePalette, space } from '../theme'
 
 // NFR-MAIN-03: the meal vocabulary lives once, in @plantpal/shared.
@@ -34,6 +28,7 @@ export function NutritionScreen() {
   const [selected, setSelected] = useState<Food | null>(null)
   const [grams, setGrams] = useState('100')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const [waterBusy, setWaterBusy] = useState(false)
 
@@ -71,6 +66,7 @@ export function NutritionScreen() {
 
   async function handleLogMeal() {
     setError('')
+    setNotice('')
     if (!selected) {
       setError('Search and select a food first.')
       return
@@ -83,30 +79,36 @@ export function NutritionScreen() {
     const factor = qty / 100
     setSaving(true)
     try {
-      await logMeal({
-        meal_type: mealType,
-        local_date_str: localDateStr(),
-        items: [
-          {
-            food_id: selected.id,
-            food_name_at_log: selected.name,
-            quantity: qty,
-            serving_unit: 'GRAM',
-            grams: qty,
-            kcal: selected.kcal_per_100g * factor,
-            protein_g: selected.protein_per_100g * factor,
-            carbs_g: selected.carbs_per_100g * factor,
-            fat_g: selected.fat_per_100g * factor,
-          },
-        ],
-      })
+      const result = await logMealWriteThrough(
+        {
+          meal_type: mealType,
+          local_date_str: localDateStr(),
+          items: [
+            {
+              food_id: selected.id,
+              food_name_at_log: selected.name,
+              quantity: qty,
+              serving_unit: 'GRAM',
+              grams: qty,
+              kcal: selected.kcal_per_100g * factor,
+              protein_g: selected.protein_per_100g * factor,
+              carbs_g: selected.carbs_per_100g * factor,
+              fat_g: selected.fat_per_100g * factor,
+            },
+          ],
+        },
+        `${selected.name} (${mealType.toLowerCase()})`,
+      )
       setFormOpen(false)
       setSelected(null)
       setQuery('')
       setGrams('100')
-      await load()
-    } catch {
-      setError('Failed to log meal. Try again.')
+      // Queued meals are not in today's totals yet — reloading offline would
+      // only replace the page with a connection error.
+      if (result.queued) setNotice(result.message)
+      else await load()
+    } catch (err) {
+      setError(describeWriteError(err, 'Failed to log meal. Try again.'))
     } finally {
       setSaving(false)
     }
@@ -114,13 +116,18 @@ export function NutritionScreen() {
 
   async function handleWater(ml: number) {
     setWaterBusy(true)
+    setNotice('')
     try {
-      await logWater(ml, localDateStr())
-      await load()
-    } catch {
+      const result = await logWaterWriteThrough(ml, localDateStr(), `${ml} ml of water`)
+      if (result.queued) setNotice(result.message)
+      else await load()
+    } catch (err) {
       Alert.alert(
         'Water not logged',
-        "Couldn't reach the server, so your water total was not updated. Try again.",
+        describeWriteError(
+          err,
+          'The server refused that entry, so your water total was not updated.',
+        ),
       )
     } finally {
       setWaterBusy(false)
@@ -145,6 +152,7 @@ export function NutritionScreen() {
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: space.md, gap: space.md }}>
       <PageHeader title="Nutrition" subtitle="Calories, macros and hydration." />
+      {notice ? <Text style={{ color: p.textMuted, fontSize: 13 }}>{notice}</Text> : null}
 
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <Card style={{ flex: 1, gap: 2 }}>

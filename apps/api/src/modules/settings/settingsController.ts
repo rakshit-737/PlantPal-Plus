@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
+import { z } from 'zod'
 
 import { AppError } from '../../http/errors.ts'
 import { getUserId } from '../../http/requestUser.ts'
@@ -21,6 +22,25 @@ const BOOLEANS = [
   'high_contrast',
   'analytics_opt_in',
 ] as const
+
+/**
+ * Quiet-hours boundaries (FR-SET-16, FR-NOT-06). A 24-hour `HH:MM` wall clock
+ * in the user's own zone: `24:00` and a seconds component are both rejected so
+ * that what a client sends is byte-for-byte what a later GET returns —
+ * settingsRepo normalises the read side onto the same shape.
+ *
+ * `null` clears a boundary. That is legal for every mode except WINDOW, which
+ * the merged-state check below enforces.
+ */
+const quietTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  .nullable()
+
+const QUIET_TIMES = ['quiet_start_time', 'quiet_end_time'] as const
+
+/** The fields whose mutation makes the BR-NOT-08 window consistent-or-rejected. */
+const QUIET_FIELDS = ['quiet_hours_mode', ...QUIET_TIMES] as const
 
 export async function getSettingsHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -50,6 +70,13 @@ export async function updateSettingsHandler(req: Request, res: Response, next: N
       if (v === undefined) continue
       if (typeof v !== 'boolean') errors.push({ field, issue: 'must_be_boolean' })
       else (patch as Record<string, unknown>)[field] = v
+    }
+    for (const field of QUIET_TIMES) {
+      const v = body[field]
+      if (v === undefined) continue
+      const parsed = quietTimeSchema.safeParse(v)
+      if (!parsed.success) errors.push({ field, issue: 'must_be_hh_mm_24h_or_null' })
+      else (patch as Record<string, unknown>)[field] = parsed.data
     }
     if (body['timezone'] !== undefined) {
       if (typeof body['timezone'] !== 'string' || body['timezone'].length > 64) {
@@ -82,6 +109,31 @@ export async function updateSettingsHandler(req: Request, res: Response, next: N
       throw new AppError('VALIDATION_FAILED', 'At least one module must stay enabled.', {
         details: [{ field: 'modules', issue: 'at_least_one_module_required' }],
       })
+    }
+
+    // BR-NOT-08 clause 1 (and its SET-side restatement BR-SET-07): a WINDOW is
+    // defined by BOTH boundaries, so a mode of WINDOW with either time missing
+    // is not a configuration the dispatcher could evaluate.
+    //
+    // Checked only when the request actually touches the quiet-hours triple.
+    // 001-auth-schema.sql defaults quiet_hours_mode to 'WINDOW' but gives the
+    // two time columns no default, so every lazily created row begins life as
+    // WINDOW-with-nulls; an unconditional check would make an unrelated theme
+    // change unsavable for every user who has never opened this section.
+    if (QUIET_FIELDS.some((f) => f in patch) && merged.quiet_hours_mode === 'WINDOW') {
+      if (merged.quiet_start_time === null || merged.quiet_end_time === null) {
+        throw new AppError('VALIDATION_FAILED', 'Quiet hours need both a start and an end time.', {
+          details: [{ field: 'quiet_hours_mode', issue: 'window_requires_start_and_end' }],
+        })
+      }
+      // Start equal to end is ambiguous between "never quiet" and "always
+      // quiet" (BR-NOT-08 clause 1, edge case E-33), and is rejected at write
+      // time rather than resolved arbitrarily at dispatch time.
+      if (merged.quiet_start_time === merged.quiet_end_time) {
+        throw new AppError('VALIDATION_FAILED', 'Quiet hours need a different start and end time.', {
+          details: [{ field: 'quiet_end_time', issue: 'window_start_equals_end' }],
+        })
+      }
     }
 
     res.json(await updateSettings(userId, patch))

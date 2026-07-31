@@ -8,12 +8,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { ApiError } from '../api/client'
-import { logCare, searchSpecies, type Plant } from '../api/endpoints'
+import { searchSpecies, type Plant } from '../api/endpoints'
 import { OfflineNotice } from '../components/OfflineNotice'
 import { Badge, Button, Card, ErrorText, PageHeader, Spinner } from '../components/ui'
 import { localDateStr } from '../lib/dates'
 import { monoFont } from '../lib/fonts'
 import { deletePlant, getCareHistory, getPlant, type CareEvent } from '../lib/plantsApi'
+import { describeWriteError, logCareWriteThrough } from '../offline'
 import { usePalette, space } from '../theme'
 
 const CARE_ACTIONS = [
@@ -55,6 +56,7 @@ export function PlantDetailScreen({
   const [loadError, setLoadError] = useState(false)
   const [caring, setCaring] = useState<string | null>(null)
   const [careError, setCareError] = useState('')
+  const [careNotice, setCareNotice] = useState('')
   const [deleting, setDeleting] = useState(false)
 
   // Android hardware/gesture back returns to the plant list instead of
@@ -107,14 +109,25 @@ export function PlantDetailScreen({
 
   async function handleCare(actionType: string) {
     setCareError('')
+    setCareNotice('')
     setCaring(actionType)
     try {
-      await logCare(plantId, { action_type: actionType, local_date_str: localDateStr() })
-      const [pl, h] = await Promise.all([getPlant(plantId), getCareHistory(plantId)])
-      setPlant(pl)
-      setHistory(h)
-    } catch {
-      setCareError('Could not log that action. Try again.')
+      const result = await logCareWriteThrough(
+        plantId,
+        { action_type: actionType, local_date_str: localDateStr() },
+        `${titleCase(actionType)}${plant ? ` for ${plant.nickname}` : ''}`,
+      )
+      if (result.queued) {
+        // Offline: the ledger below stays as it was rather than showing a
+        // half-invented entry the server has not accepted yet.
+        setCareNotice(result.message)
+      } else {
+        const [pl, h] = await Promise.all([getPlant(plantId), getCareHistory(plantId)])
+        setPlant(pl)
+        setHistory(h)
+      }
+    } catch (err) {
+      setCareError(describeWriteError(err, 'Could not log that action. Try again.'))
     } finally {
       setCaring(null)
     }
@@ -225,6 +238,9 @@ export function PlantDetailScreen({
               ))}
             </View>
             <ErrorText message={careError} />
+            {careNotice ? (
+              <Text style={{ color: p.textMuted, fontSize: 13 }}>{careNotice}</Text>
+            ) : null}
           </Card>
 
           <Card>

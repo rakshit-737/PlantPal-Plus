@@ -4,7 +4,6 @@ import { FlatList, Pressable, Text, View } from 'react-native'
 import {
   createPlant,
   listPlants,
-  logCare,
   searchSpecies,
   type Plant,
   type Species,
@@ -12,6 +11,7 @@ import {
 import { OfflineNotice } from '../components/OfflineNotice'
 import { Badge, Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
 import { localDateStr } from '../lib/dates'
+import { describeWriteError, logCareWriteThrough } from '../offline'
 import { usePalette, space } from '../theme'
 import { PlantDetailScreen } from './PlantDetailScreen'
 
@@ -35,6 +35,7 @@ export function PlantsScreen() {
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null)
   const [wateringId, setWateringId] = useState<string | null>(null)
   const [careError, setCareError] = useState('')
+  const [careNotice, setCareNotice] = useState('')
 
   const [addOpen, setAddOpen] = useState(false)
   const [nickname, setNickname] = useState('')
@@ -126,11 +127,22 @@ export function PlantsScreen() {
   async function water(plant: Plant) {
     setWateringId(plant.id)
     setCareError('')
+    setCareNotice('')
     try {
-      await logCare(plant.id, { action_type: 'WATER', local_date_str: localDateStr() })
-      await load()
-    } catch {
-      setCareError(`Could not log watering for ${plant.nickname}. Check your connection and retry.`)
+      const result = await logCareWriteThrough(
+        plant.id,
+        { action_type: 'WATER', local_date_str: localDateStr() },
+        `Watering for ${plant.nickname}`,
+      )
+      // Queued: there is no server state to re-read, and reloading here would
+      // only replace the list with an offline error. The schedule catches up
+      // when the outbox drains.
+      if (result.queued) setCareNotice(result.message)
+      else await load()
+    } catch (err) {
+      setCareError(
+        describeWriteError(err, `Could not log watering for ${plant.nickname}. Try again.`),
+      )
     } finally {
       setWateringId(null)
     }
@@ -161,6 +173,9 @@ export function PlantsScreen() {
         <View style={{ gap: space.sm }}>
           <PageHeader title="Plants" subtitle="Watering that adapts to each plant." />
           <ErrorText message={careError} />
+          {careNotice ? (
+            <Text style={{ color: p.textMuted, fontSize: 13 }}>{careNotice}</Text>
+          ) : null}
           {addOpen ? (
             <Card style={{ gap: space.sm }}>
               <Input label="Nickname" value={nickname} onChangeText={setNickname} placeholder="e.g. Monstera by the window" autoCapitalize="sentences" />

@@ -3,11 +3,12 @@ import { FlatList, Text, View } from 'react-native'
 
 import { ActivityTypeCode } from '@plantpal/shared'
 
-import { listWorkouts, logWorkout, type Workout } from '../api/endpoints'
+import { listWorkouts, type Workout } from '../api/endpoints'
 import { OfflineNotice } from '../components/OfflineNotice'
 import { Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
 import { localDateStr } from '../lib/dates'
 import { monoFont } from '../lib/fonts'
+import { describeWriteError, logWorkoutWriteThrough } from '../offline'
 import { usePalette, space } from '../theme'
 
 // NFR-MAIN-03: the activity vocabulary lives once, in @plantpal/shared.
@@ -23,6 +24,7 @@ export function FitnessScreen() {
   const [duration, setDuration] = useState('30')
   const [steps, setSteps] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -46,6 +48,7 @@ export function FitnessScreen() {
 
   async function handleLog() {
     setError('')
+    setNotice('')
     const mins = parseInt(duration, 10)
     if (!mins || mins < 1 || mins > 1440) {
       setError('Duration must be between 1 and 1440 minutes.')
@@ -54,18 +57,24 @@ export function FitnessScreen() {
     const stepCount = steps.trim() ? parseInt(steps, 10) : undefined
     setSaving(true)
     try {
-      await logWorkout({
-        activity_type: activity,
-        duration_mins: mins,
-        ...(stepCount !== undefined && !Number.isNaN(stepCount) ? { steps: stepCount } : {}),
-        local_date_str: localDateStr(),
-      })
+      const result = await logWorkoutWriteThrough(
+        {
+          activity_type: activity,
+          duration_mins: mins,
+          ...(stepCount !== undefined && !Number.isNaN(stepCount) ? { steps: stepCount } : {}),
+          local_date_str: localDateStr(),
+        },
+        `${activity} workout`,
+      )
       setFormOpen(false)
       setDuration('30')
       setSteps('')
-      await load()
-    } catch {
-      setError('Failed to log workout. Try again.')
+      // Queued workouts are not in the list yet — reloading offline would only
+      // blank it. The entry appears once the outbox drains.
+      if (result.queued) setNotice(result.message)
+      else await load()
+    } catch (err) {
+      setError(describeWriteError(err, 'Failed to log workout. Try again.'))
     } finally {
       setSaving(false)
     }
@@ -82,6 +91,7 @@ export function FitnessScreen() {
       ListHeaderComponent={
         <View style={{ gap: space.sm }}>
           <PageHeader title="Fitness" subtitle="Workouts, steps and streaks." />
+          {notice ? <Text style={{ color: p.textMuted, fontSize: 13 }}>{notice}</Text> : null}
           {formOpen ? (
             <Card style={{ gap: space.sm }}>
               <Text style={{ color: p.textMain, fontSize: 14, fontWeight: '600' }}>Activity</Text>

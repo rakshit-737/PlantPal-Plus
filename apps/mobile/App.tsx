@@ -16,6 +16,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import { AuthProvider, useAuth } from './src/auth/AuthContext'
 import { Spinner } from './src/components/ui'
+import { OutboxIndicator, OutboxProvider } from './src/offline'
 import { AchievementsScreen } from './src/screens/AchievementsScreen'
 import { DashboardScreen } from './src/screens/DashboardScreen'
 import { FitnessScreen } from './src/screens/FitnessScreen'
@@ -53,6 +54,9 @@ function AppTabs() {
         {tab === 'awards' && <AchievementsScreen />}
         {tab === 'settings' && <SettingsScreen />}
       </View>
+      {/* Unsynced-log count, directly above the tab bar and only when there is
+          something waiting. It rides the tab bar's hairline rule. */}
+      <OutboxIndicator />
       <View
         style={{
           flexDirection: 'row',
@@ -139,7 +143,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Root />
+        {/* Inside AuthProvider: the outbox drains on sign-in and is cleared on
+            sign-out, so it has to see the auth state. */}
+        <OutboxProvider>
+          <Root />
+        </OutboxProvider>
       </AuthProvider>
     </SafeAreaProvider>
   )

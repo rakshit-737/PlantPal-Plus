@@ -288,6 +288,21 @@ export interface ActiveTokenRow {
   tokenVersion: number
 }
 
+/**
+ * The unconsumed happy path: a live refresh token whose session is ACTIVE and
+ * whose owner has not been purged.
+ *
+ * "Not purged" means the purge instant has actually PASSED, not merely that one
+ * is set. `purge_after` is stamped the moment a deletion is requested, so the
+ * earlier `purge_after is null` test disqualified every session from the first
+ * minute of the 30-day window — including the one FR-ACC-21 rule 3 deliberately
+ * spares so the user can still cancel, and any session opened later during the
+ * window. BR-ACC-20 clause 2 keeps the account fully usable throughout, so the
+ * user was instead signed out within one 15-minute access-token lifetime and the
+ * cancel affordance disappeared behind a fresh login. The predicate below is the
+ * same rule the login path applies (authController: purge_after set AND already
+ * elapsed means treat as no account).
+ */
 export async function findActiveTokenByDigest(
   digest: string,
   client?: PoolClient,
@@ -308,7 +323,9 @@ export async function findActiveTokenByDigest(
        -- how recently the chain rotated (expires_at alone re-arms every use).
        and t.family_created_at > now() - interval '180 days'
        and s.status = 'ACTIVE'
-       and u.purge_after is null`,
+       -- BR-ACC-20 clause 2: a scheduled deletion must not disable refresh --
+       -- only a purge instant that has already elapsed does. See the note above.
+       and (u.purge_after is null or u.purge_after > now())`,
     [digest],
   )
   return rows[0] ?? null
@@ -316,10 +333,11 @@ export async function findActiveTokenByDigest(
 
 /**
  * Look a token up by digest regardless of consumption state (unexpired, on an
- * ACTIVE session, owner not purged). The refresh path needs this second probe:
- * a replayed token is by definition already consumed, so filtering on
- * `consumed_at is null` alone would make reuse detection unreachable — the
- * replay would 401 as TOKEN_EXPIRED and the stolen family would live on.
+ * ACTIVE session, owner not past its purge instant). The refresh path needs
+ * this second probe: a replayed token is by definition already consumed, so
+ * filtering on `consumed_at is null` alone would make reuse detection
+ * unreachable — the replay would 401 as TOKEN_EXPIRED and the stolen family
+ * would live on.
  */
 export async function findTokenByDigestAnyState(
   digest: string,
@@ -340,8 +358,34 @@ export async function findTokenByDigestAnyState(
        -- how recently the chain rotated (expires_at alone re-arms every use).
        and t.family_created_at > now() - interval '180 days'
        and s.status = 'ACTIVE'
-       and u.purge_after is null`,
+       -- BR-ACC-20 clause 2, as above: block only once the purge instant has
+       -- passed. Kept identical to findActiveTokenByDigest on purpose — the
+       -- refresh path falls through from that probe to this one, so a
+       -- divergence here would make a replay 401 as TOKEN_EXPIRED instead of
+       -- reaching reuse detection.
+       and (u.purge_after is null or u.purge_after > now())`,
     [digest],
+  )
+  return rows[0] ?? null
+}
+
+/**
+ * The caller's stored password hash, for a step-up re-authentication on an
+ * already-authenticated request (FR-ACC-21 rule 1).
+ *
+ * Deliberately narrow rather than widening `findUserById`: that function feeds
+ * `GET /auth/me`, whose response is serialised straight to the client, so a
+ * credential hash must never enter its row shape. `null` for the row means no
+ * usable account; a row with a null `password_hash` means an OAuth-only account
+ * that has no password to re-authenticate against.
+ */
+export async function findPasswordHashById(
+  id: string,
+): Promise<{ password_hash: string | null } | null> {
+  const pool = getPool()
+  const { rows } = await pool.query<{ password_hash: string | null }>(
+    `select password_hash from users where id = $1 and status <> 'DELETED'`,
+    [id],
   )
   return rows[0] ?? null
 }

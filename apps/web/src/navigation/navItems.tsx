@@ -3,14 +3,15 @@ import type { ReactNode } from 'react'
 /**
  * Top-level navigation, per docs/design/04-navigation-flow.md.
  *
- * `module` ties an item to a preference toggle (fitness/nutrition can be
- * disabled, hiding the tab). Items without a module are always shown.
+ * `module` ties an item to a preference toggle (plant care/fitness/nutrition
+ * can each be disabled, hiding the tab — the server's Invariant 34 keeps at
+ * least one enabled). Items without a module are always shown.
  */
 export interface NavItem {
   to: string
   label: string
   icon: ReactNode
-  module?: 'fitness' | 'nutrition'
+  module?: 'plant_care' | 'fitness' | 'nutrition'
 }
 
 // Inline SVGs keep the shell dependency-free; swap for lucide-react later.
@@ -31,7 +32,12 @@ const icon = (path: string): ReactNode => (
 
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: icon('M3 12l9-9 9 9M5 10v10h14V10') },
-  { to: '/plants', label: 'Plants', icon: icon('M12 22c4-4 8-7 8-12a8 8 0 10-16 0c0 5 4 8 8 12z') },
+  {
+    to: '/plants',
+    label: 'Plants',
+    module: 'plant_care',
+    icon: icon('M12 22c4-4 8-7 8-12a8 8 0 10-16 0c0 5 4 8 8 12z'),
+  },
   {
     to: '/fitness',
     label: 'Fitness',
