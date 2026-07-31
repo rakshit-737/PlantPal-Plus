@@ -1,0 +1,474 @@
+// PlantPal+ — database ER diagram for app.eraser.io (Diagram-as-code > Entity Relationship)
+// Generated from apps/api/src/db/migrations/001..007. 24 tables, 34 foreign keys.
+// Subsystems: auth=blue, plant care=green, fitness=orange, nutrition=pink, engagement=purple, sync=teal
+
+users [icon: user, color: blue] {
+  id uuid pk
+  email text
+  email_normalised text unique
+  password_hash text
+  oauth_count integer
+  status text
+  token_version integer
+  email_verified_at timestamptz
+  failed_login_count integer
+  locked_until timestamptz
+  last_login_at timestamptz
+  password_changed_at timestamptz
+  deletion_requested_at timestamptz
+  purge_after timestamptz
+  minimum_age_confirmed boolean
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+profiles [icon: id-card, color: blue] {
+  id uuid pk
+  user_id uuid fk unique
+  display_name text
+  avatar_photo_id uuid
+  date_of_birth date
+  biological_sex text
+  height_cm numeric(4,1)
+  activity_level text
+  current_body_mass_kg numeric(6,2)
+  current_body_mass_recorded_at timestamptz
+  onboarding_completed_at timestamptz
+  onboarding_last_step integer
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+user_settings [icon: settings, color: blue] {
+  id uuid pk
+  user_id uuid fk unique
+  timezone text
+  hemisphere text
+  hemisphere_source text
+  locale text
+  unit_system text
+  theme text
+  week_start_day text
+  plant_care_enabled boolean
+  fitness_enabled boolean
+  nutrition_enabled boolean
+  quiet_hours_mode text
+  quiet_start_time time
+  quiet_end_time time
+  daily_notification_cap integer
+  vacation_start_date date
+  vacation_end_date date
+  exercise_calories_in_budget_enabled boolean
+  reduce_motion boolean
+  larger_text boolean
+  high_contrast boolean
+  analytics_opt_in boolean
+  flag_map_version integer
+  timezone_change_count integer
+  last_timezone_change_at timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+auth_sessions [icon: key, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  token_family_id uuid
+  parent_session_id uuid
+  refresh_token_hash text unique
+  status text
+  platform text
+  client_installation_id uuid
+  device_label text
+  ip_address_hash text
+  user_agent text
+  issued_at timestamptz
+  expires_at timestamptz
+  last_used_at timestamptz
+  revoked_at timestamptz
+  revoke_reason text
+  created_at timestamptz
+}
+
+auth_tokens [icon: refresh-cw, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  session_id uuid fk
+  token_family_id uuid
+  parent_id uuid
+  generation integer
+  refresh_token_digest text unique
+  consumed_at timestamptz
+  expires_at timestamptz
+  family_created_at timestamptz
+  created_at timestamptz
+}
+
+email_verification_tokens [icon: mail, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  token_digest text unique
+  sent_to text
+  issued_at timestamptz
+  expires_at timestamptz
+  consumed_at timestamptz
+  created_at timestamptz
+}
+
+password_reset_tokens [icon: unlock, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  token_digest text unique
+  issued_at timestamptz
+  expires_at timestamptz
+  consumed_at timestamptz
+  created_at timestamptz
+}
+
+login_attempts [icon: shield, color: blue] {
+  id uuid pk
+  email_normalised text
+  ip_prefix text
+  outcome text
+  attempted_at timestamptz
+  created_at timestamptz
+}
+
+consent_records [icon: check-square, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  consent_type text
+  version integer
+  granted boolean
+  ip_prefix text
+  recorded_at timestamptz
+  superseded_by uuid
+  created_at timestamptz
+}
+
+device_push_tokens [icon: smartphone, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  installation_id uuid
+  platform text
+  token text
+  status text
+  last_confirmed_at timestamptz
+  device_label text
+  app_version text
+  permission_status text
+  revoked_at timestamptz
+  revoke_reason text
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+audit_events [icon: file-text, color: blue] {
+  id uuid pk
+  user_id uuid fk
+  event_type text
+  payload jsonb
+  ip_prefix text
+  created_at timestamptz
+}
+
+species [icon: book, color: green] {
+  id uuid pk
+  scientific_name text
+  common_name text
+  base_interval_days integer
+  min_interval_days integer
+  max_interval_days integer
+  default_light text
+  default_soil text
+  care_notes text
+  image_url text
+  is_custom boolean
+  created_by uuid fk
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+plants [icon: leaf, color: green] {
+  id uuid pk
+  user_id uuid fk
+  species_id uuid fk
+  nickname text
+  room text
+  acquisition_date date
+  status text
+  light_exposure text
+  placement text
+  pot_material text
+  pot_diameter_cm numeric(5,1)
+  has_drainage boolean
+  soil_type text
+  indoor_climate text
+  base_interval_days integer
+  min_interval_days integer
+  max_interval_days integer
+  last_watered_at timestamptz
+  next_water_due_at timestamptz
+  effective_interval_days integer
+  watering_factor_snapshot jsonb
+  photo_url text
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+}
+
+plant_care_events [icon: droplet, color: green] {
+  id uuid pk
+  plant_id uuid fk
+  user_id uuid fk
+  action_type text
+  note text
+  logged_at_utc timestamptz
+  local_date_str text
+  interval_at_log_days integer
+  client_idempotency_key uuid unique
+  created_at timestamptz
+}
+
+growth_log_entries [icon: camera, color: green] {
+  id uuid pk
+  plant_id uuid fk
+  user_id uuid fk
+  photo_url text
+  photo_storage_key text
+  height_cm numeric(6,1)
+  note text
+  logged_at_utc timestamptz
+  local_date_str text
+  created_at timestamptz
+  deleted_at timestamptz
+}
+
+exercises [icon: activity, color: orange] {
+  id uuid pk
+  name text
+  activity_type text
+  met_value numeric(4,1)
+  is_strength boolean
+  muscle_group text
+  is_custom boolean
+  created_by uuid fk
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+workouts [icon: dumbbell, color: orange] {
+  id uuid pk
+  user_id uuid fk
+  exercise_id uuid fk
+  activity_type text
+  duration_mins integer
+  perceived_intensity text
+  met_value_at_log numeric(4,1)
+  body_mass_at_log_kg numeric(6,2)
+  calories_burned numeric(7,1)
+  total_volume_kg numeric(9,1)
+  steps integer
+  note text
+  logged_at_utc timestamptz
+  local_date_str text
+  client_idempotency_key uuid unique
+  created_at timestamptz
+  deleted_at timestamptz
+}
+
+workout_sets [icon: layers, color: orange] {
+  id uuid pk
+  workout_id uuid fk
+  set_index integer
+  reps integer
+  weight_kg numeric(6,2)
+  volume_kg numeric(9,1)
+  estimated_1rm_kg numeric(7,1)
+  created_at timestamptz
+}
+
+personal_records [icon: award, color: orange] {
+  id uuid pk
+  user_id uuid fk
+  exercise_id uuid fk
+  record_type text
+  value numeric(9,2)
+  source_workout_id uuid fk
+  achieved_at timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+foods [icon: shopping-cart, color: pink] {
+  id uuid pk
+  name text
+  brand text
+  kcal_per_100g numeric(7,2)
+  protein_per_100g numeric(6,2)
+  carbs_per_100g numeric(6,2)
+  fat_per_100g numeric(6,2)
+  default_serving_unit text
+  default_serving_grams numeric(7,2)
+  barcode text
+  source text
+  is_custom boolean
+  created_by uuid fk
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+}
+
+meals [icon: coffee, color: pink] {
+  id uuid pk
+  user_id uuid fk
+  meal_type text
+  total_kcal numeric(8,1)
+  total_protein_g numeric(7,1)
+  total_carbs_g numeric(7,1)
+  total_fat_g numeric(7,1)
+  note text
+  logged_at_utc timestamptz
+  local_date_str text
+  client_idempotency_key uuid unique
+  created_at timestamptz
+  deleted_at timestamptz
+}
+
+meal_items [icon: list, color: pink] {
+  id uuid pk
+  meal_id uuid fk
+  food_id uuid fk
+  food_name_at_log text
+  quantity numeric(8,2)
+  serving_unit text
+  grams numeric(9,2)
+  kcal numeric(8,1)
+  protein_g numeric(7,1)
+  carbs_g numeric(7,1)
+  fat_g numeric(7,1)
+  created_at timestamptz
+}
+
+water_logs [icon: droplet, color: pink] {
+  id uuid pk
+  user_id uuid fk
+  amount_ml integer
+  goal_ml_at_log integer
+  logged_at_utc timestamptz
+  local_date_str text
+  client_idempotency_key uuid unique
+  created_at timestamptz
+}
+
+reminders [icon: bell, color: purple] {
+  id uuid pk
+  user_id uuid fk
+  reminder_type text
+  target_entity_id uuid
+  target_entity_type text
+  title text
+  body text
+  due_at_utc timestamptz
+  status text
+  attempts integer
+  sent_at timestamptz
+  last_error text
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+streaks [icon: zap, color: purple] {
+  id uuid pk
+  user_id uuid fk
+  streak_type text
+  current_length integer
+  longest_length integer
+  last_counted_date text
+  freeze_tokens integer
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+achievements [icon: star, color: purple] {
+  id uuid pk
+  code text unique
+  name text
+  description text
+  module text
+  criteria jsonb
+  icon text
+  tier text
+  points integer
+  is_active boolean
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+user_achievements [icon: gift, color: purple] {
+  id uuid pk
+  user_id uuid fk
+  achievement_id uuid fk
+  unlocked_at timestamptz
+  progress_pct integer
+  seen_at timestamptz
+  created_at timestamptz
+}
+
+sync_events [icon: upload-cloud, color: teal] {
+  id uuid pk
+  user_id uuid fk
+  client_idempotency_key uuid
+  entity_type text
+  payload jsonb
+  status text
+  result_entity_id uuid
+  error_code text
+  error_detail text
+  received_at timestamptz
+  processed_at timestamptz
+  created_at timestamptz
+}
+
+// Relationships (parent.id < child.fk = one-to-many; - = one-to-one)
+users.id - profiles.user_id
+users.id - user_settings.user_id
+users.id < auth_sessions.user_id
+users.id < auth_tokens.user_id
+auth_sessions.id < auth_tokens.session_id
+users.id < email_verification_tokens.user_id
+users.id < password_reset_tokens.user_id
+users.id < consent_records.user_id
+users.id < device_push_tokens.user_id
+users.id < audit_events.user_id
+users.id < species.created_by
+users.id < plants.user_id
+species.id < plants.species_id
+plants.id < plant_care_events.plant_id
+users.id < plant_care_events.user_id
+plants.id < growth_log_entries.plant_id
+users.id < growth_log_entries.user_id
+users.id < exercises.created_by
+users.id < workouts.user_id
+exercises.id < workouts.exercise_id
+workouts.id < workout_sets.workout_id
+users.id < personal_records.user_id
+exercises.id < personal_records.exercise_id
+workouts.id < personal_records.source_workout_id
+users.id < foods.created_by
+users.id < meals.user_id
+meals.id < meal_items.meal_id
+foods.id < meal_items.food_id
+users.id < water_logs.user_id
+users.id < reminders.user_id
+users.id < streaks.user_id
+users.id < user_achievements.user_id
+achievements.id < user_achievements.achievement_id
+users.id < sync_events.user_id
+
+// Not drawn (no FK in DDL, by design):
+//   login_attempts — standalone audit table keyed by email string
+//   auth_sessions.parent_session_id, auth_tokens.parent_id — soft self-references (rotation chains)
+//   consent_records.superseded_by — soft self-reference
+//   profiles.avatar_photo_id — soft reference to object storage
+//   reminders.target_entity_id, sync_events.result_entity_id — polymorphic soft references

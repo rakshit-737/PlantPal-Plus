@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 
 import { ApiError } from '../api/client'
 import { register } from '../api/endpoints'
@@ -7,6 +7,15 @@ import { Button, Card, ErrorText, Input } from '../components/ui'
 import { usePalette, space } from '../theme'
 
 export function RegisterScreen({ onDone }: { onDone: () => void }) {
+  // Android hardware back returns to the sign-in screen, not out of the app.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onDone()
+      return true
+    })
+    return () => sub.remove()
+  }, [onDone])
+
   const p = usePalette()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

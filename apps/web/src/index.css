@@ -21,6 +21,9 @@
   --color-text-main: #1b241e;
   --color-text-muted: #5d6a61;
   --color-border: #dce1da;
+  /* Text placed on a solid primary fill. Dark ink on the lighter dark-mode
+     green keeps WCAG AA; white passes only against the light-mode leaf. */
+  --color-on-primary: #ffffff;
 }
 
 [data-theme='dark'] {
@@ -34,6 +37,7 @@
   --color-text-main: #ecf0ec;
   --color-text-muted: #8b968d;
   --color-border: #242a25;
+  --color-on-primary: #0b0e0c;
 }
 
 html,
@@ -52,7 +56,24 @@ body {
 
 ::selection {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
+}
+
+/* Toast entrance — a short rise, like a stamp landing. The reduced-motion
+   block below zeroes it for users who ask. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 160ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -63,4 +84,33 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/*
+ * In-app accessibility settings (Settings → Accessibility). SettingsContext
+ * stamps these attributes on <html>; they must work without relying on the
+ * OS-level media query above.
+ */
+[data-reduce-motion] *,
+[data-reduce-motion] *::before,
+[data-reduce-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+[data-larger-text] {
+  /* Tailwind sizes are rem-based, so scaling the root scales everything. */
+  font-size: 112.5%;
+}
+
+[data-high-contrast],
+[data-high-contrast][data-theme='light'] {
+  --color-border: #9aa39b;
+  --color-text-muted: #3f4a42;
+}
+
+[data-high-contrast][data-theme='dark'] {
+  --color-border: #4a544c;
+  --color-text-muted: #b6c0b8;
 }

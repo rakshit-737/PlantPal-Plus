@@ -24,10 +24,13 @@ services:
       - key: LOG_LEVEL
         value: info
       # Neon connection string — set in the dashboard, never committed.
+      # Must include ?sslmode=require: Neon rejects unencrypted connections.
       - key: DATABASE_URL
         sync: false
       - key: JWT_ACCESS_SECRET
         generateValue: true
       # The web app's origins: GitHub Pages plus local dev.
+      # Every new web origin (e.g. a Vercel domain) must be appended here or
+      # credentialed browser requests to the API will be rejected by CORS.
       - key: CORS_ORIGINS
         value: https://rakshit-737.github.io,http://localhost:5173

@@ -22,6 +22,7 @@ export default {
         secondary: 'var(--color-secondary)',
         tertiary: 'var(--color-tertiary)',
         accent: 'var(--color-accent)',
+        'on-primary': 'var(--color-on-primary)',
         'text-main': 'var(--color-text-main)',
         'text-muted': 'var(--color-text-muted)',
         border: 'var(--color-border)',

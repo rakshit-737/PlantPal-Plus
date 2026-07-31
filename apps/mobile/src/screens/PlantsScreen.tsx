@@ -9,14 +9,11 @@ import {
   type Plant,
   type Species,
 } from '../api/endpoints'
+import { OfflineNotice } from '../components/OfflineNotice'
 import { Badge, Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
+import { localDateStr } from '../lib/dates'
 import { usePalette, space } from '../theme'
-
-function localDateStr(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
+import { PlantDetailScreen } from './PlantDetailScreen'
 
 function dueLabel(plant: Plant): { text: string; overdue: boolean } {
   if (!plant.next_water_due_at) return { text: 'No schedule', overdue: false }
@@ -34,6 +31,8 @@ export function PlantsScreen() {
   const p = usePalette()
   const [plants, setPlants] = useState<Plant[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null)
   const [wateringId, setWateringId] = useState<string | null>(null)
   const [careError, setCareError] = useState('')
 
@@ -51,12 +50,19 @@ export function PlantsScreen() {
   const load = useCallback(async () => {
     try {
       setPlants(await listPlants())
+      setLoadError(false)
     } catch {
       setPlants([])
+      setLoadError(true)
     }
   }, [])
 
   useEffect(() => {
+    void load().finally(() => setLoading(false))
+  }, [load])
+
+  const retry = useCallback(() => {
+    setLoading(true)
     void load().finally(() => setLoading(false))
   }, [load])
 
@@ -130,6 +136,19 @@ export function PlantsScreen() {
     }
   }
 
+  if (selectedPlantId) {
+    return (
+      <PlantDetailScreen
+        plantId={selectedPlantId}
+        onBack={() => {
+          // Care logged on the detail page moves due dates; refresh the list.
+          setSelectedPlantId(null)
+          void load()
+        }}
+      />
+    )
+  }
+
   if (loading) return <Spinner />
 
   return (
@@ -196,36 +215,46 @@ export function PlantsScreen() {
         </View>
       }
       ListEmptyComponent={
-        <Card>
-          <EmptyState
-            icon="🪴"
-            title="No plants yet"
-            body="Add your first plant and PlantPal+ schedules its watering."
-          />
-        </Card>
+        loadError ? (
+          <OfflineNotice onRetry={retry} />
+        ) : (
+          <Card>
+            <EmptyState
+              icon="—"
+              title="No plants yet"
+              body="Add your first plant and PlantPal+ schedules its watering."
+            />
+          </Card>
+        )
       }
       renderItem={({ item }) => {
         const due = dueLabel(item)
         return (
-          <Card style={{ gap: space.sm }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ color: p.textMain, fontSize: 16, fontWeight: '600' }}>
-                🌿 {item.nickname}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${item.nickname}`}
+            onPress={() => setSelectedPlantId(item.id)}
+          >
+            <Card style={{ gap: space.sm }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: p.textMain, fontSize: 16, fontWeight: '600' }}>
+                  {item.nickname}
+                </Text>
+                <Badge text={due.text} color={due.overdue ? p.danger : p.primary} />
+              </View>
+              <Text style={{ color: p.textMuted, fontSize: 12 }}>
+                {item.room ? `${item.room} · ` : ''}
+                {item.light_exposure.replace(/_/g, ' ').toLowerCase()}
+                {item.effective_interval_days ? ` · every ${item.effective_interval_days}d` : ''}
               </Text>
-              <Badge text={due.text} color={due.overdue ? p.danger : p.primary} />
-            </View>
-            <Text style={{ color: p.textMuted, fontSize: 12 }}>
-              {item.room ? `${item.room} · ` : ''}
-              {item.light_exposure.replace(/_/g, ' ').toLowerCase()}
-              {item.effective_interval_days ? ` · every ${item.effective_interval_days}d` : ''}
-            </Text>
-            <Button
-              title="💧 Log watering"
-              variant="secondary"
-              loading={wateringId === item.id}
-              onPress={() => void water(item)}
-            />
-          </Card>
+              <Button
+                title="Log watering"
+                variant="secondary"
+                loading={wateringId === item.id}
+                onPress={() => void water(item)}
+              />
+            </Card>
+          </Pressable>
         )
       }}
     />

@@ -45,7 +45,6 @@ export function LoginScreen({ onRegister }: { onRegister: () => void }) {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space.lg }}>
         <View style={{ alignItems: 'center', marginBottom: space.xl }}>
-          <Text style={{ fontSize: 44 }}>🌱</Text>
           <Text style={{ color: p.textMain, fontSize: 28, fontWeight: '700' }}>PlantPal+</Text>
           <Text style={{ color: p.textMuted, fontSize: 14 }}>
             One app for three daily habits.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 
 import {
   getDailySummary,
@@ -11,22 +11,22 @@ import {
 } from '../api/endpoints'
 import { MealType } from '@plantpal/shared'
 
+import { OfflineNotice } from '../components/OfflineNotice'
 import { Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
+import { localDateStr } from '../lib/dates'
+import { monoFont } from '../lib/fonts'
 import { usePalette, space } from '../theme'
 
 // NFR-MAIN-03: the meal vocabulary lives once, in @plantpal/shared.
 const MEAL_TYPES = Object.keys(MealType)
 
-function localDateStr(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
+const fmtInt = (n: number) => n.toLocaleString('en-US')
 
 export function NutritionScreen() {
   const p = usePalette()
   const [summary, setSummary] = useState<DailySummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [mealType, setMealType] = useState('BREAKFAST')
   const [query, setQuery] = useState('')
@@ -40,12 +40,19 @@ export function NutritionScreen() {
   const load = useCallback(async () => {
     try {
       setSummary(await getDailySummary(localDateStr()))
+      setLoadError(false)
     } catch {
       setSummary(null)
+      setLoadError(true)
     }
   }, [])
 
   useEffect(() => {
+    void load().finally(() => setLoading(false))
+  }, [load])
+
+  const retry = useCallback(() => {
+    setLoading(true)
     void load().finally(() => setLoading(false))
   }, [load])
 
@@ -111,7 +118,10 @@ export function NutritionScreen() {
       await logWater(ml, localDateStr())
       await load()
     } catch {
-      // Silent; totals refresh next load.
+      Alert.alert(
+        'Water not logged',
+        "Couldn't reach the server, so your water total was not updated. Try again.",
+      )
     } finally {
       setWaterBusy(false)
     }
@@ -119,7 +129,18 @@ export function NutritionScreen() {
 
   if (loading) return <Spinner />
 
+  if (loadError) {
+    return (
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: space.md, gap: space.md }}>
+        <PageHeader title="Nutrition" subtitle="Calories, macros and hydration." />
+        <OfflineNotice onRetry={retry} />
+      </ScrollView>
+    )
+  }
+
   const kcal = Math.round(summary?.totals.kcal ?? 0)
+  const waterTotal = summary?.water_ml_total ?? 0
+  const waterGoal = summary?.water_goal_ml ?? null
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: space.md, gap: space.md }}>
@@ -127,18 +148,32 @@ export function NutritionScreen() {
 
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         <Card style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: p.textMuted, fontSize: 12 }}>🍽️ Calories</Text>
-          <Text style={{ color: p.textMain, fontSize: 22, fontWeight: '700' }}>{kcal}</Text>
+          <Text style={{ color: p.textMuted, fontSize: 12 }}>Calories</Text>
+          <Text style={{ color: p.textMain, fontSize: 22, fontWeight: '700', fontFamily: monoFont }}>
+            {kcal}
+          </Text>
           <Text style={{ color: p.textMuted, fontSize: 11 }}>
             P {Math.round(summary?.totals.protein_g ?? 0)}g · C{' '}
             {Math.round(summary?.totals.carbs_g ?? 0)}g · F {Math.round(summary?.totals.fat_g ?? 0)}g
           </Text>
         </Card>
         <Card style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: p.textMuted, fontSize: 12 }}>💧 Water</Text>
-          <Text style={{ color: p.textMain, fontSize: 22, fontWeight: '700' }}>
-            {summary?.water_ml_total ?? 0} ml
+          <Text style={{ color: p.textMuted, fontSize: 12 }}>Water</Text>
+          <Text
+            style={{
+              color: p.textMain,
+              fontSize: waterGoal ? 16 : 22,
+              fontWeight: '700',
+              fontFamily: monoFont,
+            }}
+          >
+            {waterGoal ? `${fmtInt(waterTotal)} / ${fmtInt(waterGoal)} ml` : `${fmtInt(waterTotal)} ml`}
           </Text>
+          {waterGoal ? (
+            <Text style={{ color: p.textMuted, fontSize: 11, fontFamily: monoFont }}>
+              {Math.min(100, Math.round((waterTotal / waterGoal) * 100))}% of goal
+            </Text>
+          ) : null}
           <View style={{ flexDirection: 'row', gap: space.xs }}>
             <Button title="+250" variant="secondary" loading={waterBusy} onPress={() => void handleWater(250)} />
             <Button title="+500" variant="secondary" loading={waterBusy} onPress={() => void handleWater(500)} />
@@ -203,7 +238,7 @@ export function NutritionScreen() {
           Meals
         </Text>
         {!summary || summary.meals.length === 0 ? (
-          <EmptyState icon="🍽️" title="No meals logged" body="Log your first meal to start tracking." />
+          <EmptyState icon="—" title="No meals logged" body="Log your first meal to start tracking." />
         ) : (
           MEAL_TYPES.map((mt) => {
             const meals = summary.meals.filter((m) => m.meal_type === mt)
@@ -212,14 +247,14 @@ export function NutritionScreen() {
               <View key={mt} style={{ marginBottom: space.sm }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ color: p.textMain, fontSize: 14, fontWeight: '600' }}>{mt}</Text>
-                  <Text style={{ color: p.textMuted, fontSize: 12 }}>
+                  <Text style={{ color: p.textMuted, fontSize: 12, fontFamily: monoFont }}>
                     {Math.round(meals.reduce((s, m) => s + m.total_kcal, 0))} kcal
                   </Text>
                 </View>
                 {meals.flatMap((m) => m.items).map((item) => (
                   <View key={item.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
                     <Text style={{ color: p.textMain, fontSize: 13 }}>{item.food_name_at_log}</Text>
-                    <Text style={{ color: p.textMuted, fontSize: 12 }}>
+                    <Text style={{ color: p.textMuted, fontSize: 12, fontFamily: monoFont }}>
                       {item.grams}g · {Math.round(item.kcal)} kcal
                     </Text>
                   </View>

@@ -45,7 +45,7 @@ Full request/response schemas live in the OpenAPI 3.1 spec at
 | GET | `/:id` | One plant. |
 | PUT | `/:id` | Update allow-listed fields only (no mass assignment). |
 | DELETE | `/:id` | Soft delete. |
-| POST | `/:id/care` | Log a care event (`action_type: WATER/FERTILISE/…`, `local_date_str`). `WATER` recomputes `next_water_due_at` via the shared algorithm and freezes the factor snapshot. |
+| POST | `/:id/care` | Log a care event (`action_type: WATER/FERTILIZE/PRUNE/REPOT/MIST/ROTATE/TREAT`, `local_date_str`). `WATER` recomputes `next_water_due_at` via the shared algorithm and freezes the factor snapshot. |
 | GET | `/:id/care` | Care history. |
 
 ## Fitness — `/api/v1/fitness`
@@ -54,7 +54,7 @@ Full request/response schemas live in the OpenAPI 3.1 spec at
 |---|---|---|
 | GET | `/exercises` | Exercise catalogue with MET values; `?q=` search. |
 | GET | `/personal-records` | PRs (estimated 1RM via shared `estimatedOneRepMax`). |
-| GET | `/summary` | Weekly summary; `?week_start=YYYY-MM-DD` (Monday). |
+| GET | `/summary` | Weekly summary for the week beginning `?week=YYYY-MM-DD` (required). |
 | GET | `/` | List workouts. |
 | POST | `/` | Log a workout (`activity_type`, `duration_mins`, `perceived_intensity`, `steps`, `local_date_str`). Calorie estimate uses frozen MET + Mifflin-St Jeor from `@plantpal/shared`. |
 | GET | `/:id` | One workout. |
@@ -73,6 +73,29 @@ Full request/response schemas live in the OpenAPI 3.1 spec at
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/?date=` | Aggregated day view: streak, plants due/overdue, steps vs goal, calories vs target, today's task list. |
+
+## Settings — `/api/v1/settings`
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/` | Current user settings. |
+| PUT | `/` | Partial update — send only the fields to change. Invalid values fail with per-field `details`. At least one of the three module toggles must remain enabled after the merge. |
+
+Updatable fields:
+
+| Field | Type / allowed values |
+|---|---|
+| `hemisphere` | `NORTHERN` \| `SOUTHERN` \| `EQUATORIAL` |
+| `unit_system` | `METRIC` \| `IMPERIAL` |
+| `theme` | `LIGHT` \| `DARK` \| `SYSTEM` |
+| `week_start_day` | `SUNDAY` \| `MONDAY` |
+| `quiet_hours_mode` | `OFF` \| `WINDOW` \| `SCHEDULED_ONLY` |
+| `plant_care_enabled`, `fitness_enabled`, `nutrition_enabled` | boolean — at least one must stay `true` |
+| `reduce_motion`, `larger_text`, `high_contrast` | boolean |
+| `analytics_opt_in` | boolean |
+| `timezone` | string, max 64 chars |
+| `locale` | string, max 20 chars |
+| `daily_notification_cap` | integer, 1–20 |
 
 ## Achievements — `/api/v1/achievements`
 

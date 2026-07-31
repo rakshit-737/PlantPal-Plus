@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlantPal+ — Chen ER Diagram</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #111a2c; --panel2: #16213a; --line: #24314d;
+    --text: #e2e8f0; --muted: #8fa3c0;
+    --auth: #60a5fa; --plant: #4ade80; --fitness: #fb923c;
+    --nutrition: #f472b6; --engagement: #a78bfa; --sync: #2dd4bf;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 10px 16px; background: rgba(11,18,32,.92); backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
+  h1 small { color: var(--muted); font-weight: 400; margin-left: 8px; font-size: 11.5px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
+    background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    transition: opacity .15s, border-color .15s;
+  }
+  .chip input { display: none; }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .chip.off { opacity: .35; }
+  .btns { margin-left: auto; display: flex; gap: 6px; }
+  .btns button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 7px; font-size: 12px; padding: 4px 11px; cursor: pointer;
+  }
+  .btns button:hover { border-color: #3b4d75; }
+  #canvas { position: absolute; inset: 0; cursor: grab; }
+  #canvas.panning { cursor: grabbing; }
+  svg { width: 100%; height: 100%; display: block; }
+  text { font-family: "Segoe UI", system-ui, sans-serif; fill: var(--text); }
+  .ent-label { font-size: 12.5px; font-weight: 600; letter-spacing: .4px; text-anchor: middle; }
+  .ent-table { font-size: 8.5px; font-family: Consolas, monospace; text-anchor: middle; opacity: .75; }
+  .rel-label { font-size: 9.5px; font-weight: 600; letter-spacing: .5px; text-anchor: middle; }
+  .card-label { font-size: 11px; font-weight: 700; font-style: italic;
+    paint-order: stroke; stroke: var(--bg); stroke-width: 4px; text-anchor: middle; }
+  .note-label { font-size: 8.5px; font-style: italic; fill: var(--muted); text-anchor: middle; }
+  .edge { stroke-width: 1.4; fill: none; }
+  g.node, g.rel { cursor: pointer; }
+  .dimmed { opacity: .13; transition: opacity .2s; }
+  .lit { opacity: 1; transition: opacity .2s; }
+  .hidden-sub { display: none; }
+  #legend {
+    position: fixed; right: 14px; bottom: 14px; z-index: 10; width: 245px;
+    background: rgba(17,26,44,.95); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; font-size: 11px; line-height: 1.35;
+  }
+  #legend h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 8px; }
+  #legend .row { display: flex; align-items: center; gap: 9px; margin: 5px 0; }
+  #legend svg { width: 46px; height: 26px; flex: none; }
+  #legend .hint { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PlantPal+ · Chen ER Diagram<small>28 entities · 34 relationships · from migrations 001–007</small></h1>
+  <div class="chips" id="chips"></div>
+  <div class="btns">
+    <button id="zin" title="Zoom in">+</button>
+    <button id="zout" title="Zoom out">−</button>
+    <button id="fit" title="Fit to screen">Fit</button>
+    <button id="clear" title="Clear spotlight">Show all</button>
+  </div>
+</header>
+
+<div id="canvas">
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+    <g id="world">
+      <g id="edges"></g>
+      <g id="diamonds"></g>
+      <g id="nodes"></g>
+    </g>
+  </svg>
+</div>
+
+<div id="legend">
+  <h2>Legend</h2>
+  <div class="row"><svg viewBox="0 0 46 26"><rect x="3" y="4" width="40" height="18" rx="2" fill="none" stroke="#8fa3c0" stroke-width="1.5"/></svg>Entity (table)</div>
+  <div class="row"><svg viewBox="0 0 46 26"><rect x="3" y="4" width="40" height="18" rx="2" fill="none" stroke="#8fa3c0" stroke-width="1.5"/><rect x="7" y="8" width="32" height="10" rx="1" fill="none" stroke="#8fa3c0" stroke-width="1.2"/></svg>Weak entity (identity from parent)</div>
+  <div class="row"><svg viewBox="0 0 46 26"><polygon points="23,2 44,13 23,24 2,13" fill="none" stroke="#8fa3c0" stroke-width="1.5"/></svg>Relationship</div>
+  <div class="row"><svg viewBox="0 0 46 26"><polygon points="23,1 45,13 23,25 1,13" fill="none" stroke="#8fa3c0" stroke-width="1.3"/><polygon points="23,6 38,13 23,20 8,13" fill="none" stroke="#8fa3c0" stroke-width="1.3"/></svg>Identifying relationship</div>
+  <div class="row"><svg viewBox="0 0 46 26"><line x1="3" y1="13" x2="43" y2="13" stroke="#8fa3c0" stroke-width="1.5"/></svg>Partial participation (nullable FK)</div>
+  <div class="row"><svg viewBox="0 0 46 26"><line x1="3" y1="10" x2="43" y2="10" stroke="#8fa3c0" stroke-width="1.5"/><line x1="3" y1="16" x2="43" y2="16" stroke="#8fa3c0" stroke-width="1.5"/></svg>Total participation (NOT NULL FK)</div>
+  <div class="row" style="gap:6px"><b style="font-style:italic">1&nbsp;/&nbsp;N&nbsp;/&nbsp;M</b> cardinality on each edge</div>
+  <div class="hint">Drag to pan · scroll to zoom · click an entity or diamond to spotlight it · chips hide a subsystem.<br>LOGIN ATTEMPT is intentionally unconnected (audit table keyed by email string, no FK).</div>
+</div>
+
+<script>
+'use strict';
+const SUBS = {
+  auth:       { label: 'Accounts & Auth', color: '#60a5fa' },
+  plant:      { label: 'Plant Care',      color: '#4ade80' },
+  fitness:    { label: 'Fitness',         color: '#fb923c' },
+  nutrition:  { label: 'Nutrition',       color: '#f472b6' },
+  engagement: { label: 'Engagement',      color: '#a78bfa' },
+  sync:       { label: 'Offline Sync',    color: '#2dd4bf' },
+};
+
+// x,y are centers. weak = double rectangle.
+const ENTS = [
+  { id: 'users',                     label: 'USER',                     sub: 'auth',       x: 1300, y: 950 },
+  { id: 'login_attempts',            label: 'LOGIN ATTEMPT',            sub: 'auth',       x: 200,  y: 130, note: 'no FK — audit by email string' },
+  { id: 'profiles',                  label: 'PROFILE',                  sub: 'auth',       x: 620,  y: 220, weak: true },
+  { id: 'user_settings',             label: 'USER SETTINGS',            sub: 'auth',       x: 960,  y: 150, weak: true },
+  { id: 'auth_sessions',             label: 'AUTH SESSION',             sub: 'auth',       x: 280,  y: 420 },
+  { id: 'auth_tokens',               label: 'AUTH TOKEN',               sub: 'auth',       x: 280,  y: 640 },
+  { id: 'email_verification_tokens', label: 'EMAIL VERIFICATION TOKEN', sub: 'auth',       x: 250,  y: 860 },
+  { id: 'password_reset_tokens',     label: 'PASSWORD RESET TOKEN',     sub: 'auth',       x: 250,  y: 1060 },
+  { id: 'consent_records',           label: 'CONSENT RECORD',           sub: 'auth',       x: 250,  y: 1260 },
+  { id: 'device_push_tokens',        label: 'DEVICE PUSH TOKEN',        sub: 'auth',       x: 250,  y: 1460 },
+  { id: 'audit_events',              label: 'AUDIT EVENT',              sub: 'auth',       x: 600,  y: 1560 },
+  { id: 'species',                   label: 'SPECIES',                  sub: 'plant',      x: 1700, y: 200 },
+  { id: 'plants',                    label: 'PLANT',                    sub: 'plant',      x: 2000, y: 450 },
+  { id: 'plant_care_events',         label: 'PLANT CARE EVENT',         sub: 'plant',      x: 2450, y: 650 },
+  { id: 'growth_log_entries',        label: 'GROWTH LOG ENTRY',         sub: 'plant',      x: 2450, y: 350 },
+  { id: 'exercises',                 label: 'EXERCISE',                 sub: 'fitness',    x: 2150, y: 900 },
+  { id: 'workouts',                  label: 'WORKOUT',                  sub: 'fitness',    x: 1900, y: 1150 },
+  { id: 'workout_sets',              label: 'WORKOUT SET',              sub: 'fitness',    x: 2400, y: 1350, weak: true },
+  { id: 'personal_records',          label: 'PERSONAL RECORD',          sub: 'fitness',    x: 2450, y: 1100, weak: true },
+  { id: 'foods',                     label: 'FOOD',                     sub: 'nutrition',  x: 2100, y: 1650 },
+  { id: 'meals',                     label: 'MEAL',                     sub: 'nutrition',  x: 1700, y: 1500 },
+  { id: 'meal_items',                label: 'MEAL ITEM',                sub: 'nutrition',  x: 1950, y: 1850 },
+  { id: 'water_logs',                label: 'WATER LOG',                sub: 'nutrition',  x: 1400, y: 1800 },
+  { id: 'reminders',                 label: 'REMINDER',                 sub: 'engagement', x: 1050, y: 1750 },
+  { id: 'streaks',                   label: 'STREAK',                   sub: 'engagement', x: 700,  y: 1600, weak: true },
+  { id: 'achievements',              label: 'ACHIEVEMENT',              sub: 'engagement', x: 300,  y: 1800 },
+  { id: 'user_achievements',         label: 'USER ACHIEVEMENT',         sub: 'engagement', x: 650,  y: 1850, weak: true },
+  { id: 'sync_events',               label: 'SYNC EVENT',               sub: 'sync',       x: 820,  y: 1330, weak: true },
+];
+
+// a = parent (the "1" side), b = child. total = child FK NOT NULL.
+// ident = identifying relationship (double diamond). one = 1:1. dx/dy nudge the diamond.
+const RELS = [
+  { name: 'HAS',          a: 'users',         b: 'profiles',                  one: true, ident: true, total: true },
+  { name: 'CONFIGURES',   a: 'users',         b: 'user_settings',             one: true, ident: true, total: true },
+  { name: 'OPENS',        a: 'users',         b: 'auth_sessions',             total: true },
+  { name: 'HOLDS',        a: 'users',         b: 'auth_tokens',               total: true },
+  { name: 'ISSUES',       a: 'auth_sessions', b: 'auth_tokens',               total: true },
+  { name: 'RECEIVES',     a: 'users',         b: 'email_verification_tokens', total: true },
+  { name: 'REQUESTS',     a: 'users',         b: 'password_reset_tokens',     total: true },
+  { name: 'GRANTS',       a: 'users',         b: 'consent_records',           total: true },
+  { name: 'REGISTERS',    a: 'users',         b: 'device_push_tokens',        total: true },
+  { name: 'TRIGGERS',     a: 'users',         b: 'audit_events',              dx: -70, dy: -20 },
+  { name: 'CREATES',      a: 'users',         b: 'species' },
+  { name: 'OWNS',         a: 'users',         b: 'plants',                    total: true },
+  { name: 'CLASSIFIES',   a: 'species',       b: 'plants' },
+  { name: 'UNDERGOES',    a: 'plants',        b: 'plant_care_events',         total: true },
+  { name: 'LOGS',         a: 'users',         b: 'plant_care_events',         total: true },
+  { name: 'TRACKED IN',   a: 'plants',        b: 'growth_log_entries',        total: true },
+  { name: 'CAPTURES',     a: 'users',         b: 'growth_log_entries',        total: true },
+  { name: 'DEFINES',      a: 'users',         b: 'exercises' },
+  { name: 'PERFORMS',     a: 'users',         b: 'workouts',                  total: true },
+  { name: 'USED IN',      a: 'exercises',     b: 'workouts' },
+  { name: 'COMPRISES',    a: 'workouts',      b: 'workout_sets',              ident: true, total: true },
+  { name: 'ACHIEVES',     a: 'users',         b: 'personal_records',          ident: true, total: true },
+  { name: 'RECORDED FOR', a: 'exercises',     b: 'personal_records',          ident: true, total: true, dx: -20 },
+  { name: 'SET IN',       a: 'workouts',      b: 'personal_records' },
+  { name: 'CONTRIBUTES',  a: 'users',         b: 'foods' },
+  { name: 'EATS',         a: 'users',         b: 'meals',                     total: true },
+  { name: 'CONTAINS',     a: 'meals',         b: 'meal_items',                total: true },
+  { name: 'PORTION OF',   a: 'foods',         b: 'meal_items' },
+  { name: 'DRINKS',       a: 'users',         b: 'water_logs',                total: true },
+  { name: 'SCHEDULES',    a: 'users',         b: 'reminders',                 total: true, dy: 60 },
+  { name: 'MAINTAINS',    a: 'users',         b: 'streaks',                   ident: true, total: true, dx: 60, dy: 40 },
+  { name: 'EARNS',        a: 'users',         b: 'user_achievements',         ident: true, total: true },
+  { name: 'AWARDED IN',   a: 'achievements',  b: 'user_achievements',         ident: true, total: true },
+  { name: 'QUEUES',       a: 'users',         b: 'sync_events',               ident: true, total: true },
+];
+
+const EW = 190, EH = 64, DW = 66, DH = 34; // entity half-ish + diamond half sizes
+const byId = Object.fromEntries(ENTS.map(e => [e.id, e]));
+RELS.forEach((r, i) => {
+  const A = byId[r.a], B = byId[r.b];
+  r.i = i;
+  r.x = (A.x + B.x) / 2 + (r.dx || 0);
+  r.y = (A.y + B.y) / 2 + (r.dy || 0);
+});
+
+const svg = document.getElementById('svg');
+const world = document.getElementById('world');
+const gEdges = document.getElementById('edges');
+const gDia = document.getElementById('diamonds');
+const gNodes = document.getElementById('nodes');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+
+// clip a segment from (x1,y1) center of a box to (x2,y2): start at box border
+function fromRectBorder(cx, cy, hw, hh, tx, ty) {
+  const dx = tx - cx, dy = ty - cy;
+  if (!dx && !dy) return [cx, cy];
+  const t = Math.min(
+    hw / Math.abs(dx || 1e-9),
+    hh / Math.abs(dy || 1e-9)
+  );
+  return [cx + dx * Math.min(t, 1) * 0.999, cy + dy * Math.min(t, 1) * 0.999];
+}
+function fromDiamondBorder(cx, cy, hw, hh, tx, ty) {
+  const dx = tx - cx, dy = ty - cy;
+  const denom = Math.abs(dx) / hw + Math.abs(dy) / hh;
+  if (!denom) return [cx, cy];
+  const t = Math.min(1 / denom, 1);
+  return [cx + dx * t * 0.999, cy + dy * t * 0.999];
+}
+
+function drawEdgeLines(g, x1, y1, x2, y2, total, color) {
+  if (!total) {
+    el('line', { x1, y1, x2, y2, class: 'edge', stroke: color }, g);
+  } else {
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    const ox = (-dy / len) * 2.6, oy = (dx / len) * 2.6;
+    el('line', { x1: x1 + ox, y1: y1 + oy, x2: x2 + ox, y2: y2 + oy, class: 'edge', stroke: color }, g);
+    el('line', { x1: x1 - ox, y1: y1 - oy, x2: x2 - ox, y2: y2 - oy, class: 'edge', stroke: color }, g);
+  }
+}
+
+// ------------------------------------------------------------------- edges
+RELS.forEach(r => {
+  const A = byId[r.a], B = byId[r.b];
+  const color = SUBS[byId[r.b].sub].color + 'aa';
+  const g = el('g', { id: 'edge-' + r.i, 'data-rel': r.i }, gEdges);
+
+  const [ax, ay] = fromRectBorder(A.x, A.y, EW / 2, EH / 2, r.x, r.y);
+  const [adx, ady] = fromDiamondBorder(r.x, r.y, DW, DH, A.x, A.y);
+  drawEdgeLines(g, ax, ay, adx, ady, false, color); // parent side: partial (single)
+
+  const [bx, by] = fromRectBorder(B.x, B.y, EW / 2, EH / 2, r.x, r.y);
+  const [bdx, bdy] = fromDiamondBorder(r.x, r.y, DW, DH, B.x, B.y);
+  drawEdgeLines(g, bx, by, bdx, bdy, !!r.total, color); // child side: total if NOT NULL FK
+
+  // cardinality labels ~35% from diamond toward each entity, nudged perpendicular
+  const lab = (x1, y1, x2, y2, txt) => {
+    const t = 0.42, lx = x1 + (x2 - x1) * t, ly = y1 + (y2 - y1) * t;
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    el('text', { x: lx - (dy / len) * 11, y: ly + (dx / len) * 11 + 4, class: 'card-label' }, g)
+      .textContent = txt;
+  };
+  lab(adx, ady, ax, ay, '1');
+  lab(bdx, bdy, bx, by, r.one ? '1' : 'N');
+});
+
+// ---------------------------------------------------------------- diamonds
+RELS.forEach(r => {
+  const color = SUBS[byId[r.b].sub].color;
+  const g = el('g', { id: 'dia-' + r.i, class: 'rel', 'data-rel': r.i }, gDia);
+  const poly = (hw, hh, extra) => el('polygon', Object.assign({
+    points: `${r.x},${r.y - hh} ${r.x + hw},${r.y} ${r.x},${r.y + hh} ${r.x - hw},${r.y}`,
+  }, extra), g);
+  poly(DW, DH, { fill: '#0f172a' });
+  poly(DW, DH, { fill: color + '14', stroke: color, 'stroke-width': 1.4 });
+  if (r.ident) poly(DW - 11, DH - 6.5, { fill: 'none', stroke: color, 'stroke-width': 1.2 });
+  const words = r.name.split(' ');
+  if (words.length > 1 && r.name.length > 9) {
+    el('text', { x: r.x, y: r.y - 1, class: 'rel-label', fill: color }, g).textContent = words[0];
+    el('text', { x: r.x, y: r.y + 10, class: 'rel-label', fill: color }, g).textContent = words.slice(1).join(' ');
+  } else {
+    el('text', { x: r.x, y: r.y + 3.5, class: 'rel-label', fill: color }, g).textContent = r.name;
+  }
+  el('title', {}, g).textContent = `${byId[r.a].label} —${r.name}— ${byId[r.b].label}` +
+    (r.ident ? ' (identifying)' : '') + (r.one ? ' · 1:1' : ' · 1:N');
+});
+
+// ------------------------------------------------------------------- nodes
+ENTS.forEach(e => {
+  const color = SUBS[e.sub].color;
+  const g = el('g', { id: 'node-' + e.id, class: 'node', 'data-ent': e.id }, gNodes);
+  const x = e.x - EW / 2, y = e.y - EH / 2;
+  el('rect', { x, y, width: EW, height: EH, rx: 3, fill: '#0f172a' }, g);
+  el('rect', { x, y, width: EW, height: EH, rx: 3, fill: color + '1f', stroke: color, 'stroke-width': 1.6 }, g);
+  if (e.weak) el('rect', { x: x + 5.5, y: y + 5.5, width: EW - 11, height: EH - 11, rx: 2, fill: 'none', stroke: color, 'stroke-width': 1.1 }, g);
+
+  const words = e.label.split(' ');
+  let lines = [e.label];
+  if (e.label.length > 16 && words.length > 1) {
+    const mid = Math.ceil(words.length / 2);
+    lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+  }
+  const baseY = e.y - (lines.length === 2 ? 12 : 5);
+  lines.forEach((ln, i) =>
+    el('text', { x: e.x, y: baseY + i * 15, class: 'ent-label' }, g).textContent = ln);
+  el('text', { x: e.x, y: e.y + (lines.length === 2 ? 21 : 14), class: 'ent-table', fill: color }, g)
+    .textContent = e.id;
+  if (e.note)
+    el('text', { x: e.x, y: e.y + EH / 2 + 14, class: 'note-label' }, g).textContent = e.note;
+  el('title', {}, g).textContent = `${e.id} · ${SUBS[e.sub].label}` + (e.weak ? ' · weak entity' : '');
+});
+
+// -------------------------------------------------------------- spotlight
+let active = null;
+function applySpotlight() {
+  const nodes = gNodes.children, dias = gDia.children, edges = gEdges.children;
+  if (active === null) {
+    for (const c of [...nodes, ...dias, ...edges]) c.classList.remove('dimmed', 'lit');
+    return;
+  }
+  let litEnts, litRels;
+  if (active.type === 'ent') {
+    litRels = new Set(RELS.filter(r => r.a === active.id || r.b === active.id).map(r => r.i));
+    litEnts = new Set([active.id]);
+    RELS.forEach(r => { if (litRels.has(r.i)) { litEnts.add(r.a); litEnts.add(r.b); } });
+  } else {
+    const r = RELS[active.id];
+    litRels = new Set([r.i]);
+    litEnts = new Set([r.a, r.b]);
+  }
+  for (const c of nodes) c.classList.toggle('dimmed', !litEnts.has(c.dataset.ent));
+  for (const c of dias) c.classList.toggle('dimmed', !litRels.has(+c.dataset.rel));
+  for (const c of edges) c.classList.toggle('dimmed', !litRels.has(+c.dataset.rel));
+}
+gNodes.addEventListener('click', ev => {
+  const n = ev.target.closest('.node'); if (!n) return;
+  ev.stopPropagation();
+  active = (active && active.type === 'ent' && active.id === n.dataset.ent) ? null : { type: 'ent', id: n.dataset.ent };
+  applySpotlight();
+});
+gDia.addEventListener('click', ev => {
+  const n = ev.target.closest('.rel'); if (!n) return;
+  ev.stopPropagation();
+  active = (active && active.type === 'rel' && active.id === +n.dataset.rel) ? null : { type: 'rel', id: +n.dataset.rel };
+  applySpotlight();
+});
+svg.addEventListener('click', () => { active = null; applySpotlight(); });
+document.getElementById('clear').onclick = () => { active = null; applySpotlight(); };
+
+// ------------------------------------------------------- subsystem toggles
+const hiddenSubs = new Set();
+const chipsBox = document.getElementById('chips');
+for (const key in SUBS) {
+  const label = document.createElement('label');
+  label.className = 'chip'; label.dataset.sub = key;
+  label.innerHTML = `<input type="checkbox" checked><span class="dot" style="background:${SUBS[key].color}"></span>${SUBS[key].label}`;
+  label.querySelector('input').addEventListener('change', ev => {
+    ev.target.checked ? hiddenSubs.delete(key) : hiddenSubs.add(key);
+    label.classList.toggle('off', !ev.target.checked);
+    applyVisibility();
+  });
+  chipsBox.appendChild(label);
+}
+function applyVisibility() {
+  for (const c of gNodes.children)
+    c.classList.toggle('hidden-sub', hiddenSubs.has(byId[c.dataset.ent].sub));
+  for (const group of [gDia.children, gEdges.children])
+    for (const c of group) {
+      const r = RELS[+c.dataset.rel];
+      c.classList.toggle('hidden-sub', hiddenSubs.has(byId[r.a].sub) || hiddenSubs.has(byId[r.b].sub));
+    }
+}
+
+// -------------------------------------------------------------- pan / zoom
+let view = { x: 0, y: 0, k: 1 };
+const applyView = () =>
+  world.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+function fit() {
+  const pad = 60, topPad = 110;
+  const xs = ENTS.flatMap(e => [e.x - EW / 2, e.x + EW / 2]);
+  const ys = ENTS.flatMap(e => [e.y - EH / 2, e.y + EH / 2]);
+  const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+  const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
+  const w = svg.clientWidth, h = svg.clientHeight - topPad;
+  view.k = Math.min(w / (maxX - minX), h / (maxY - minY));
+  view.x = (w - (maxX - minX) * view.k) / 2 - minX * view.k;
+  view.y = topPad + (h - (maxY - minY) * view.k) / 2 - minY * view.k;
+  applyView();
+}
+document.getElementById('fit').onclick = fit;
+document.getElementById('zin').onclick = () => zoomBy(1.25);
+document.getElementById('zout').onclick = () => zoomBy(0.8);
+function zoomBy(f, px, py) {
+  px = px ?? svg.clientWidth / 2; py = py ?? svg.clientHeight / 2;
+  const k2 = Math.max(0.15, Math.min(4, view.k * f));
+  view.x = px - ((px - view.x) / view.k) * k2;
+  view.y = py - ((py - view.y) / view.k) * k2;
+  view.k = k2; applyView();
+}
+svg.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  zoomBy(ev.deltaY < 0 ? 1.12 : 0.89, ev.offsetX, ev.offsetY);
+}, { passive: false });
+const canvas = document.getElementById('canvas');
+let pan = null;
+canvas.addEventListener('mousedown', ev => {
+  pan = { sx: ev.clientX, sy: ev.clientY, ox: view.x, oy: view.y, moved: false };
+  canvas.classList.add('panning');
+});
+window.addEventListener('mousemove', ev => {
+  if (!pan) return;
+  const dx = ev.clientX - pan.sx, dy = ev.clientY - pan.sy;
+  if (Math.abs(dx) + Math.abs(dy) > 3) pan.moved = true;
+  view.x = pan.ox + dx; view.y = pan.oy + dy; applyView();
+});
+let justDragged = false;
+window.addEventListener('mouseup', () => {
+  justDragged = !!(pan && pan.moved);
+  pan = null; canvas.classList.remove('panning');
+});
+// suppress click-clear after a drag
+svg.addEventListener('click', ev => {
+  if (justDragged) { justDragged = false; ev.stopImmediatePropagation(); }
+}, true);
+
+window.addEventListener('resize', fit);
+fit();
+</script>
+</body>
+</html>

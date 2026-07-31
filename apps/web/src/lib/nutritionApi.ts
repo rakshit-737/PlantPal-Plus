@@ -68,8 +68,20 @@ export const logMeal = (data: {
   local_date_str: string
   items: MealItemInput[]
 }) => apiRequest<Meal>('/v1/nutrition/meals', { method: 'POST', body: data })
-export const logWater = (amount_ml: number, local_date_str: string) =>
+/**
+ * Log a water entry. `goal_ml_at_log` optionally snapshots the user's daily
+ * goal onto this entry (nutritionController.logWaterHandler accepts it); the
+ * summary's water_goal_ml is derived from the day's logged goals server-side.
+ */
+export const logWater = (
+  amount_ml: number,
+  local_date_str: string,
+  goal_ml_at_log?: number,
+) =>
   apiRequest<{ id: string; amount_ml: number }>('/v1/nutrition/water', {
     method: 'POST',
-    body: { amount_ml, local_date_str },
+    body:
+      goal_ml_at_log != null
+        ? { amount_ml, local_date_str, goal_ml_at_log }
+        : { amount_ml, local_date_str },
   })

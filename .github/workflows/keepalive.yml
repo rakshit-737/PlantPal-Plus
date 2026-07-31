@@ -1,0 +1,36 @@
+name: Keep API awake
+
+# RSK-01: the free Render instance sleeps after 15 minutes idle and the
+# node-cron reminder engine dies with it. Pinging /healthz keeps the instance
+# — and therefore the reminder cron — alive.
+#
+# Every 5 minutes because GitHub's schedule is best-effort: ticks are often
+# delayed 5–30 minutes under load, so a 10-minute cron can miss the 15-minute
+# sleep window. Residual risk remains (delays, and GitHub disables schedules
+# after 60 days without repo activity) — an external pinger such as
+# UptimeRobot is the sturdier option once the API matters; this workflow is
+# the zero-signup baseline.
+#
+# No-op until the PLANTPAL_API_URL repository variable is set (Settings →
+# Secrets and variables → Actions → Variables), e.g.
+# https://plantpal-api.onrender.com
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Ping /healthz
+        run: |
+          if [ -n "${{ vars.PLANTPAL_API_URL }}" ]; then
+            curl -fsS --max-time 30 "${{ vars.PLANTPAL_API_URL }}/healthz"
+          else
+            echo "PLANTPAL_API_URL unset — skipping"
+          fi

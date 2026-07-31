@@ -4,22 +4,20 @@ import { FlatList, Text, View } from 'react-native'
 import { ActivityTypeCode } from '@plantpal/shared'
 
 import { listWorkouts, logWorkout, type Workout } from '../api/endpoints'
+import { OfflineNotice } from '../components/OfflineNotice'
 import { Button, Card, EmptyState, ErrorText, Input, PageHeader, Spinner } from '../components/ui'
+import { localDateStr } from '../lib/dates'
+import { monoFont } from '../lib/fonts'
 import { usePalette, space } from '../theme'
 
 // NFR-MAIN-03: the activity vocabulary lives once, in @plantpal/shared.
 const ACTIVITY_TYPES = Object.keys(ActivityTypeCode)
 
-function localDateStr(): string {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
 export function FitnessScreen() {
   const p = usePalette()
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [activity, setActivity] = useState('WALK')
   const [duration, setDuration] = useState('30')
@@ -30,12 +28,19 @@ export function FitnessScreen() {
   const load = useCallback(async () => {
     try {
       setWorkouts(await listWorkouts())
+      setLoadError(false)
     } catch {
       setWorkouts([])
+      setLoadError(true)
     }
   }, [])
 
   useEffect(() => {
+    void load().finally(() => setLoading(false))
+  }, [load])
+
+  const retry = useCallback(() => {
+    setLoading(true)
     void load().finally(() => setLoading(false))
   }, [load])
 
@@ -103,9 +108,13 @@ export function FitnessScreen() {
         </View>
       }
       ListEmptyComponent={
-        <Card>
-          <EmptyState icon="💪" title="No workouts yet" body="Log your first workout to start a streak." />
-        </Card>
+        loadError ? (
+          <OfflineNotice onRetry={retry} />
+        ) : (
+          <Card>
+            <EmptyState icon="—" title="No workouts yet" body="Log your first workout to start a streak." />
+          </Card>
+        )
       }
       renderItem={({ item }) => (
         <Card style={{ gap: 4 }}>
@@ -113,9 +122,11 @@ export function FitnessScreen() {
             <Text style={{ color: p.textMain, fontSize: 15, fontWeight: '600' }}>
               {item.activity_type}
             </Text>
-            <Text style={{ color: p.textMuted, fontSize: 12 }}>{item.local_date_str}</Text>
+            <Text style={{ color: p.textMuted, fontSize: 12, fontFamily: monoFont }}>
+              {item.local_date_str}
+            </Text>
           </View>
-          <Text style={{ color: p.textMuted, fontSize: 13 }}>
+          <Text style={{ color: p.textMuted, fontSize: 13, fontFamily: monoFont }}>
             {item.duration_mins ? `${item.duration_mins} min` : ''}
             {item.calories_burned ? ` · ${Math.round(item.calories_burned)} kcal` : ''}
             {item.steps ? ` · ${item.steps} steps` : ''}

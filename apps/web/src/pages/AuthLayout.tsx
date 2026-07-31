@@ -14,10 +14,13 @@ export function AuthLayout({
     <div className="flex min-h-full items-center justify-center bg-background px-md py-2xl">
       <div className="w-full max-w-md">
         <div className="mb-xl text-center">
-          <div className="mb-sm text-4xl" aria-hidden>
-            🌱
-          </div>
-          <h1 className="font-heading text-3xl font-bold text-text-main">{title}</h1>
+          {/* Eyebrow wordmark between hairline rules — the notebook's letterhead. */}
+          <p className="mb-md flex items-center gap-md text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+            <span aria-hidden className="h-px flex-1 bg-border" />
+            PlantPal+
+            <span aria-hidden className="h-px flex-1 bg-border" />
+          </p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-text-main">{title}</h1>
           <p className="mt-xs text-base text-text-muted">{subtitle}</p>
         </div>
         {children}

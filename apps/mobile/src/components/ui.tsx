@@ -2,6 +2,10 @@
  * UI primitives — the React Native mirror of apps/web/src/components/ui.tsx.
  * Small on purpose: Card, Button, Input, Badge, Spinner, EmptyState cover
  * every screen without pulling in a component library.
+ *
+ * Field-notebook rules: sharp corners (radius 2-4 only), hairline borders
+ * instead of shadows, uppercase letterspaced eyebrows for labels, and every
+ * metric in the system mono so numbers line up like ledger entries.
  */
 
 import type { ReactNode } from 'react'
@@ -14,10 +18,62 @@ import {
   View,
   type KeyboardTypeOptions,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native'
 
-import { usePalette, space } from '../theme'
+import { monoFont, usePalette, space } from '../theme'
+
+/** Shared type treatments — import these instead of re-declaring per screen. */
+export const type = StyleSheet.create({
+  /** Uppercase letterspaced eyebrow — section labels, tab labels, stamps. */
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  /** Ledger metric — numbers in mono so columns line up. */
+  metric: {
+    fontFamily: monoFont,
+    fontSize: 24,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  /** Small mono detail — units, latin names, macro read-outs. */
+  mono: {
+    fontFamily: monoFont,
+    fontSize: 12,
+  },
+})
+
+/** An uppercase letterspaced section label, muted by default. */
+export function Eyebrow({
+  text,
+  color,
+  style,
+}: {
+  text: string
+  color?: string
+  style?: StyleProp<TextStyle>
+}) {
+  const p = usePalette()
+  return <Text style={[type.eyebrow, { color: color ?? p.textMuted }, style]}>{text}</Text>
+}
+
+/** A ledger value in mono. Pair with an Eyebrow above it for a stat tile. */
+export function MetricText({
+  text,
+  color,
+  style,
+}: {
+  text: string
+  color?: string
+  style?: StyleProp<TextStyle>
+}) {
+  const p = usePalette()
+  return <Text style={[type.metric, { color: color ?? p.textMain }, style]}>{text}</Text>
+}
 
 export function Card({
   children,
@@ -34,7 +90,7 @@ export function Card({
           backgroundColor: p.surface,
           borderColor: p.border,
           borderWidth: StyleSheet.hairlineWidth,
-          borderRadius: 12,
+          borderRadius: 4,
           padding: space.md,
         },
         style,
@@ -59,15 +115,19 @@ export function Button({
   disabled?: boolean
 }) {
   const p = usePalette()
+  // Mirrors the web: danger is an accent-outline stamp, not a solid red fill.
   const background =
+    variant === 'primary' ? p.primary : variant === 'secondary' ? p.surface : 'transparent'
+  const color =
     variant === 'primary'
-      ? p.primary
+      ? p.onPrimary
       : variant === 'danger'
-        ? p.danger
-        : variant === 'secondary'
-          ? p.surface
-          : 'transparent'
-  const color = variant === 'primary' || variant === 'danger' ? '#ffffff' : p.textMain
+        ? p.accent
+        : variant === 'ghost'
+          ? p.textMuted
+          : p.textMain
+  const borderColor =
+    variant === 'secondary' ? p.border : variant === 'danger' ? p.accent : 'transparent'
   return (
     <Pressable
       accessibilityRole="button"
@@ -75,9 +135,9 @@ export function Button({
       disabled={disabled || loading}
       style={({ pressed }) => ({
         backgroundColor: background,
-        borderColor: variant === 'secondary' ? p.border : 'transparent',
-        borderWidth: variant === 'secondary' ? StyleSheet.hairlineWidth : 0,
-        borderRadius: 10,
+        borderColor,
+        borderWidth: variant === 'secondary' || variant === 'danger' ? StyleSheet.hairlineWidth : 0,
+        borderRadius: 3,
         paddingVertical: 12,
         paddingHorizontal: space.md,
         alignItems: 'center',
@@ -87,7 +147,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={color} />
       ) : (
-        <Text style={{ color, fontWeight: '600', fontSize: 15 }}>{title}</Text>
+        <Text style={{ color, fontWeight: '600', fontSize: 14 }}>{title}</Text>
       )}
     </Pressable>
   )
@@ -113,9 +173,7 @@ export function Input({
   const p = usePalette()
   return (
     <View style={{ gap: space.xs }}>
-      {label ? (
-        <Text style={{ color: p.textMain, fontSize: 13, fontWeight: '500' }}>{label}</Text>
-      ) : null}
+      {label ? <Eyebrow text={label} /> : null}
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -128,7 +186,7 @@ export function Input({
           backgroundColor: p.surface,
           borderColor: p.border,
           borderWidth: StyleSheet.hairlineWidth,
-          borderRadius: 10,
+          borderRadius: 3,
           paddingVertical: 10,
           paddingHorizontal: space.md,
           color: p.textMain,
@@ -139,20 +197,33 @@ export function Input({
   )
 }
 
+/** A small tag for statuses, tiers and counts — squared, ledger-stamp style. */
 export function Badge({ text, color }: { text: string; color?: string }) {
   const p = usePalette()
   const tone = color ?? p.primary
   return (
     <View
       style={{
-        backgroundColor: `${tone}22`,
-        borderRadius: 999,
-        paddingHorizontal: 10,
+        backgroundColor: `${tone}1a`,
+        borderColor: `${tone}66`,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderRadius: 2,
+        paddingHorizontal: space.sm,
         paddingVertical: 3,
         alignSelf: 'flex-start',
       }}
     >
-      <Text style={{ color: tone, fontSize: 12, fontWeight: '600' }}>{text}</Text>
+      <Text
+        style={{
+          color: tone,
+          fontSize: 10,
+          fontWeight: '600',
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+        }}
+      >
+        {text}
+      </Text>
     </View>
   )
 }
@@ -189,7 +260,9 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
   const p = usePalette()
   return (
     <View style={{ gap: 2, marginBottom: space.md }}>
-      <Text style={{ color: p.textMain, fontSize: 24, fontWeight: '700' }}>{title}</Text>
+      <Text style={{ color: p.textMain, fontSize: 24, fontWeight: '700', letterSpacing: -0.4 }}>
+        {title}
+      </Text>
       {subtitle ? <Text style={{ color: p.textMuted, fontSize: 13 }}>{subtitle}</Text> : null}
     </View>
   )
@@ -198,5 +271,5 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
 export function ErrorText({ message }: { message: string }) {
   const p = usePalette()
   if (!message) return null
-  return <Text style={{ color: p.danger, fontSize: 13 }}>{message}</Text>
+  return <Text style={{ color: p.accent, fontSize: 13 }}>{message}</Text>
 }

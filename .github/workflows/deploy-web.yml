@@ -2,8 +2,9 @@ name: Deploy web to GitHub Pages
 
 # Publishes apps/web to GitHub Pages on every push to main.
 #
-# The site is served at https://<owner>.github.io/PlantPal-Plus/, so the build
-# sets VITE_BASE to the repo subpath. GitHub Pages cannot rewrite /api/*, so
+# The site is served at https://<owner>.github.io/<repo>/, so the build sets
+# VITE_BASE to the repo subpath (derived from the repository name, never
+# hardcoded). GitHub Pages cannot rewrite /api/*, so
 # the client calls the API origin directly: set the PLANTPAL_API_URL repository
 # variable (Settings → Secrets and variables → Actions → Variables) to the
 # deployed API origin, e.g. https://plantpal-api.onrender.com — and include the
@@ -41,9 +42,21 @@ jobs:
       - name: Build shared package
         run: npm run build --workspace @plantpal/shared
 
+      # Gate the deploy: a commit that fails typecheck or the web test suite
+      # never reaches Pages. Tests run for the web workspace only to stay fast.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test web
+        run: npm test --workspace @plantpal/web
+
+      - name: Warn if API URL is unset
+        if: ${{ vars.PLANTPAL_API_URL == '' }}
+        run: echo "::warning::Site will build but sign-in will fail until PLANTPAL_API_URL is set"
+
       - name: Build web
         env:
-          VITE_BASE: /PlantPal-Plus/
+          VITE_BASE: /${{ github.event.repository.name }}/
           VITE_API_URL: ${{ vars.PLANTPAL_API_URL }}
         run: npm run build --workspace @plantpal/web
 

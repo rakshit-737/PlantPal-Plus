@@ -4,11 +4,15 @@
  * Navigation is a deliberate hand-rolled tab switcher rather than
  * react-navigation: five flat tabs and one auth gate do not justify the
  * dependency, and every screen stays mounted-on-demand with zero config.
+ *
+ * Safe areas come from react-native-safe-area-context insets (not the
+ * iOS-only SafeAreaView) so Android edge-to-edge gets the same treatment.
  */
 
 import { useState } from 'react'
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AuthProvider, useAuth } from './src/auth/AuthContext'
 import { Spinner } from './src/components/ui'
@@ -24,17 +28,19 @@ import { usePalette } from './src/theme'
 
 type Tab = 'home' | 'plants' | 'fitness' | 'nutrition' | 'awards' | 'settings'
 
-const TABS: { key: Tab; icon: string; label: string }[] = [
-  { key: 'home', icon: '🏠', label: 'Home' },
-  { key: 'plants', icon: '🌱', label: 'Plants' },
-  { key: 'fitness', icon: '💪', label: 'Fitness' },
-  { key: 'nutrition', icon: '🍽️', label: 'Food' },
-  { key: 'awards', icon: '🏆', label: 'Awards' },
-  { key: 'settings', icon: '⚙️', label: 'More' },
+/** Short uppercase labels, styled as eyebrows — no emoji in the ledger. */
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'home', label: 'Home' },
+  { key: 'plants', label: 'Plants' },
+  { key: 'fitness', label: 'Fit' },
+  { key: 'nutrition', label: 'Food' },
+  { key: 'awards', label: 'Awards' },
+  { key: 'settings', label: 'Set' },
 ]
 
 function AppTabs() {
   const p = usePalette()
+  const insets = useSafeAreaInsets()
   const [tab, setTab] = useState<Tab>('home')
 
   return (
@@ -53,28 +59,42 @@ function AppTabs() {
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: p.border,
           backgroundColor: p.surface,
+          paddingBottom: insets.bottom,
         }}
       >
-        {TABS.map((t) => (
-          <Pressable
-            key={t.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t.key }}
-            onPress={() => setTab(t.key)}
-            style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}
-          >
-            <Text style={{ fontSize: 18, opacity: tab === t.key ? 1 : 0.45 }}>{t.icon}</Text>
-            <Text
+        {TABS.map((t) => {
+          const active = tab === t.key
+          return (
+            <Pressable
+              key={t.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              onPress={() => setTab(t.key)}
               style={{
-                fontSize: 10,
-                fontWeight: tab === t.key ? '700' : '400',
-                color: tab === t.key ? p.primary : p.textMuted,
+                flex: 1,
+                alignItems: 'center',
+                paddingVertical: 12,
+                // The active tab carries its own primary rule on top of the
+                // bar's hairline — a ledger underline, flipped.
+                borderTopWidth: active ? 2 : 0,
+                borderTopColor: active ? p.primary : 'transparent',
+                marginTop: active ? -StyleSheet.hairlineWidth : 0,
               }}
             >
-              {t.label}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: active ? '700' : '500',
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                  color: active ? p.primary : p.textMuted,
+                }}
+              >
+                {t.label}
+              </Text>
+            </Pressable>
+          )
+        })}
       </View>
     </View>
   )
@@ -82,11 +102,25 @@ function AppTabs() {
 
 function Root() {
   const p = usePalette()
+  const insets = useSafeAreaInsets()
   const { isAuthenticated, isLoading } = useAuth()
   const [showRegister, setShowRegister] = useState(false)
 
+  // Top/side insets apply here; the tab bar owns the bottom inset so its
+  // surface colour runs under the home indicator. Auth screens (no tab bar)
+  // pad the bottom themselves.
+  const authed = !isLoading && isAuthenticated
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: p.background }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: p.background,
+        paddingTop: insets.top,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+        paddingBottom: authed ? 0 : insets.bottom,
+      }}
+    >
       <StatusBar style="auto" />
       {isLoading ? (
         <Spinner />
@@ -97,14 +131,16 @@ function Root() {
       ) : (
         <LoginScreen onRegister={() => setShowRegister(true)} />
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Root />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <Root />
+      </AuthProvider>
+    </SafeAreaProvider>
   )
 }

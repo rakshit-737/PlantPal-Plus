@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Alert, Button, Card, Input } from '../components/ui'
+import { usePageTitle } from '../hooks/usePageTitle'
 import { register } from '../lib/authApi'
 import { authErrorMessage } from '../lib/errorMessages'
 import { AuthLayout } from './AuthLayout'
@@ -30,6 +31,7 @@ function validate(email: string, password: string, confirmAge: boolean) {
 }
 
 export function RegisterPage() {
+  usePageTitle('Create account')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmAge, setConfirmAge] = useState(false)

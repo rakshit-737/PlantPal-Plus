@@ -1,8 +1,8 @@
 /**
  * Authentication state — the mobile mirror of apps/web/src/auth/AuthContext.tsx.
  * Bootstraps from the keystore-held refresh token so a reopened app signs in
- * silently; the user object is only populated after an explicit login (the
- * refresh endpoint returns tokens, not a profile).
+ * silently; because the refresh endpoint returns tokens rather than a profile,
+ * identity is then restored with GET /auth/me.
  */
 
 import {
@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react'
 
-import { trySilentSignIn } from '../api/client'
+import { apiRequest, trySilentSignIn } from '../api/client'
 import { login as loginApi, logout as logoutApi, type AuthUser, type LoginResponse } from '../api/endpoints'
 import { registerForPushReminders } from '../notifications'
 
@@ -42,8 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       setIsAuthenticated(ok)
       setIsLoading(false)
-      // FR-NOT-14: re-register the push token on every authenticated cold start.
-      if (ok) void registerForPushReminders()
+      if (ok) {
+        // FR-NOT-14: re-register the push token on every authenticated cold start.
+        void registerForPushReminders()
+        // Restore identity (email, status) so the shell can render it — the
+        // refresh exchange returns tokens only, never a profile.
+        try {
+          const me = await apiRequest<{ user: AuthUser }>('/auth/me')
+          if (!cancelled) setUser(me.user)
+        } catch {
+          // Identity stays null; screens fall back to a generic label.
+        }
+      }
     })()
     return () => {
       cancelled = true

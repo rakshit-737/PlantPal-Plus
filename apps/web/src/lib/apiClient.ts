@@ -113,7 +113,9 @@ async function rawRequest<T>(path: string, options: RequestOptions): Promise<T> 
     if (options.body !== undefined) init.body = JSON.stringify(options.body)
     // Same-origin '/api' by default (dev proxy or host rewrite). A static
     // host with no rewrite capability sets VITE_API_URL to the API origin.
-    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+    // Trailing slashes are stripped so "https://x.onrender.com/" cannot
+    // produce "//api/..." paths, which Express's /api mounts never match.
+    const apiBase = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '')
     res = await fetch(`${apiBase}/api${path}`, init)
   } catch {
     throw ApiError.transport('Could not reach the server. Check your connection.')
