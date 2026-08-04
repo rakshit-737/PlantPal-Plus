@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://plantpal-api.onrender.com/api/:path*"
+      "destination": "https://plantpal-plus-api.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",

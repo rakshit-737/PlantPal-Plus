@@ -10,7 +10,7 @@
 - **Rewrites** (order matters; first match wins, static files are served
   before rewrites run):
   1. `/api/*` proxies to the Render API origin
-     (`https://plantpal-api.onrender.com`). The browser makes same-origin
+     (`https://plantpal-plus-api.onrender.com`). The browser makes same-origin
      requests, so the httpOnly `refresh_token` cookie works without cross-site
      quirks — see the comments in `apps/web/vite.config.ts`.
   2. Everything else falls back to `/index.html` so BrowserRouter can handle

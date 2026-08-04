@@ -26,16 +26,48 @@ export interface FoodSearchResult {
   fat_per_100g: number
   default_serving_unit: string
   default_serving_grams: number | null
+  /**
+   * Whether this row is one the caller created (FR-NUT-10).
+   *
+   * `created_by` is deliberately NOT projected alongside it. Every query that
+   * produces this shape already restricts custom rows to `created_by = caller`,
+   * so within a response `is_custom = true` *means* "yours" — a second column
+   * repeating the caller's own id would add no information and would put user
+   * ids on the wire for nothing. A client may therefore treat this flag as an
+   * ownership flag, which is exactly what the delete affordance needs.
+   */
+  is_custom: boolean
 }
+
+/**
+ * The columns every food projection returns, in one place.
+ *
+ * searchFoods and createCustomFood must agree exactly: FR-NUT-10's outputs
+ * promise a created food is loggable without a second round-trip through
+ * search, which is only true while the two shapes are identical. Numeric
+ * columns are cast to float in SQL because node-postgres returns `numeric` as a
+ * string by default, which would otherwise surface as strings on the wire.
+ */
+const FOOD_COLUMNS = `id, name, brand,
+       kcal_per_100g::float8    as kcal_per_100g,
+       protein_per_100g::float8 as protein_per_100g,
+       carbs_per_100g::float8   as carbs_per_100g,
+       fat_per_100g::float8     as fat_per_100g,
+       default_serving_unit,
+       default_serving_grams::float8 as default_serving_grams,
+       is_custom`
 
 /**
  * Search live foods by name (case-insensitive substring).
  *
  * Catalogue rows (is_custom = false) are visible to everyone; custom rows are
  * scoped to their owner so one user's private foods never leak into another's
- * search. Numeric columns are cast to float in SQL because node-postgres returns
- * `numeric` as a string by default, which would otherwise surface as strings on
- * the wire.
+ * search.
+ *
+ * `deleted_at is null` is what makes softDeleteCustomFood take effect here: a
+ * removed food stops being findable the moment it is tombstoned, without this
+ * predicate changing. It also matches idx_foods_name, the partial index on
+ * exactly that condition.
  */
 export async function searchFoods(
   query: string,
@@ -43,13 +75,7 @@ export async function searchFoods(
 ): Promise<FoodSearchResult[]> {
   const pool = getPool()
   const { rows } = await pool.query<FoodSearchResult>(
-    `select id, name, brand,
-            kcal_per_100g::float8    as kcal_per_100g,
-            protein_per_100g::float8 as protein_per_100g,
-            carbs_per_100g::float8   as carbs_per_100g,
-            fat_per_100g::float8     as fat_per_100g,
-            default_serving_unit,
-            default_serving_grams::float8 as default_serving_grams
+    `select ${FOOD_COLUMNS}
      from foods
      where deleted_at is null
        and name ilike '%' || $1 || '%'
@@ -79,6 +105,50 @@ export async function searchFoods(
 export const MAX_CUSTOM_FOODS_PER_USER = 200
 
 /**
+ * How long a soft-deleted custom food keeps occupying a ceiling slot.
+ *
+ * NFR-SCAL-03's conditions: "Soft-deleted records **inside their 30-day
+ * retention window** count toward every ceiling above, because they still
+ * occupy storage." NFR-PRIV-04's retention schedule supplies the window —
+ * soft-deleted records are hard-deleted 30 days from `deleted_at` by the daily
+ * purge job — so the clause has an end date and the count must honour it.
+ *
+ * Before deletion existed this constant could not matter: with no way to
+ * tombstone a food, "counts tombstones" and "counts live rows" were the same
+ * query. softDeleteCustomFood makes them differ, and the earlier count had no
+ * time bound at all — it would have counted a tombstone for ever, so a full
+ * account could delete a hundred foods and still be refused every one of them.
+ * That is not what NFR-SCAL-03 says and it is not a limit anyone can act on.
+ *
+ * The window is kept rather than dropped because it is load-bearing, not
+ * pedantry: with no purge job in this codebase yet (nothing sweeps `deleted_at`
+ * — grep says the only purge is the account one), a ceiling that ignored
+ * tombstones outright would let one account create-and-delete without bound and
+ * grow `foods` for ever, which is the storage abuse the ceiling exists to stop
+ * (CON-07, ~0.5 GB). Counting them for 30 days caps the churn at one ceiling's
+ * worth of rows per window per user.
+ */
+export const CUSTOM_FOOD_RETENTION_DAYS = 30
+
+/**
+ * The rows one account's custom-food ceiling counts, as a SQL predicate.
+ *
+ * Written once and shared by the insert guard and the cold-path re-read below,
+ * because those two must never disagree: a refusal whose count came from a
+ * different predicate than the one that caused it tells the user "199 of 200"
+ * on the endpoint that just turned them away.
+ *
+ * The arguments are $-placeholders, not values — both call sites pass string
+ * literals written here in this file, and nothing from a request reaches them,
+ * so every value still travels as a bind parameter.
+ */
+function ceilingScopeSql(ownerParam: string, retentionParam: string): string {
+  return `created_by = ${ownerParam}::uuid and is_custom
+            and (deleted_at is null
+                 or deleted_at > now() - (${retentionParam}::int * interval '1 day'))`
+}
+
+/**
  * Fields a client may supply. `is_custom`, `created_by` and `source` are
  * deliberately absent: they are derived from the authenticated caller and
  * written as SQL constants below, so no request body can set them.
@@ -102,7 +172,22 @@ export interface CreateCustomFoodInput {
  */
 export type CreateCustomFoodResult =
   | { status: 'CREATED'; food: FoodSearchResult }
-  | { status: 'LIMIT_EXCEEDED'; current: number; ceiling: number }
+  | {
+      status: 'LIMIT_EXCEEDED'
+      current: number
+      ceiling: number
+      /**
+       * How many of `current` are tombstones still inside the retention window.
+       *
+       * NFR-SCAL-03 requires the refusal to state "the number of records
+       * recoverable from trash" so the user is told exactly what to do. Custom
+       * foods have no restore route, so this is not a trash the user can empty
+       * early — it is the part of their count that is already deleted and will
+       * clear itself. Naming it is what stops the refusal reading as a lie to
+       * someone who just deleted ten foods and is still refused.
+       */
+      deleted: number
+    }
 
 /**
  * Insert one private food owned by `userId` (FR-NUT-10 clause 3).
@@ -115,9 +200,9 @@ export type CreateCustomFoodResult =
  * table, which is not worth it for a storage-abuse guard that may overshoot by
  * the number of genuinely simultaneous requests.
  *
- * Soft-deleted rows are counted on purpose: NFR-SCAL-03's conditions state that
- * records inside the 30-day retention window still occupy storage and still
- * count toward every ceiling.
+ * What counts is ceilingScopeSql: live rows plus tombstones younger than
+ * CUSTOM_FOOD_RETENTION_DAYS. See that constant for why the window is there and
+ * why it now has an end.
  *
  * Returned columns are exactly those of searchFoods, including the ::float8
  * casts, so a freshly created food can be logged straight away without a
@@ -134,14 +219,9 @@ export async function createCustomFood(
         default_serving_unit, default_serving_grams, barcode, source, is_custom, created_by)
      select $1::text, $2::text, $3::numeric, $4::numeric, $5::numeric, $6::numeric,
             $7::text, $8::numeric, $9::text, 'CUSTOM', true, $10::uuid
-     where (select count(*) from foods where created_by = $10::uuid and is_custom) < $11::int
-     returning id, name, brand,
-               kcal_per_100g::float8    as kcal_per_100g,
-               protein_per_100g::float8 as protein_per_100g,
-               carbs_per_100g::float8   as carbs_per_100g,
-               fat_per_100g::float8     as fat_per_100g,
-               default_serving_unit,
-               default_serving_grams::float8 as default_serving_grams`,
+     where (select count(*) from foods
+             where ${ceilingScopeSql('$10', '$12')}) < $11::int
+     returning ${FOOD_COLUMNS}`,
     [
       data.name,
       data.brand ?? null,
@@ -154,6 +234,7 @@ export async function createCustomFood(
       data.barcode ?? null,
       userId,
       MAX_CUSTOM_FOODS_PER_USER,
+      CUSTOM_FOOD_RETENTION_DAYS,
     ],
   )
 
@@ -163,17 +244,65 @@ export async function createCustomFood(
   // Zero rows means the guard predicate was false. The count is re-read only on
   // this cold path, because NFR-SCAL-03 requires the refusal to state the
   // current count and the ceiling rather than just saying no (NFR-USAB-03).
-  const { rows: [countRow] } = await pool.query<{ current: number }>(
-    `select count(*)::int as current
+  // `deleted` rides along from the same scan so the two figures describe one
+  // snapshot rather than two.
+  const { rows: [countRow] } = await pool.query<{ current: number; deleted: number }>(
+    `select count(*)::int                                        as current,
+            count(*) filter (where deleted_at is not null)::int  as deleted
      from foods
-     where created_by = $1 and is_custom`,
-    [userId],
+     where ${ceilingScopeSql('$1', '$2')}`,
+    [userId, CUSTOM_FOOD_RETENTION_DAYS],
   )
   return {
     status: 'LIMIT_EXCEEDED',
     current: countRow?.current ?? MAX_CUSTOM_FOODS_PER_USER,
     ceiling: MAX_CUSTOM_FOODS_PER_USER,
+    deleted: countRow?.deleted ?? 0,
   }
+}
+
+/* -----------------------------------------------------------------------
+ * Delete a custom food — FR-NUT-10, BR-ACC-01
+ * --------------------------------------------------------------------- */
+
+/**
+ * Remove one of the caller's own custom foods.
+ *
+ * **Soft, not hard.** Both survive the diary, and that was checked rather than
+ * assumed: `meal_items.food_id` is `references foods(id) on delete set null`
+ * and `food_name_at_log` is a NOT NULL snapshot taken at log time, while
+ * getDailySummary reads `meal_items` alone and never joins `foods` — so a hard
+ * delete would leave every historical entry rendering exactly as before. Soft
+ * wins on the other three counts. It keeps `food_id` intact, so the link from
+ * an entry back to the food it came from survives for anything that later wants
+ * to group or re-log by food; NFR-PRIV-04 gives soft-deleted records a 30-day
+ * recovery window that a hard delete would silently opt this one table out of;
+ * and it is what every other user-owned table here does (plants, growth
+ * entries, meals), which is what makes one purge job able to sweep them all.
+ *
+ * The predicate is the whole authorisation check, on the write itself rather
+ * than in a read before it: `created_by = $2 and is_custom` admits only a
+ * custom food the caller owns, so a catalogue row and a stranger's food both
+ * match nothing — and the caller cannot tell either of those apart from an id
+ * that never existed (BR-ACC-01: a distinguishable response is an enumeration
+ * oracle). `is_custom` is redundant against the table's own CHECK, which forces
+ * `created_by is null` on catalogue rows, but it is cheap, it states the intent,
+ * and it matches idx_foods_custom_owner, the partial index on exactly that.
+ *
+ * `deleted_at is null` makes a repeat delete match nothing and report false, so
+ * the caller answers 404 instead of quietly re-stamping the tombstone with a
+ * later date — which would silently restart the retention window and push the
+ * ceiling slot another 30 days away.
+ */
+export async function softDeleteCustomFood(foodId: string, userId: string): Promise<boolean> {
+  const pool = getPool()
+  const { rowCount } = await pool.query(
+    `update foods
+        set deleted_at = now(), updated_at = now()
+      where id = $1 and created_by = $2 and is_custom and deleted_at is null`,
+    [foodId, userId],
+  )
+  return (rowCount ?? 0) > 0
 }
 
 /* -----------------------------------------------------------------------

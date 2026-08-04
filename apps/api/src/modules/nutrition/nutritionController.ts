@@ -1,15 +1,17 @@
 import type { NextFunction, Request, Response } from 'express'
 import { z } from 'zod'
 
-import { AppError } from '../../http/errors.ts'
+import { AppError, notFound } from '../../http/errors.ts'
 import { getUserId } from '../../http/requestUser.ts'
 import { evaluateAchievementsSafe, recordDailyLogSafe } from '../engagement/engagementService.ts'
 import {
   searchFoods,
   createCustomFood,
+  softDeleteCustomFood,
   getDailySummary,
   logMeal,
   logWater,
+  CUSTOM_FOOD_RETENTION_DAYS,
 } from './nutritionRepo.ts'
 
 const VALID_MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'] as const
@@ -21,6 +23,27 @@ function todayUtcDateStr(): string {
 
 function isValidDateStr(s: unknown): s is string {
   return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
+}
+
+/**
+ * Route parameters reach Postgres as `uuid` bind values. A malformed one is
+ * SQLSTATE 22P02 from the driver, which the terminal handler can only classify
+ * as INTERNAL_ERROR — a 500 for what is plainly a client mistake. Reject the
+ * shape before it becomes a query parameter.
+ *
+ * This does not weaken the not-found rule below. The decision is made from the
+ * *syntax of the string the caller sent*, before any query runs, so it says
+ * nothing whatever about which ids exist; every well-formed id — catalogue,
+ * stranger's, or absent — still comes back as the same 404.
+ */
+function requireUuidParam(value: string | undefined, field: string): string {
+  const parsed = z.string().uuid().safeParse(value)
+  if (!parsed.success) {
+    throw new AppError('VALIDATION_FAILED', `${field} must be a UUID.`, {
+      details: [{ field, issue: 'invalid' }],
+    })
+  }
+  return parsed.data
 }
 
 export async function searchFoodsHandler(req: Request, res: Response, next: NextFunction) {
@@ -112,9 +135,16 @@ export async function createCustomFoodHandler(req: Request, res: Response, next:
       // registry (FR-SYS-19) has no such member, and CONFLICT is its 409. The
       // count and ceiling ride in the details so the client can say exactly how
       // full the account is (NFR-USAB-03: never refuse without a recovery route).
+      //
+      // `deleted` is the third figure NFR-SCAL-03's conditions ask for. It is
+      // what keeps the recovery route honest now that DELETE exists: without it
+      // a user who has just deleted twenty foods and is still refused has been
+      // told to do the thing they already did.
       throw new AppError(
         'CONFLICT',
-        `You have reached your limit of ${result.ceiling} custom foods.`,
+        `You have reached your limit of ${result.ceiling} custom foods. ` +
+          `Deleting one frees its slot ${CUSTOM_FOOD_RETENTION_DAYS} days later, ` +
+          'when its retention window closes.',
         {
           details: [
             {
@@ -122,6 +152,8 @@ export async function createCustomFoodHandler(req: Request, res: Response, next:
               issue: 'limit_exceeded',
               current: result.current,
               ceiling: result.ceiling,
+              deleted: result.deleted,
+              retention_days: CUSTOM_FOOD_RETENTION_DAYS,
             },
           ],
         },
@@ -129,6 +161,36 @@ export async function createCustomFoodHandler(req: Request, res: Response, next:
     }
 
     res.status(201).json(result.food)
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * DELETE /api/v1/nutrition/foods/:id — remove one of the caller's own custom
+ * foods (FR-NUT-10).
+ *
+ * One repo predicate decides ownership, kind and already-deleted together, and
+ * all three answer the same 404: a catalogue food, another user's food, an id
+ * that never existed and one deleted a minute ago are indistinguishable from
+ * out here, so the endpoint cannot be walked to find out which ids are real
+ * (BR-ACC-01). The message is deliberately the generic one — naming "custom
+ * food" in the 404 for a catalogue id would itself be a hint.
+ */
+export async function deleteCustomFoodHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Resolved first, as in create: an unauthenticated caller must not reach
+    // the repo at all, let alone learn anything from its answer.
+    const userId = getUserId(req)
+    const foodId = requireUuidParam(req.params.id, 'id')
+
+    const deleted = await softDeleteCustomFood(foodId, userId)
+    if (!deleted) throw notFound()
+
+    // Matches the plants and growth-entry deletes, which answer 200 with a
+    // status body rather than 204 — the web client's apiRequest decodes a JSON
+    // body on every response and an empty one is the special case, not this.
+    res.json({ status: 'deleted' })
   } catch (err) {
     next(err)
   }

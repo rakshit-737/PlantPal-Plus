@@ -50,6 +50,7 @@ const RAGI_DOSA: Food = {
   fat_per_100g: 2,
   default_serving_unit: 'GRAM',
   default_serving_grams: null,
+  is_custom: true,
 }
 
 function renderPage() {

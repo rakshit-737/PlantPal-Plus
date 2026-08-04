@@ -12,7 +12,7 @@
 
 services:
   - type: web
-    name: plantpal-api
+    name: plantpal-plus-api
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build --workspace @plantpal/shared && npm run build --workspace @plantpal/api

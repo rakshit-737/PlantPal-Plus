@@ -9,6 +9,7 @@ import {
   listPlants,
   getPlant,
   createPlant,
+  type CreatePlantData,
   updatePlant,
   softDeletePlant,
   logCareEvent,
@@ -133,7 +134,7 @@ export async function create(req: Request, res: Response, next: NextFunction) {
       ])
     }
 
-    const plant = await createPlant(userId, body as any)
+    const plant = await createPlant(userId, body as unknown as CreatePlantData)
     res.status(201).json(plant)
   } catch (err) {
     next(err)

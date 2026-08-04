@@ -13,7 +13,7 @@ name: Keep API awake
 #
 # No-op until the PLANTPAL_API_URL repository variable is set (Settings →
 # Secrets and variables → Actions → Variables), e.g.
-# https://plantpal-api.onrender.com
+# https://plantpal-plus-api.onrender.com
 
 on:
   schedule:

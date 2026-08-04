@@ -25,9 +25,19 @@ export interface Food {
   fat_per_100g: number
   default_serving_unit: string
   default_serving_grams: number | null
-  // No is_custom / source flag: the search and create queries both project a
-  // fixed column list that omits them (nutritionRepo.searchFoods), so the client
-  // cannot tell a catalogue row from the user's own food.
+  /**
+   * True for a food this account created (FR-NUT-10), false for a catalogue row.
+   *
+   * Read it as an *ownership* flag, which is what makes it safe to hang a delete
+   * button on. The payload carries no `created_by` and needs none: the API's
+   * search only ever returns catalogue rows plus the caller's own custom rows
+   * (nutritionRepo.searchFoods scopes custom rows to `created_by = caller`), so
+   * another user's custom food cannot appear in this list at all — there is no
+   * "someone else's custom food" case left for the client to tell apart. If that
+   * predicate ever widened, this flag would stop meaning "mine" and the delete
+   * affordance would need a real owner field.
+   */
+  is_custom: boolean
 }
 
 /**
@@ -124,33 +134,64 @@ export interface CreateCustomFoodInput {
 export const CUSTOM_FOOD_CEILING = 200
 
 /**
+ * How long a deleted custom food keeps occupying its slot, as a fallback for
+ * when the API's detail row omits the figure.
+ *
+ * A deleted food leaves the search at once but keeps counting toward the ceiling
+ * until it is purged: NFR-SCAL-03 counts soft-deleted records "inside their
+ * 30-day retention window" because they still occupy storage, and NFR-PRIV-04
+ * sets that window at 30 days from deletion. It is the one thing about deleting
+ * a food that is not obvious from the UI, so every message that mentions the
+ * ceiling has to mention this too.
+ */
+export const CUSTOM_FOOD_RETENTION_DAYS = 30
+
+/**
  * The account already holds as many custom foods as it may. The API answers 409
- * CONFLICT with a `foods / limit_exceeded` detail carrying the current count and
- * the ceiling; this is its own type so callers can say something specific
- * instead of matching on status codes at the call site.
+ * CONFLICT with a `foods / limit_exceeded` detail carrying the current count,
+ * the ceiling, how many of that count are already deleted, and the retention
+ * window; this is its own type so callers can say something specific instead of
+ * matching on status codes at the call site.
  */
 export class CustomFoodLimitError extends Error {
   readonly ceiling: number
   /** The account's current custom-food count, when the API reported it. */
   readonly current: number | null
+  /**
+   * How many of `current` are already deleted and waiting out the retention
+   * window. Zero means every counted food is still live, so "delete one" is
+   * advice the user has not already taken.
+   */
+  readonly deleted: number
+  /** Days a deleted food keeps its slot before the purge reclaims it. */
+  readonly retentionDays: number
 
-  constructor(ceiling: number, current: number | null) {
+  constructor(
+    ceiling: number,
+    current: number | null,
+    deleted = 0,
+    retentionDays = CUSTOM_FOOD_RETENTION_DAYS,
+  ) {
     super(`Custom food limit of ${ceiling} reached.`)
     this.name = 'CustomFoodLimitError'
     this.ceiling = ceiling
     this.current = current
+    this.deleted = deleted
+    this.retentionDays = retentionDays
   }
 }
 
 function toLimitError(err: ApiError): CustomFoodLimitError {
-  // The limit row carries numeric `current`/`ceiling` members that the shared
-  // envelope type does not model, so read them defensively.
+  // The limit row carries numeric members the shared envelope type does not
+  // model, so read them defensively.
   const row = err.details.find((d) => d.issue === 'limit_exceeded') as
-    | { current?: unknown; ceiling?: unknown }
+    | { current?: unknown; ceiling?: unknown; deleted?: unknown; retention_days?: unknown }
     | undefined
   return new CustomFoodLimitError(
     typeof row?.ceiling === 'number' ? row.ceiling : CUSTOM_FOOD_CEILING,
     typeof row?.current === 'number' ? row.current : null,
+    typeof row?.deleted === 'number' ? row.deleted : 0,
+    typeof row?.retention_days === 'number' ? row.retention_days : CUSTOM_FOOD_RETENTION_DAYS,
   )
 }
 
@@ -190,6 +231,24 @@ export async function createCustomFood(input: CreateCustomFoodInput): Promise<Fo
     throw err
   }
 }
+
+/**
+ * Delete one of this account's own custom foods (FR-NUT-10).
+ *
+ * The deletion is soft server-side: the food leaves every search immediately,
+ * meals already logged keep reading exactly as before (they snapshot the name
+ * and the macros at log time), and the row is purged — freeing its ceiling slot
+ * — after CUSTOM_FOOD_RETENTION_DAYS.
+ *
+ * A catalogue food, another account's food and an id that never existed all
+ * answer the same 404 (`ApiError`, status 404) by design, so a failure here
+ * carries no information about which of those it was. Callers should say "that
+ * food is no longer in your list" rather than guess.
+ */
+export const deleteCustomFood = (id: string) =>
+  apiRequest<{ status: string }>(`/v1/nutrition/foods/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
 export const getDailySummary = (date?: string) =>
   apiRequest<DailySummary>(`/v1/nutrition/summary${date ? `?date=${date}` : ''}`)
 export const logMeal = (data: {

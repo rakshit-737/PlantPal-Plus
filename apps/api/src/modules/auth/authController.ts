@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto'
 import type { NextFunction, Request, Response } from 'express'
 
 import { env } from '../../config/env.ts'
-import { AppError, type ErrorDetail, ERROR_CODES } from '../../http/errors.ts'
+import { AppError, type ErrorDetail } from '../../http/errors.ts'
 import { logger } from '../../logging.ts'
 import {
   createUser,
@@ -58,6 +58,7 @@ function ipPrefix(req: Request): string {
 function deviceLabel(req: Request): string | null {
   const raw = req.header('x-plantpal-device')
   if (!raw) return null
+  // eslint-disable-next-line no-control-regex -- stripping control chars from a client header is the point
   return raw.replace(/[\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) || null
 }
 
@@ -164,9 +165,8 @@ export async function register(req: Request, res: Response, next: NextFunction) 
 
     const passwordHash = await hashPassword(password!)
 
-    let user
     try {
-      user = await createUser({ email: email!, passwordHash, confirmedAge: confirmedAge! })
+      await createUser({ email: email!, passwordHash, confirmedAge: confirmedAge! })
     } catch (err: unknown) {
       if (err && typeof err === 'object' && '__appError' in (err as Record<string, unknown>)) {
         // Address already registered — do NOT disclose when the call is unauthenticated

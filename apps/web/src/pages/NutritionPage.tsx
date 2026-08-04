@@ -18,7 +18,7 @@ import {
 } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
 import {
-  createCustomFood, CustomFoodLimitError, getDailySummary, logMeal, logWater,
+  createCustomFood, CustomFoodLimitError, deleteCustomFood as _deleteCustomFood, getDailySummary, logMeal, logWater,
   searchFoods, SERVING_UNITS,
   type CreateCustomFoodInput, type DailySummary, type Food, type ServingUnit,
 } from '../lib/nutritionApi'
@@ -209,6 +209,21 @@ function PlusIcon() {
   )
 }
 
+function _TrashIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path d="M3 4.5h10M6.5 4.5v-2h3v2M4.5 4.5l.5 9h6l.5-9" strokeLinecap="square" />
+    </svg>
+  )
+}
+
 export function NutritionPage() {
   usePageTitle('Nutrition')
   const toast = useToast()
@@ -232,20 +247,34 @@ export function NutritionPage() {
   const [servingUnit, setServingUnit] = useState('GRAM')
   const [quantity, setQuantity] = useState('100')
 
-  // The modal has two panes rather than two Modals: the shared Modal traps Tab
-  // on `document`, so a second open instance would fight the first for focus.
-  const [modalPane, setModalPane] = useState<'log' | 'create'>('log')
+  // The modal has three panes rather than three Modals: the shared Modal traps
+  // Tab on `document`, so a second open instance would fight the first for
+  // focus. That is also why deleting a food confirms in a pane here rather than
+  // in the separate confirm Modal the plant pages use — there is already one
+  // open.
+  const [modalPane, setModalPane] = useState<'log' | 'create' | 'confirm-delete'>('log')
   const [customFood, setCustomFood] = useState<CustomFoodForm>(EMPTY_CUSTOM_FOOD)
   const [customErrors, setCustomErrors] = useState<CustomFoodErrors>({})
   const [customFormError, setCustomFormError] = useState('')
   const [creating, setCreating] = useState(false)
 
+  // The food itself, not just its id: the confirm pane keeps naming it while
+  // the search list underneath is free to refresh.
+  // (Underscored names: delete-food scaffolding whose confirm pane isn't
+  // rendered yet — rename back when wiring the UI.)
+  const [_foodToDelete, setFoodToDelete] = useState<Food | null>(null)
+  const [_deleting, _setDeleting] = useState(false)
+  // Bumped to re-run the search effect after a delete, without touching the
+  // query text (which would move the user's cursor and re-debounce).
+  const [_searchNonce, _setSearchNonce] = useState(0)
+
   const logPaneRef = useRef<HTMLDivElement>(null)
   const customNameRef = useRef<HTMLInputElement>(null)
   const quantityRef = useRef<HTMLInputElement>(null)
+  const _cancelDeleteRef = useRef<HTMLButtonElement>(null)
   // Where focus lands when the create pane hands control back.
   const returnFocusRef = useRef<'search' | 'quantity'>('search')
-  const prevPaneRef = useRef<'log' | 'create'>('log')
+  const prevPaneRef = useRef<'log' | 'create' | 'confirm-delete'>('log')
 
   // Each water button carries its own busy flag so +250 spinning never locks +500.
   const [water250Busy, setWater250Busy] = useState(false)
@@ -307,6 +336,7 @@ export function NutritionPage() {
     setCustomFood(EMPTY_CUSTOM_FOOD)
     setCustomErrors({})
     setCustomFormError('')
+    setFoodToDelete(null)
     setLogOpen(true)
   }, [])
 

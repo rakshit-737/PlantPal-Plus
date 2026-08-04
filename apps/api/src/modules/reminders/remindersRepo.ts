@@ -5,7 +5,13 @@
  */
 
 import { getPool } from '../../db/pool.ts'
-import type { DuePlantRow, PendingReminderRow, ReminderInsert } from './reminderEngine.ts'
+import type {
+  DuePlantRow,
+  PendingReminderRow,
+  QuietHoursMode,
+  ReminderInsert,
+  UserNotificationSettings,
+} from './reminderEngine.ts'
 
 /**
  * Plants due for water within the horizon that have no live PENDING reminder.
@@ -60,9 +66,119 @@ export async function insertReminders(inserts: ReminderInsert[]): Promise<number
 }
 
 export interface DispatchableReminder extends PendingReminderRow {
-  user_id: string
   title: string
   body: string | null
+}
+
+/* --------------------------------- dispatch preferences (BR-NOT-08 / -13) */
+
+interface SettingsRow {
+  user_id: string
+  timezone: string
+  quiet_hours_mode: string
+  quiet_start_time: string | null
+  quiet_end_time: string | null
+  daily_notification_cap: number
+}
+
+const QUIET_HOURS_MODES: readonly string[] = ['OFF', 'WINDOW', 'SCHEDULED_ONLY']
+
+/**
+ * node-postgres registers no parser for OID 1083 (`time`), so these arrive as
+ * the raw 'HH:MM:SS' PostgreSQL emits — the same reason settingsRepo trims
+ * them on the way out. The engine accepts either shape; trimming here keeps
+ * the two modules' idea of a stored wall time identical.
+ */
+function toWallClock(value: string | null): string | null {
+  if (value === null) return null
+  return /^(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value)?.[1] ?? value
+}
+
+/**
+ * The dispatch preferences for the users in one pass (BR-NOT-08, BR-NOT-13).
+ *
+ * A user with no row is simply absent from the map: settings rows are created
+ * lazily on first read, so "no row" means "column defaults", which the engine
+ * already holds. Inventing a row here would be a write on the read path.
+ */
+export async function findNotificationSettings(
+  userIds: string[],
+): Promise<Map<string, UserNotificationSettings>> {
+  const settings = new Map<string, UserNotificationSettings>()
+  if (userIds.length === 0) return settings
+  const pool = getPool()
+  const { rows } = await pool.query<SettingsRow>(
+    `select user_id, timezone, quiet_hours_mode, quiet_start_time, quiet_end_time,
+            daily_notification_cap
+     from user_settings
+     where user_id = any ($1::uuid[])`,
+    [userIds],
+  )
+  for (const row of rows) {
+    settings.set(row.user_id, {
+      timezone: row.timezone,
+      // The check constraint guarantees the domain; the guard keeps an
+      // unexpected value from reading as "always quiet" and muting an account.
+      quiet_hours_mode: (QUIET_HOURS_MODES.includes(row.quiet_hours_mode)
+        ? row.quiet_hours_mode
+        : 'OFF') as QuietHoursMode,
+      quiet_start_time: toWallClock(row.quiet_start_time),
+      quiet_end_time: toWallClock(row.quiet_end_time),
+      daily_notification_cap: row.daily_notification_cap,
+    })
+  }
+  return settings
+}
+
+/**
+ * Instants at which these users were already sent a reminder, recent enough to
+ * cover every one of their current local days.
+ *
+ * BR-NOT-13 cl.2 counts per (user_id, LOCAL date), and no counter column
+ * exists — deliberately: the reminders table already records every send, and a
+ * counter column would be a second source of truth to keep consistent. sent_at
+ * is the record, so it is what the cap is derived from.
+ *
+ * The lookback is a window, not the user's local day, because the local day
+ * boundary depends on a zone this query would otherwise have to join and
+ * convert against; the engine buckets the instants by local date instead, which
+ * keeps all timezone reasoning in one pure, testable place. 48 hours covers any
+ * zone's current local day with room to spare (offsets run -12..+14, a local day
+ * is at most 25 hours and started at most 25 hours ago).
+ *
+ * Cost: one extra round trip per pass. idx_reminders_user (user_id, status,
+ * due_at_utc) serves the user_id + status prefix and sent_at filters the
+ * remainder. The result is self-limiting — once this cap is enforced a user
+ * cannot have more than `daily_notification_cap` (max 20) sends per local day,
+ * so the window returns at most ~40 rows per user, and findDuePending caps a
+ * pass at 200 distinct users.
+ */
+export async function findRecentSentAt(
+  userIds: string[],
+  now: Date,
+  lookbackHours = 48,
+): Promise<Map<string, Date[]>> {
+  const byUser = new Map<string, Date[]>()
+  if (userIds.length === 0) return byUser
+  const pool = getPool()
+  const { rows } = await pool.query<{ user_id: string; sent_at: Date }>(
+    `select user_id, sent_at
+     from reminders
+     where user_id = any ($1::uuid[])
+       and status in ('SENT', 'DELIVERED')
+       and sent_at is not null
+       -- Bounded by the caller's now(), not the database's, so the count the
+       -- engine sees is the count for the instant it is deciding about.
+       and sent_at > $2::timestamptz - ($3 || ' hours')::interval
+       and sent_at <= $2::timestamptz`,
+    [userIds, now, lookbackHours],
+  )
+  for (const row of rows) {
+    const list = byUser.get(row.user_id)
+    if (list) list.push(row.sent_at)
+    else byUser.set(row.user_id, [row.sent_at])
+  }
+  return byUser
 }
 
 /** The dispatcher's hot query (idx_reminders_due): pending rows now due. */

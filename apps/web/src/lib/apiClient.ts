@@ -81,8 +81,15 @@ async function parseEnvelope(res: Response): Promise<unknown> {
     return JSON.parse(text)
   } catch {
     // The API always sends JSON; a non-JSON body means an infrastructure error
-    // (proxy, gateway) rather than an application response.
-    throw ApiError.transport(`Unexpected non-JSON response (HTTP ${res.status}).`)
+    // (proxy, gateway) rather than an application response. On a static host
+    // with no /api rewrite (GitHub Pages), an HTML 404 page is exactly what a
+    // build shipped without VITE_API_URL gets back — name that cause so the
+    // user isn't chasing a phantom network fault.
+    throw ApiError.transport(
+      `The server answered without JSON (HTTP ${res.status}). ` +
+        'This usually means the site is not connected to its API — on a static ' +
+        'host like GitHub Pages, the build must set VITE_API_URL to the API origin.',
+    )
   }
 }
 

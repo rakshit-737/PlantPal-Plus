@@ -11,7 +11,6 @@ import {
   digestRefreshToken,
   issueRefreshToken,
   MAX_ACTIVE_SESSIONS,
-  refreshDigestsMatch,
   refreshTokenExpiresAt,
 } from './tokens.ts'
 import { getPool, transaction } from '../../db/pool.ts'
@@ -35,8 +34,6 @@ export interface CreatedUser {
 
 export async function createUser(params: CreateUserInput): Promise<CreatedUser> {
   return await transaction(async (client) => {
-    const emailNormalised = params.email.toLowerCase().trim()
-
     const { rows: [user] } = await client.query<CreatedUser>(
       `insert into users (email, email_normalised, password_hash, minimum_age_confirmed)
        values ($1, lower(trim($1)), $2, $3)

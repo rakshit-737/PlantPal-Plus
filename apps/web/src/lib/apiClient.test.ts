@@ -52,11 +52,11 @@ describe('apiRequest', () => {
   })
 
   it('strips a trailing slash from VITE_API_URL so paths never double up', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://plantpal-api.onrender.com/')
+    vi.stubEnv('VITE_API_URL', 'https://plantpal-plus-api.onrender.com/')
     fetchMock.mockResolvedValueOnce(jsonResponse(200, {}))
     await apiRequest('/v1/plants')
 
-    expect(fetchMock.mock.calls[0]![0]).toBe('https://plantpal-api.onrender.com/api/v1/plants')
+    expect(fetchMock.mock.calls[0]![0]).toBe('https://plantpal-plus-api.onrender.com/api/v1/plants')
   })
 
   it('sends the access token when one is held in memory', async () => {

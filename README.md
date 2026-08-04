@@ -147,7 +147,7 @@ cd apps/mobile
 eas build --platform android --profile preview   # installable .apk, API URL baked in
 ```
 
-The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL=https://plantpal-api.onrender.com` — edit `eas.json` if your Render service has a different name.
+The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL=https://plantpal-plus-api.onrender.com` — edit `eas.json` if your Render service has a different name.
 
 ---
 

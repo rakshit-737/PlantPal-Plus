@@ -23,7 +23,6 @@ import settingsRoutes from './modules/settings/settingsRoutes.ts'
 import accountRoutes from './modules/account/accountRoutes.ts'
 import { errorHandler, notFoundHandler } from './http/errorHandler.ts'
 import { requestId } from './http/requestId.ts'
-import { logger } from './logging.ts'
 
 export interface AppOptions {
   corsOrigins: string[]

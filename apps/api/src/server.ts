@@ -15,7 +15,7 @@ import { logger } from './logging.ts'
 import { startReminderEngine, stopReminderEngine } from './modules/reminders/reminderService.ts'
 
 const env = loadEnv()
-const pool = initPool(env.DATABASE_URL)
+initPool(env.DATABASE_URL)
 
 // Run migrations at boot so every deploy is self-migrating. The migration runner
 // is idempotent: it records which migrations have run, so a re-deploy applies

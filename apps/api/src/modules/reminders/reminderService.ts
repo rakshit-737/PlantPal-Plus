@@ -16,7 +16,9 @@ import { sendPushMessages, type PushMessage } from '../notifications/expoPush.ts
 import { planWateringReminders, tick } from './reminderEngine.ts'
 import {
   findDuePending,
+  findNotificationSettings,
   findPlantsNeedingReminder,
+  findRecentSentAt,
   insertReminders,
   markDelivered,
   markFailed,
@@ -71,20 +73,39 @@ export async function runReminderPass(now = new Date()): Promise<{
   sent: number
   delivered: number
   failed: number
+  deferred: number
 }> {
   const duePlants = await findPlantsNeedingReminder(REMINDER_HORIZON_HOURS)
   const inserts = planWateringReminders(now, duePlants, REMINDER_HORIZON_HOURS)
   const scheduled = await insertReminders(inserts)
 
   const pending = await findDuePending()
-  const decision = tick(now, pending)
+  // All the I/O the dispatch rules need, gathered here so tick() stays a pure
+  // function of (now, rows, settings). Two queries keyed on the same user set,
+  // and only when there is something to dispatch.
+  const userIds = [...new Set(pending.map((r) => r.user_id))]
+  const [settings, sentAt] = await Promise.all([
+    findNotificationSettings(userIds),
+    findRecentSentAt(userIds, now),
+  ])
+
+  const decision = tick(now, pending, { settings, sentAt })
   await markSent(decision.send)
   await markFailed(decision.fail)
+  // Deferred rows are written NOT AT ALL: BR-NOT-08 cl.2 keeps them PENDING at
+  // their existing due instant so the next tick re-evaluates them, and no
+  // delivery was attempted, so `attempts` must not move either.
 
   const sentSet = new Set(decision.send)
   const delivered = await deliverByPush(pending.filter((r) => sentSet.has(r.id)))
 
-  return { scheduled, sent: decision.send.length, delivered, failed: decision.fail.length }
+  return {
+    scheduled,
+    sent: decision.send.length,
+    delivered,
+    failed: decision.fail.length,
+    deferred: decision.defer.length,
+  }
 }
 
 let task: ReturnType<typeof cron.schedule> | null = null
@@ -97,7 +118,7 @@ export function startReminderEngine(): void {
   task = cron.schedule(REMINDER_CRON, () => {
     void runReminderPass()
       .then((r) => {
-        if (r.scheduled || r.sent || r.delivered || r.failed) {
+        if (r.scheduled || r.sent || r.delivered || r.failed || r.deferred) {
           logger.info(r, 'reminder pass complete')
         }
       })

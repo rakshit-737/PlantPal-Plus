@@ -35,6 +35,12 @@ vi.mock('../nutrition/nutritionRepo.ts', () => ({
   logWater: vi.fn(async () => ({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' })),
 }))
 
+// Engagement decorates the drain but must not reach for the (absent) pool.
+vi.mock('../engagement/engagementService.ts', () => ({
+  recordDailyLogSafe: vi.fn(async () => undefined),
+  evaluateAchievementsSafe: vi.fn(async () => undefined),
+}))
+
 // The routes mount the real authenticate middleware; bypass it and stamp a
 // fixed subject so the tests exercise the controller, not token verification.
 vi.mock('../auth/authController.ts', () => ({

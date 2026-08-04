@@ -17,13 +17,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://plantpal-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://plantpal-plus-api.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://plantpal-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://plantpal-plus-api.onrender.com"
       }
     }
   },

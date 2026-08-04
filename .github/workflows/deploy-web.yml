@@ -7,9 +7,9 @@ name: Deploy web to GitHub Pages
 # hardcoded). GitHub Pages cannot rewrite /api/*, so
 # the client calls the API origin directly: set the PLANTPAL_API_URL repository
 # variable (Settings → Secrets and variables → Actions → Variables) to the
-# deployed API origin, e.g. https://plantpal-api.onrender.com — and include the
-# Pages origin in the API's CORS_ORIGINS. Until then the site deploys but
-# sign-in fails with a network error.
+# deployed API origin, e.g. https://plantpal-plus-api.onrender.com — and include the
+# Pages origin in the API's CORS_ORIGINS. A build without the variable is
+# refused below (exit 1), so a site that cannot sign in never ships.
 
 on:
   push:
@@ -50,9 +50,47 @@ jobs:
       - name: Test web
         run: npm test --workspace @plantpal/web
 
-      - name: Warn if API URL is unset
+      # The failure mode this gate exists for: without PLANTPAL_API_URL the
+      # client calls /api/* on the Pages origin, GitHub Pages has no rewrite,
+      # and every request 404s against the SPA fallback — the site deploys
+      # looking perfect and sign-in is silently broken. Fail the build instead
+      # of shipping that.
+      - name: Fail if API URL is unset
         if: ${{ vars.PLANTPAL_API_URL == '' }}
-        run: echo "::warning::Site will build but sign-in will fail until PLANTPAL_API_URL is set"
+        run: |
+          echo "::error::PLANTPAL_API_URL is not set — the site would deploy but sign-in would fail (the client calls /api/* on the Pages origin, which GitHub Pages cannot proxy)."
+          echo "::error::Set it under Settings → Secrets and variables → Actions → Variables, then re-run this workflow."
+          exit 1
+
+      # Setting the variable is necessary but not sufficient: it could point at
+      # a hostname that answers something else entirely (the documented origin
+      # once served a FastAPI-style {"detail":"Not Found"} from uvicorn — not
+      # this Express API). Verify the origin actually is this API before
+      # shipping: /healthz answers {"status":"ok"} and nothing else on the
+      # PlantPal+ Express server. --fail-with-body (curl >= 7.76) keeps the
+      # body on HTTP errors so the message shows exactly what the hostname
+      # answered — the {"detail":"Not Found"} payload is the diagnosis.
+      - name: Verify API answers /healthz
+        if: ${{ vars.PLANTPAL_API_URL != '' }}
+        run: |
+          # Mirror the client's trailing-slash strip (apiClient.ts strips ALL
+          # trailing slashes) so a value like https://x.onrender.com/ cannot
+          # produce //healthz.
+          url=$PLANTPAL_API_URL
+          while [[ $url == */ ]]; do url=${url%/}; done
+          # Render's free tier sleeps after ~15 min idle and takes up to a
+          # minute to cold-start; retries are what keep a push that lands while
+          # the API is asleep from spuriously failing a correctly configured
+          # deploy (RSK-01's keepalive is best-effort and can lag that long).
+          body=$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 3 --retry-delay 10 --retry-all-errors "$url/healthz" || true)
+          if ! printf '%s' "$body" | grep -q '"status":"ok"'; then
+            echo "::error::PLANTPAL_API_URL ($PLANTPAL_API_URL) did not answer /healthz with {\"status\":\"ok\"}. Got: ${body:0:200}"
+            echo "::error::The URL must point at the PlantPal+ Express API — a different app on that hostname would ship a site whose sign-in fails."
+            exit 1
+          fi
+        env:
+          PLANTPAL_API_URL: ${{ vars.PLANTPAL_API_URL }}
 
       - name: Build web
         env:
