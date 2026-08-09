@@ -2,9 +2,9 @@
 #
 # One-time setup: https://dashboard.render.com → New → Blueprint → point it at
 # this repository. Render reads this file, creates the service, generates the
-# JWT secret, and prompts once for DATABASE_URL (paste the Neon connection
-# string). Every push to main then deploys automatically; migrations and seeds
-# run at boot, so a deploy is fully hands-off.
+# JWT secret, and prompts once for DATABASE_URL (paste the Supabase session-
+# pooler connection string). Every push to main then deploys automatically;
+# migrations and seeds run at boot, so a deploy is fully hands-off.
 #
 # RSK-01: the free instance sleeps after 15 minutes idle and node-cron dies
 # with it. Point an external pinger (e.g. UptimeRobot, free) at /healthz every
@@ -15,7 +15,10 @@ services:
     name: plantpal-plus-api
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build --workspace @plantpal/shared && npm run build --workspace @plantpal/api
+    # --include=dev: NODE_ENV=production makes npm ci skip devDependencies,
+    # but the build needs typescript and the @types/* packages. Runtime is
+    # unaffected — startCommand only runs the compiled dist/.
+    buildCommand: npm ci --include=dev && npm run build --workspace @plantpal/shared && npm run build --workspace @plantpal/api
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /healthz
     envVars:
@@ -23,8 +26,10 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
-      # Neon connection string — set in the dashboard, never committed.
-      # Must include ?sslmode=require: Neon rejects unencrypted connections.
+      # Supabase connection string — set in the dashboard, never committed.
+      # Use the SESSION POOLER string (aws-1-<region>.pooler.supabase.com:5432):
+      # Render's free tier is IPv4-only and the direct db.<ref>.supabase.co
+      # host resolves to IPv6. Must include ?sslmode=require.
       - key: DATABASE_URL
         sync: false
       - key: JWT_ACCESS_SECRET

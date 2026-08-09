@@ -15,8 +15,8 @@ export function initPool(connectionString: string, max = 10): pg.Pool {
     connectionString,
     max,
     idleTimeoutMillis: 30_000,
-    // Neon autosuspends when idle; the first connect after suspend performs a
-    // cold start that routinely exceeds 5s. 15s covers the wake without
+    // Hosted Postgres (Supabase/Neon) can pause or cold-start when idle; the
+    // first connect after a pause can exceed 5s. 15s covers the wake without
     // masking a genuinely unreachable database for long.
     connectionTimeoutMillis: 15_000,
   })
