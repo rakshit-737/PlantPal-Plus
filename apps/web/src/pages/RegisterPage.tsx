@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Alert, Button, Card, Input } from '../components/ui'
+import { Alert, Button, Card, Input, Progress } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { register } from '../lib/authApi'
 import { authErrorMessage } from '../lib/errorMessages'
@@ -28,6 +28,20 @@ function validate(email: string, password: string, confirmAge: boolean) {
     errors.confirmAge = `You must confirm you are at least ${MINIMUM_AGE}.`
   }
   return errors
+}
+
+/**
+ * How far a password has come towards the policy the server enforces.
+ *
+ * Deliberately not an entropy estimate: the only rule that decides whether
+ * this form submits is the length one, so scoring anything else would tell the
+ * user their password is "strong" while the server rejects it. Length is the
+ * bar, and the meter reports progress towards the bar.
+ */
+function passwordProgress(password: string): { value: number; tone: 'tertiary' | 'primary' } {
+  const length = [...password].length
+  const value = Math.min(length, PASSWORD_MIN)
+  return { value, tone: value >= PASSWORD_MIN ? 'primary' : 'tertiary' }
 }
 
 export function RegisterPage() {
@@ -104,11 +118,19 @@ export function RegisterPage() {
             error={fieldErrors.password}
             hint={`At least ${PASSWORD_MIN} characters.`}
           />
+          {password ? (
+            <Progress
+              value={passwordProgress(password).value}
+              max={PASSWORD_MIN}
+              tone={passwordProgress(password).tone}
+              srLabel="Password length requirement"
+            />
+          ) : null}
           <div className="flex flex-col gap-xs">
             <label className="flex items-start gap-sm text-sm text-text-main">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-border text-primary focus-visible:ring-primary"
+                className="mt-1 h-4 w-4 rounded-sm border-border-control text-primary focus-visible:ring-primary"
                 checked={confirmAge}
                 onChange={(e) => setConfirmAge(e.target.checked)}
               />

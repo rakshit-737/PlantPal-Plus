@@ -1,7 +1,8 @@
 import { MotionConfig } from 'motion/react'
-import { lazy, type ReactNode } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { useAuth } from './auth/AuthContext'
 import { AuthProvider } from './auth/AuthContext'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { ToastProvider } from './components/ui'
@@ -46,6 +47,9 @@ const PlantsPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
+const LandingPage = lazy(() =>
+  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
+)
 
 /**
  * Mounts the theme hook at the root so every route — including /login and
@@ -74,6 +78,23 @@ function MotionBoot({ children }: { children: ReactNode }) {
   return <MotionConfig reducedMotion={reduced ? 'always' : 'user'}>{children}</MotionConfig>
 }
 
+/**
+ * `/` means two different things depending on who is asking. A signed-out
+ * visitor gets the landing page — the demo used to drop strangers onto a login
+ * form, which asks them to authenticate before saying what the product is. A
+ * signed-in one is sent to the dashboard.
+ *
+ * The wait for the bootstrap refresh is deliberately blank rather than a
+ * spinner: it usually resolves within a frame or two, and a flash of loading
+ * state before the hero is worse than nothing at all.
+ */
+function RootRoute() {
+  const { isAuthenticated, isLoading } = useAuth()
+  if (isLoading) return null
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  return <LandingPage />
+}
+
 export function App() {
   return (
     <MotionBoot>
@@ -82,7 +103,20 @@ export function App() {
         <ToastProvider>
           <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Routes>
-              {/* Public auth routes */}
+              {/*
+                Public. The landing page is lazy like the interior routes, so
+                its weight never reaches someone who only ever opens the
+                dashboard — it needs its own Suspense because it renders
+                outside the shell, which owns the boundary for everything else.
+              */}
+              <Route
+                path="/"
+                element={
+                  <Suspense fallback={null}>
+                    <RootRoute />
+                  </Suspense>
+                }
+              />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
 
@@ -96,7 +130,9 @@ export function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route path="/" element={<DashboardPage />} />
+                {/* The app lives under /dashboard now that / is the public
+                    landing page. */}
+                <Route path="/dashboard" element={<DashboardPage />} />
                 {/*
                   Onboarding lives inside the shell and is reached by link only.
                   Nothing redirects into it: no endpoint exposes

@@ -22,6 +22,9 @@ const app = fs.readFileSync(path.join(here, '..', 'App.tsx'), 'utf8')
 /** Routes that must not be in the initial bundle. */
 const SPLIT = [
   'AchievementsPage',
+  // The landing page is the heaviest route in the app and the one a returning
+  // user never opens. It must not ride along in the initial bundle.
+  'LandingPage',
   'FitnessPage',
   'NutritionPage',
   'OnboardingPage',

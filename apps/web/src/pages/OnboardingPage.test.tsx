@@ -50,7 +50,10 @@ function renderPage() {
     <MemoryRouter initialEntries={['/onboarding']}>
       <Routes>
         <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/" element={<h1>Dashboard page</h1>} />
+        {/* The dashboard moved to /dashboard when / became the public landing
+            page. What these tests assert — that finishing or skipping onboarding
+            lands on the dashboard — is unchanged. */}
+        <Route path="/dashboard" element={<h1>Dashboard page</h1>} />
       </Routes>
     </MemoryRouter>,
   )

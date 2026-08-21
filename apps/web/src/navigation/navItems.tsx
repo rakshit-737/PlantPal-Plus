@@ -41,7 +41,7 @@ const icon = (path: string): ReactNode => (
 )
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: icon('M3 12l9-9 9 9M5 10v10h14V10') },
+  { to: '/dashboard', label: 'Dashboard', icon: icon('M3 12l9-9 9 9M5 10v10h14V10') },
   {
     to: '/plants',
     label: 'Plants',
