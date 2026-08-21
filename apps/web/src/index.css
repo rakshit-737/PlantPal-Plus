@@ -53,7 +53,13 @@
 
   --color-text-main: #0c1410;
   --color-text-muted: #55625a;
+  /* Decorative hairlines ONLY. At 1.27:1 against the ground this is far below
+     the 3:1 WCAG 1.4.11 needs, which is fine for a rule that merely separates
+     content and not fine for anything a user has to find and operate. */
   --color-border: #dde3dc;
+  /* Every interactive boundary — inputs, selects, comboboxes, the secondary
+     button. Clears 3:1 on all four light grounds and on light glass. */
+  --color-border-control: #898f8b;
 
   /* Glass. --glass-bg is composited over --color-background at render time, so
      any contrast claim about ink on glass has to be measured against that
@@ -99,7 +105,9 @@
 
   --color-text-main: #ecf0ec;
   --color-text-muted: #8b968d;
+  /* Decorative hairlines ONLY — 1.38:1. See the light block. */
   --color-border: #232b26;
+  --color-border-control: #646866;
 
   --glass-bg: rgba(20, 28, 24, 0.55);
   --glass-bg-strong: rgba(20, 28, 24, 0.8);
@@ -212,13 +220,25 @@ body {
   --glow-soft: none;
 }
 
+/*
+ * The obvious high-contrast borders do not actually clear 3:1 — #4a544c
+ * measures 2.34:1 on the dark surface and #8e9a90 measures 2.92:1 on the light
+ * one. So in this mode the decorative border is promoted to the control
+ * token's strength, and the control token goes stronger still.
+ *
+ * The bare [data-high-contrast] is a deliberate fallback for the case where
+ * high contrast is on before a data-theme attribute exists. It cannot override
+ * the dark rule below, which matches two attributes to its one.
+ */
 [data-high-contrast],
 [data-high-contrast][data-theme='light'] {
-  --color-border: #8e9a90;
+  --color-border: #898f8b;
+  --color-border-control: #6b726d;
   --color-text-muted: #38443c;
 }
 
 [data-high-contrast][data-theme='dark'] {
-  --color-border: #4a544c;
+  --color-border: #646866;
+  --color-border-control: #7e8580;
   --color-text-muted: #b6c0b8;
 }

@@ -35,7 +35,10 @@ export default {
         'on-primary': 'var(--color-on-primary)',
         'text-main': 'var(--color-text-main)',
         'text-muted': 'var(--color-text-muted)',
+        // Decorative hairlines only. Anything a user operates gets
+        // border-control, which is the one that clears WCAG 1.4.11's 3:1.
         border: 'var(--color-border)',
+        'border-control': 'var(--color-border-control)',
         // Glass panes. `glass` is the resting surface, `glass-strong` the one
         // used where content sits above other content (modals, popovers).
         glass: 'var(--glass-bg)',

@@ -229,7 +229,54 @@ Keep every existing token name so nothing breaks; change values, then add the ne
 
 **Dark is now the primary theme** — design it first, then derive light. The pre-paint script in `index.html` already handles system preference; do not change its key (`plantpal-theme`).
 
+> **⚠ Declaration order is load-bearing — this was wrong in the first draft of this brief.**
+> `:root`, `[data-theme='light']` and `[data-theme='dark']` all have specificity (0,1,0), and
+> `<html data-theme="dark">` matches **both** `:root` and `[data-theme='dark']`. Equal specificity
+> means source order decides, so **light must be declared first, as the base that dark overrides.**
+> Print dark first and the light values silently win in dark mode, with nothing to catch it — no
+> error, no warning, just a light-mode app wearing a dark-mode attribute. Assert the ordering in a test.
+
 ```css
+:root, [data-theme='light'] {
+  --color-background:      #FBFCFA;
+  --color-background-alt:  #F3F5F1;
+  --color-surface:         #FFFFFD;   /* off-white, per Ellis Butchers */
+  --color-surface-raised:  #FFFFFF;
+
+  --color-primary:         #17603A;   /* deepened from #226d3c for contrast on glass */
+  --color-primary-hover:   #0F4A2B;
+  --color-primary-glow:    #34A867;
+  --color-on-primary:      #FFFFFF;   /* INVERTS the other way */
+
+  --color-secondary:       #2F6484;
+  --color-tertiary:        #8A5E0C;
+  --color-accent:          #CD3719;   /* darkened from #D6391A: that value was 4.29:1
+                                          on --color-background-alt, a ground v3.0 itself
+                                          introduces. #CD3719 clears AA everywhere (worst 4.61). */
+
+  --color-text-main:       #0C1410;
+  --color-text-muted:      #55625A;
+  --color-border:          #DDE3DC;   /* decorative hairlines ONLY — 1.27:1, far below 3:1 */
+  --color-border-control:  #898F8B;   /* NEW — every interactive boundary. WCAG 1.4.11 needs
+                                          3:1; this clears it on all four light grounds
+                                          (3.01–3.30) and on light glass (3.26). */
+
+  --glass-bg:              rgba(255, 255, 255, 0.62);
+  --glass-bg-strong:       rgba(255, 255, 255, 0.88);
+  --glass-border:          rgba(12, 20, 16, 0.08);
+  --glass-highlight:       rgba(255, 255, 255, 0.90);
+  --glass-blur:            14px;
+
+  --glow-primary:          0 0 0 1px rgba(23,96,58,.10),  0 8px 28px -10px rgba(23,96,58,.28);
+  --glow-accent:           0 0 0 1px rgba(214,57,26,.12), 0 8px 28px -10px rgba(214,57,26,.25);
+  --glow-soft:             0 1px 0 0 var(--glass-highlight), 0 10px 32px -14px rgba(12,20,16,.18);
+
+  --shadow-1: 0 1px 2px rgba(12,20,16,.06);
+  --shadow-2: 0 4px 16px -4px rgba(12,20,16,.10);
+  --shadow-3: 0 12px 40px -12px rgba(12,20,16,.14);
+  --shadow-4: 0 24px 64px -16px rgba(12,20,16,.18);
+}
+
 [data-theme='dark'] {
   /* Ground — deeper than v2.0 so glass has something to sit on */
   --color-background:      #050807;
@@ -251,7 +298,9 @@ Keep every existing token name so nothing breaks; change values, then add the ne
   /* Ink */
   --color-text-main:       #ECF0EC;
   --color-text-muted:      #8B968D;
-  --color-border:          #232B26;
+  --color-border:          #232B26;   /* decorative hairlines ONLY — 1.38:1 */
+  --color-border-control:  #646866;   /* NEW — clears 3:1 on all four dark grounds
+                                          (3.04–3.56) and on dark glass (3.32). */
 
   /* NEW — glass */
   --glass-bg:              rgba(20, 28, 24, 0.55);
@@ -271,42 +320,14 @@ Keep every existing token name so nothing breaks; change values, then add the ne
   --shadow-3: 0 12px 40px -12px rgba(0,0,0,.60);
   --shadow-4: 0 24px 64px -16px rgba(0,0,0,.70);
 }
-
-:root, [data-theme='light'] {
-  --color-background:      #FBFCFA;
-  --color-background-alt:  #F3F5F1;
-  --color-surface:         #FFFFFD;   /* off-white, per Ellis Butchers */
-  --color-surface-raised:  #FFFFFF;
-
-  --color-primary:         #17603A;   /* deepened from #226d3c for contrast on glass */
-  --color-primary-hover:   #0F4A2B;
-  --color-primary-glow:    #34A867;
-  --color-on-primary:      #FFFFFF;   /* INVERTS the other way */
-
-  --color-secondary:       #2F6484;
-  --color-tertiary:        #8A5E0C;
-  --color-accent:          #D6391A;
-
-  --color-text-main:       #0C1410;
-  --color-text-muted:      #55625A;
-  --color-border:          #DDE3DC;
-
-  --glass-bg:              rgba(255, 255, 255, 0.62);
-  --glass-bg-strong:       rgba(255, 255, 255, 0.88);
-  --glass-border:          rgba(12, 20, 16, 0.08);
-  --glass-highlight:       rgba(255, 255, 255, 0.90);
-  --glass-blur:            14px;
-
-  --glow-primary:          0 0 0 1px rgba(23,96,58,.10),  0 8px 28px -10px rgba(23,96,58,.28);
-  --glow-accent:           0 0 0 1px rgba(214,57,26,.12), 0 8px 28px -10px rgba(214,57,26,.25);
-  --glow-soft:             0 1px 0 0 var(--glass-highlight), 0 10px 32px -14px rgba(12,20,16,.18);
-
-  --shadow-1: 0 1px 2px rgba(12,20,16,.06);
-  --shadow-2: 0 4px 16px -4px rgba(12,20,16,.10);
-  --shadow-3: 0 12px 40px -12px rgba(12,20,16,.14);
-  --shadow-4: 0 24px 64px -16px rgba(12,20,16,.18);
-}
 ```
+
+**A test enforces this, not a table.** `apps/web/src/test/tokens.test.ts` parses the real `index.css` off disk — not a copy of it — composites glass over its ground, and measures. That distinction is the whole point: ink on a translucent pane is really ink on *pane over ground*, and measuring the glass token alone is exactly how a glassmorphism design passes review and still fails AA in the browser. Every hex edit after this is re-measured automatically. The test must assert:
+
+- every ink clears 4.5:1 over composited glass, surface and ground, in both themes;
+- `on-primary` clears AA both ways — **and that plain white on the dark-mode primary still fails at 2.94**, because that failure is the entire reason the token exists;
+- `--color-border-control` clears 3:1 on every ground in its theme, including high contrast;
+- the light block is declared before the dark block (see the ordering warning above).
 
 **These values were contrast-checked before being written down.** Measured WCAG ratios, foreground over `--glass-bg` composited on `--color-background` (the worst case — glass reduces effective contrast, which is where glassmorphism designs normally fail AA):
 
@@ -333,8 +354,16 @@ Every value clears 4.5:1. **Re-measure if you change any hex** — and measure t
   --glass-blur: 0px;
   --glow-primary: none; --glow-accent: none; --glow-soft: none;
 }
-[data-high-contrast][data-theme='dark']  { --color-border: #4A544C; --color-text-muted: #B6C0B8; }
-[data-high-contrast][data-theme='light'] { --color-border: #8E9A90; --color-text-muted: #38443C; }
+/* High contrast must clear 3:1 too. The obvious values do NOT: #4A544C measures
+   2.34:1 on the dark surface and #8E9A90 measures 2.92:1 on the light one — both
+   fail. In this mode the decorative border is promoted to the control token's
+   strength, and the control token goes stronger still. */
+[data-high-contrast][data-theme='dark'] {
+  --color-border: #646866; --color-border-control: #7E8580; --color-text-muted: #B6C0B8;
+}
+[data-high-contrast][data-theme='light'] {
+  --color-border: #898F8B; --color-border-control: #6B726D; --color-text-muted: #38443C;
+}
 ```
 
 ### Radii — the sharp-corner rule is repealed, but not abolished
@@ -595,10 +624,10 @@ Rewrite in place. Keep **all 14 export names and their prop signatures** — a d
 
 | Export | v3.0 treatment | Source |
 |---|---|---|
-| `Button` | Glass fill + `--glow-primary` on primary variant. Loading state keeps the label mounted (width must not change — existing behaviour, keep it). | Aceternity `stateful-button` for the async loading→success flow; `hover-border-gradient` for the secondary variant; `moving-border` reserved for the landing CTA only |
-| `Input` / `Select` | Glass field, hairline border, focus ring becomes a focus *glow*. Keep native elements, keep `aria-invalid`/`aria-describedby`/`htmlFor` wiring exactly. | — |
-| `Combobox` | Keep the entire ARIA implementation untouched (roles, `aria-activedescendant`, the "nothing highlighted until arrow key" convention, the outside-click and blur handling). Restyle the popup only. | Aceternity `placeholders-and-vanish-input` for the *search* variant on Plants/Nutrition, as a separate export — do not replace `Combobox` |
-| `Card` | Glass surface: `--glass-bg`, `--glass-border`, 1px `--glass-highlight` top edge, `--shadow-2`, `rounded-lg` | — |
+| `Button` | Glass fill + `--glow-primary` on primary variant. The `secondary` variant's boundary uses `--color-border-control`. Loading state keeps the label mounted (width must not change — existing behaviour, keep it). | Aceternity `stateful-button` for the async loading→success flow; `hover-border-gradient` for the secondary variant; `moving-border` reserved for the landing CTA only |
+| `Input` / `Select` | Glass field, **`--color-border-control` boundary (not `--color-border`)**, focus ring becomes a focus *glow*. Keep native elements, keep `aria-invalid`/`aria-describedby`/`htmlFor` wiring exactly. | — |
+| `Combobox` | Boundary uses `--color-border-control`. Keep the entire ARIA implementation untouched (roles, `aria-activedescendant`, the "nothing highlighted until arrow key" convention, the outside-click and blur handling). Restyle the popup only. | Aceternity `placeholders-and-vanish-input` for the *search* variant on Plants/Nutrition, as a separate export — do not replace `Combobox` |
+| `Card` | Glass surface: `--glass-bg`, `--glass-border`, 1px `--glass-highlight` top edge, `--shadow-2`, `rounded-lg`. Decorative — keeps `--color-border`. | — |
 | `Alert` | Tone-tinted glass, left tone edge | — |
 | `Spinner` | Keep. One of only two permitted loops. | — |
 | `Badge` | Semantic status chips with icons | Pattern from *Status Chip Components* (recent.design) |
@@ -744,10 +773,11 @@ The one page where a heavier effect is justified — it is visited rarely and is
 
 Everything in `01-design-language.md` §8 carries forward. Glass and motion add four new obligations.
 
-1. **Glass must not eat contrast.** Composite `--glass-bg` over `--color-background` and measure the *result*, not the token. This is where glassmorphism designs normally fail WCAG. Body text 4.5:1, large text and UI boundaries 3:1. Check both themes.
-2. **High contrast switches glass off**, per the `[data-high-contrast]` block in §4. Verify visually with the toggle on: every card must still have a visible boundary, because in this design the border carries all the structure.
-3. **Reduce-motion is load-bearing, not cosmetic.** Wire `MotionConfig` once at the root from `useReducedMotion()`, which reads *both* the OS media query and `[data-reduce-motion]`. Then verify by hand: turn the in-app toggle on and walk every screen. Nothing may become unreachable, unreadable, or stuck mid-transition. Scroll-driven components are the usual offenders — a `timeline` whose content only appears at scroll progress > 0 is broken under reduce-motion.
-4. **Larger text still scales everything.** `[data-larger-text]` sets root font-size to 112.5% and every size in the app is rem-based. Any hard-coded `px` you introduce in a pasted component breaks this. Convert them.
+1. **Interactive boundaries clear 3:1 — `--color-border` does not.** WCAG 1.4.11 covers the visual information that identifies a control, and for a text field the border *is* that information. The decorative hairline token measures 1.27:1 light and 1.38:1 dark; it is for card edges, dividers and table rules, and it must never draw a control. **`Input`, `Select`, `Combobox` and the secondary `Button` use `--color-border-control`.** Two tokens, not one, so hairlines can stay hairlines.
+2. **Glass must not eat contrast.** Composite `--glass-bg` over `--color-background` and measure the *result*, not the token. This is where glassmorphism designs normally fail WCAG. Body text 4.5:1, large text and UI boundaries 3:1. Check both themes.
+3. **High contrast switches glass off**, per the `[data-high-contrast]` block in §4. Verify visually with the toggle on: every card must still have a visible boundary, because in this design the border carries all the structure.
+4. **Reduce-motion is load-bearing, not cosmetic.** Wire `MotionConfig` once at the root from `useReducedMotion()`, which reads *both* the OS media query and `[data-reduce-motion]`. Then verify by hand: turn the in-app toggle on and walk every screen. Nothing may become unreachable, unreadable, or stuck mid-transition. Scroll-driven components are the usual offenders — a `timeline` whose content only appears at scroll progress > 0 is broken under reduce-motion.
+5. **Larger text still scales everything.** `[data-larger-text]` sets root font-size to 112.5% and every size in the app is rem-based. Any hard-coded `px` you introduce in a pasted component breaks this. Convert them.
 
 Unchanged and still mandatory: focus-visible rings on every interactive element (accent ring on destructive), `text-on-primary` never raw white, skip link first in tab order, route-change focus to `<main>`, `role="alert"` for errors and `role="status"` + `aria-live="polite"` for non-errors, `aria-busy` on loading buttons, progress bars with `aria-valuenow/min/max` and an accessible name.
 
@@ -883,7 +913,7 @@ npm run typecheck && npm run lint && npm test && npm run build --workspace @plan
 |---|---|---|
 | **0 — Foundation** | `@/` alias in all three configs · `src/lib/utils.ts` with the strict-mode-safe `cn` · install `motion clsx tailwind-merge tailwindcss-animate` · jsdom stubs in `src/test/setup.ts` · `useReducedMotion` hook · `MotionConfig` in `App.tsx` | **All 307 tests pass and the app looks identical.** Zero visual change in Phase 0. If anything looks different, you did too much. |
 | **1 — Tokens** | v3.0 tokens in `index.css` · `tailwind.config.js` colours, radii, keyframes, animation · `[data-high-contrast]` glass override · mirror in `apps/mobile/src/theme.ts` | Contrast checks pass in both themes and in high-contrast. Tests green. |
-| **2 — Primitives** | **First: create `THIRD_PARTY_LICENSES.md` and confirm every source you are about to vendor is MIT.** Then rewrite `src/components/ui.tsx`. All 14 exports keep their names and signatures. | `ui.test.tsx` green **without edits**. If it needs edits, classify them per §9. **No Aceternity source anywhere in `apps/web`** — grep for it. |
+| **2 — Primitives** | **First: create `THIRD_PARTY_LICENSES.md`, then adopt `--color-border-control` on every interactive boundary.**  and confirm every source you are about to vendor is MIT.** Then rewrite `src/components/ui.tsx`. All 14 exports keep their names and signatures. | `ui.test.tsx` green **without edits**. If it needs edits, classify them per §9. **No Aceternity source anywhere in `apps/web`** — grep for it. `tokens.test.ts` extended to assert no control renders `--color-border`. |
 | **3 — Shell** | `AppShell`, `navItems`, ambient background, route-level lazy loading | `AppShell.test.tsx` green. Module gating verified by hand with each toggle off. |
 | **4 — Auth + landing** | Login, Register, AuthLayout, NotFound, new LandingPage + route | Landing route absent from the initial bundle (check the Vite chunk output). |
 | **5 — Dashboard** | Tiles, contribution grid, reminders, today list, skeletons | All three `ErrorState` branches still reachable — test by forcing failures. Interior bundle ≤ 250 KB gzip. |
@@ -917,7 +947,9 @@ Do not report completion until every line is true.
 - [ ] Every adopted vendor component carries its source-URL comment
 
 **Accessibility**
-- [ ] Glass-composited text contrast measured and passing in both themes
+- [ ] Glass-composited text contrast measured **by `tokens.test.ts` against the real `index.css`**, passing in both themes
+- [ ] Every interactive boundary uses `--color-border-control` and clears 3:1; `--color-border` draws nothing interactive
+- [ ] Light theme block declared before dark, asserted by test
 - [ ] `[data-high-contrast]` disables glass and glow; every card still bounded
 - [ ] `[data-reduce-motion]` walked screen by screen — nothing unreachable or stuck
 - [ ] `[data-larger-text]` scales without overflow; no hard-coded px introduced

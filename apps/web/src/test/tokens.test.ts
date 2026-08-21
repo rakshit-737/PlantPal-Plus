@@ -136,6 +136,33 @@ describe.each(THEMES)('%s theme', (_name, T) => {
     expect(ratio, `on-primary measured ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
   })
 
+  it('clears 3:1 for interactive boundaries on every ground', () => {
+    // WCAG 1.4.11. This is the token that outlines inputs, selects, the
+    // combobox and the secondary button — things a user has to find and
+    // operate — so unlike the decorative --color-border it has a real floor.
+    // Glass is included because a control can sit on a pane.
+    const control = parseColor(T['--color-border-control']!).rgb
+    for (const [surfaceName, surface] of surfaces) {
+      const ratio = contrast(control, surface)
+      expect(
+        ratio,
+        `border-control on ${surfaceName} measured ${ratio.toFixed(2)}:1`,
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('clears 3:1 for interactive boundaries in high-contrast mode too', () => {
+    // The obvious high-contrast greys do not: #4a544c is 2.34:1 on the dark
+    // surface and #8e9a90 is 2.92:1 on the light one. Both would look like a
+    // fix and fail the check.
+    const overrides = T === DARK ? HC_DARK : HC_LIGHT
+    // Glass collapses to the opaque surface in this mode, so that is the only
+    // ground a control can sit on.
+    const surface = parseColor(T['--color-surface']!).rgb
+    const ratio = contrast(parseColor(overrides['--color-border-control']!).rgb, surface)
+    expect(ratio, `hc border-control measured ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
+  })
+
   it('raises boundary contrast in high-contrast mode', () => {
     // With glass off, the border is the only thing separating a card from the
     // ground, so the high-contrast override has to be a real improvement and
@@ -230,6 +257,7 @@ describe('mobile token parity', () => {
     ['--color-text-main', 'textMain'],
     ['--color-text-muted', 'textMuted'],
     ['--color-border', 'border'],
+    ['--color-border-control', 'borderControl'],
     ['--color-on-primary', 'onPrimary'],
     ['--glass-bg', 'glassBg'],
     ['--glass-bg-strong', 'glassBgStrong'],

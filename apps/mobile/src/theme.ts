@@ -36,7 +36,10 @@ export interface Palette {
   accent: string
   textMain: string
   textMuted: string
+  /** Decorative hairlines only — well below 3:1 by design. */
   border: string
+  /** Every interactive boundary. Clears the 3:1 non-text contrast minimum. */
+  borderControl: string
   /** Text placed on a solid primary fill. Inverts between themes. */
   onPrimary: string
   /** Translucent pane fill, composited over `background` by the blur view. */
@@ -68,6 +71,7 @@ export const light: Palette = {
   textMain: '#0c1410',
   textMuted: '#55625a',
   border: '#dde3dc',
+  borderControl: '#898f8b',
   onPrimary: '#ffffff',
   glassBg: 'rgba(255, 255, 255, 0.62)',
   glassBgStrong: 'rgba(255, 255, 255, 0.88)',
@@ -94,6 +98,7 @@ export const dark: Palette = {
   textMain: '#ecf0ec',
   textMuted: '#8b968d',
   border: '#232b26',
+  borderControl: '#646866',
   // Inverts. White on this green measures 2.94:1 and fails AA; the near-black
   // ground measures 6.85:1 and passes.
   onPrimary: '#050807',
