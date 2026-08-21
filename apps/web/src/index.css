@@ -177,6 +177,52 @@ body {
   animation: toast-in var(--motion-standard) var(--ease-entrance);
 }
 
+/*
+ * Ambient mesh — condensation on the glass. Three very low opacity radial
+ * washes drifting across the app ground, which give the panes something to sit
+ * on: glass over a flat fill reads as a grey box.
+ *
+ * This is one of exactly two animations permitted to loop app-wide (the other
+ * is the spinner). It is CSS-only and purely decorative, so it costs no
+ * JavaScript and carries aria-hidden at the call site. The reduce-motion rules
+ * below collapse the duration, which parks it on its final frame — static, and
+ * still doing its job.
+ */
+.app-aurora {
+  background-image:
+    radial-gradient(
+      60rem 40rem at 12% 8%,
+      color-mix(in srgb, var(--color-primary) 13%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      50rem 34rem at 88% 18%,
+      color-mix(in srgb, var(--color-secondary) 10%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      46rem 46rem at 50% 104%,
+      color-mix(in srgb, var(--color-primary-glow) 9%, transparent),
+      transparent 65%
+    );
+  animation: aurora-drift 44s var(--ease-state) infinite alternate;
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(1.5%, 1%, 0) scale(1.08);
+  }
+}
+
+/* High contrast removes it outright: every wash costs a little contrast, and
+   this mode trades atmosphere for legibility everywhere else already. */
+[data-high-contrast] .app-aurora {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

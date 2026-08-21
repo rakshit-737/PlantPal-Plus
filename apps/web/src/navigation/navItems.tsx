@@ -14,15 +14,25 @@ export interface NavItem {
   module?: 'plant_care' | 'fitness' | 'nutrition'
 }
 
-// Inline SVGs keep the shell dependency-free; swap for lucide-react later.
+/*
+ * The icons are drawn here rather than imported, and that is a settled
+ * decision rather than a stopgap: the icon set is part of the identity, and a
+ * library face (Lucide, Tabler) would make the navigation look like every
+ * other app built this year. It also keeps the shell free of a dependency
+ * whose weight lands on the most-visited route.
+ *
+ * House convention, matching SproutMark and every other glyph in the app:
+ * 1.5 stroke, square caps and joins. These were previously drawn at 2 with
+ * round caps, which read as a heavier, softer set than the rest of the UI.
+ */
 const icon = (path: string): ReactNode => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
+    strokeWidth={1.5}
+    strokeLinecap="square"
+    strokeLinejoin="miter"
     className="h-5 w-5"
     aria-hidden
   >
