@@ -10,7 +10,10 @@
  */
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  // Test files are excluded deliberately: a class name quoted in an assertion
+  // is not a class the app renders, but Tailwind cannot tell the difference and
+  // compiles it into the shipped stylesheet.
+  content: ['./index.html', './src/**/!(*.test|*.spec).{ts,tsx}'],
   darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {

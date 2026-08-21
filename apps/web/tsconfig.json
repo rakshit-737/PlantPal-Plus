@@ -5,7 +5,20 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+
+    /*
+     * Adapted vendor components (Aceternity, Animata, 21st.dev) are published
+     * against the shadcn convention and import `@/lib/utils`. The alias has to
+     * exist in three places to work everywhere: here for the editor and
+     * `tsc --noEmit`, in vite.config.ts for dev and build, and in
+     * vitest.config.ts for jsdom — that last one is a separate file and is the
+     * easy one to miss.
+     */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

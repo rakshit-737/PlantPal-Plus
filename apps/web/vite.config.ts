@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -19,6 +21,13 @@ export default defineConfig(({ mode }) => {
   return {
     base: env.VITE_BASE ?? '/',
     plugins: [react()],
+    // Mirrors the `@/*` path in tsconfig.json and vitest.config.ts. Vendor
+    // components copied in from shadcn-convention registries import
+    // `@/lib/utils`; all three configs have to agree or the same import
+    // resolves in the editor and fails at build (or in tests).
+    resolve: {
+      alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    },
     server: {
       port: 5173,
       proxy: {
