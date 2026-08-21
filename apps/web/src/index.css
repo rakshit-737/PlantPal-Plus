@@ -159,21 +159,22 @@ body {
   color: var(--color-on-primary);
 }
 
-/* Toast entrance — a short rise, like a stamp landing. The reduced-motion
-   block below zeroes it for users who ask. */
+/* Toast entrance. Growth rather than a slide, per the v3.0 motion contract —
+   the toast scales up into place instead of rising. The reduced-motion block
+   below zeroes it for users who ask, which leaves the toast simply present. */
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
 .toast-enter {
-  animation: toast-in 160ms ease-out;
+  animation: toast-in var(--motion-standard) var(--ease-entrance);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -215,9 +216,18 @@ body {
   --glass-bg: var(--color-surface);
   --glass-bg-strong: var(--color-surface);
   --glass-blur: 0px;
-  --glow-primary: none;
-  --glow-accent: none;
-  --glow-soft: none;
+  /*
+   * `0 0 #0000` and not `none`. These tokens get composed into shadow lists —
+   * Tailwind emits `box-shadow: <ring-offset>, <ring>, var(--tw-shadow)` for
+   * any element carrying both a focus ring and a shadow. `none` is only valid
+   * as the whole property, so a single `none` in that list makes the entire
+   * declaration invalid and the browser drops it, taking the focus ring with
+   * it. That would remove focus indication in the exact mode that needs it
+   * most. A transparent zero-size shadow is the same nothing, safely.
+   */
+  --glow-primary: 0 0 #0000;
+  --glow-accent: 0 0 #0000;
+  --glow-soft: 0 0 #0000;
 }
 
 /*

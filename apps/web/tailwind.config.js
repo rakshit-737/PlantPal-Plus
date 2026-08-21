@@ -11,6 +11,25 @@
  */
 import tailwindcssAnimate from 'tailwindcss-animate'
 
+/**
+ * Wraps a token so Tailwind's opacity modifiers work on it.
+ *
+ * Tailwind can only apply `/40` to a colour it can decompose into channels. A
+ * bare `var(--x)` is opaque to it, so rather than failing it emits *no rule at
+ * all* — `bg-accent/10` silently produces nothing, and the element renders
+ * untinted with no error anywhere. That had quietly disabled every tinted
+ * surface in the app: Alert fills and borders, Badge tones, ErrorState, the
+ * combobox's active row.
+ *
+ * The usual fix is to store channel triplets and use `rgb(var(--x) / <alpha-value>)`,
+ * but that would stop the tokens being readable hex and break the one-for-one
+ * mirror with apps/mobile/src/theme.ts. color-mix keeps the hex and lets the
+ * modifier through: with no modifier Tailwind substitutes 1, which mixes 100%
+ * of the colour and leaves it untouched.
+ */
+const alphaToken = (name) =>
+  `color-mix(in srgb, var(${name}) calc(<alpha-value> * 100%), transparent)`
+
 /** @type {import('tailwindcss').Config} */
 export default {
   // Test files are excluded deliberately: a class name quoted in an assertion
@@ -21,30 +40,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: 'var(--color-background)',
-        'background-alt': 'var(--color-background-alt)',
-        surface: 'var(--color-surface)',
-        'surface-raised': 'var(--color-surface-raised)',
-        primary: 'var(--color-primary)',
-        'primary-hover': 'var(--color-primary-hover)',
+        background: alphaToken('--color-background'),
+        'background-alt': alphaToken('--color-background-alt'),
+        surface: alphaToken('--color-surface'),
+        'surface-raised': alphaToken('--color-surface-raised'),
+        primary: alphaToken('--color-primary'),
+        'primary-hover': alphaToken('--color-primary-hover'),
         // Glow/highlight only — not contrast-checked as ink, so never text.
-        'primary-glow': 'var(--color-primary-glow)',
-        secondary: 'var(--color-secondary)',
-        tertiary: 'var(--color-tertiary)',
-        accent: 'var(--color-accent)',
-        'on-primary': 'var(--color-on-primary)',
-        'text-main': 'var(--color-text-main)',
-        'text-muted': 'var(--color-text-muted)',
+        'primary-glow': alphaToken('--color-primary-glow'),
+        secondary: alphaToken('--color-secondary'),
+        tertiary: alphaToken('--color-tertiary'),
+        accent: alphaToken('--color-accent'),
+        'on-primary': alphaToken('--color-on-primary'),
+        'text-main': alphaToken('--color-text-main'),
+        'text-muted': alphaToken('--color-text-muted'),
         // Decorative hairlines only. Anything a user operates gets
         // border-control, which is the one that clears WCAG 1.4.11's 3:1.
-        border: 'var(--color-border)',
-        'border-control': 'var(--color-border-control)',
+        border: alphaToken('--color-border'),
+        'border-control': alphaToken('--color-border-control'),
         // Glass panes. `glass` is the resting surface, `glass-strong` the one
         // used where content sits above other content (modals, popovers).
-        glass: 'var(--glass-bg)',
-        'glass-strong': 'var(--glass-bg-strong)',
-        'glass-border': 'var(--glass-border)',
-        'glass-highlight': 'var(--glass-highlight)',
+        // These tokens already carry their own alpha; a modifier on top scales
+        // it rather than replacing it, which is the sensible reading.
+        glass: alphaToken('--glass-bg'),
+        'glass-strong': alphaToken('--glass-bg-strong'),
+        'glass-border': alphaToken('--glass-border'),
+        'glass-highlight': alphaToken('--glass-highlight'),
       },
       borderRadius: {
         // Inputs, badges, table cells — anything holding a metric.
@@ -68,6 +89,11 @@ export default {
         'glow-primary': 'var(--glow-primary)',
         'glow-accent': 'var(--glow-accent)',
         'glow-soft': 'var(--glow-soft)',
+        // A pane: the 1px top-edge highlight that makes glass read as glass,
+        // over the standard resting elevation. Composed here so components do
+        // not each hand-roll the inset layer and drift apart.
+        glass: 'inset 0 1px 0 0 var(--glass-highlight), var(--shadow-2)',
+        'glass-raised': 'inset 0 1px 0 0 var(--glass-highlight), var(--shadow-3)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

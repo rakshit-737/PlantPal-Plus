@@ -224,9 +224,16 @@ describe('high-contrast mode', () => {
     expect(HC['--glass-blur']).toBe('0px')
   })
 
-  it('removes every glow', () => {
+  it('removes every glow without using the `none` keyword', () => {
+    // These tokens get composed into shadow lists. Tailwind emits
+    // `box-shadow: <ring-offset>, <ring>, var(--tw-shadow)` for any element
+    // carrying both a focus ring and a shadow, and `none` is only valid as the
+    // entire property — one `none` in that list invalidates the declaration
+    // and the browser drops it, focus ring included. In high contrast, of all
+    // places. A transparent zero-size shadow is the same nothing, safely.
     for (const glow of ['--glow-primary', '--glow-accent', '--glow-soft']) {
-      expect(HC[glow], glow).toBe('none')
+      expect(HC[glow], glow).toBe('0 0 #0000')
+      expect(HC[glow], `${glow} must not be the none keyword`).not.toBe('none')
     }
   })
 })
