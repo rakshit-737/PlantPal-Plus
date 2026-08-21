@@ -47,7 +47,7 @@ Break any of these and the work is rejected regardless of how it looks.
 4. **Empty ≠ error.** `EmptyState` invites action; `ErrorState` explains a failure and offers retry. Never collapse them, never let a failed fetch render as "No plants yet".
 5. **Metrics are mono.** Anything countable, summable or comparable stays `font-mono`. This is the one v2.0 signature that Glasshouse keeps, and it is what stops the app reading as a generic glassmorphism template.
 6. **Module gating survives.** `plant_care_enabled` / `fitness_enabled` / `nutrition_enabled` hide their nav items and dashboard tiles; settings loading (null) fails open. Server Invariant 34 guarantees at least one module stays on. Whatever new navigation you build must preserve this.
-7. **`npm run typecheck`, `npm run lint`, `npm test` and `npm run build --workspace @plantpal/web` all pass** at every phase gate.
+7. **`npm run typecheck`, `npm run lint`, `npm test` and `npm run build --workspace @plantpal/web` all pass** at every phase gate. Baseline at the start of Glasshouse: **347 tests — 335 passing, 12 skipped** (shared 53 · api 186+12 · mobile 24 · web 72). The README's "307" is stale: shared, mobile and web match it exactly, the API suite has grown by ~40 since it was written. Fix the README in Phase 10; use 347 as the number everywhere else.
 8. **Performance budget** (§8) is a hard limit, not an aspiration. This ships to GitHub Pages and a free-tier Render API, and is used on Indian mobile connections.
 
 ---
@@ -383,9 +383,9 @@ Wire `MotionConfig` once in `App.tsx`. Any component that then needs a manual ba
 
 ## 5. The five sources — what each one actually is, and how to use it
 
-### 5.1 Aceternity UI — `https://ui.aceternity.com`
+### 5.1 Aceternity UI — `https://ui.aceternity.com` — ⛔ REFERENCE ONLY, DO NOT VENDOR
 
-The primary component source. ~110 free components, shadcn-registry distributed, motion-based.
+~110 free components, shadcn-registry distributed, motion-based. It is the best *catalogue of ideas* of the five sources and the worst *source of code* for this repo. Read the licence box below before installing anything.
 
 ```bash
 npx shadcn@latest init                                        # once, in apps/web
@@ -404,7 +404,22 @@ Discovery: `npx shadcn@latest search @aceternity -q "card"` · `npx shadcn@lates
 
 - **Verified Next-free.** Across every registry file inspected — sidebar, floating-dock, tabs, animated-modal, multi-step-loader, timeline, focus-cards, text-generate-effect, placeholders-and-vanish-input, glowing-effect, card-spotlight, canvas-reveal-effect, bento-grid, moving-border, hover-border-gradient, stateful-button, file-upload, aurora-background — **no `next/image`, `next/link` or `next/navigation` imports**. Only `"use client"` (strip it) and Next-style file paths (move to `src/`). Demo code on component pages sometimes uses `next/image`; take the registry source, not the demo.
 - **Tailwind v4 docs, Tailwind v3.4 repo.** Component pages now lead with v4 `@theme inline` syntax. Translate every one — recipe in Appendix B.
-- **Licence: UNVERIFIED.** No explicit licence statement was found on the site. Free components are published as copy-paste source in a public shadcn registry (the standard shadcn arrangement — you own the code once copied), but **confirm before any commercial use**. Aceternity UI Pro blocks and templates are separately, commercially licensed and are Next.js-first; nothing you need for an app interior is behind the paywall.
+> ### ⛔ LICENCE — RESOLVED, AND IT CHANGES THE PLAN
+>
+> Aceternity's licence was verified after this brief was first written. **You may not commit adapted Aceternity source into this repository.**
+>
+> From `https://ui.aceternity.com/licence`, verbatim:
+> - *"You can create unlimited end products for yourself or your clients"* and *"End products may be sold, licensed, sub-licensed, or freely distributed."*
+> - **but** *"You cannot re-distribute the Item as a stock image or **its source files, regardless of modifications**"*
+> - and *"You cannot sell, resell, or distribute the Item or derivative works on any marketplace."*
+>
+> From `https://ui.aceternity.com/terms`: you must not *"Redistribute content from ui.aceternity.com"* or *"Reproduce, duplicate or copy material from ui.aceternity.com"*; *"All intellectual property rights are reserved."* **Neither page carves out the free components from the paid ones.**
+>
+> PlantPal+ is a **public, MIT-licensed GitHub repository**. Committing adapted component source there redistributes the source files and re-licenses them onward under MIT — precisely what the licence forbids, "regardless of modifications". The deployed app would be fine; the repo is not.
+>
+> **The rule for this project:** Aceternity is a **visual reference only**. Look at it, learn from it, name it in design notes — never paste its source into `apps/web`. Everything structural comes from the MIT sources in §5.6, or gets written from scratch. See the substitution table in §6.0.
+>
+> This is a reading of a licence page, not legal advice. Read `https://ui.aceternity.com/licence` yourself before overriding it.
 
 Transitive deps you may pull in: `@tabler/icons-react`, `lucide-react`, `@radix-ui/react-tabs`, `@radix-ui/react-label`, `@radix-ui/react-hover-card`, `react-dropzone`, `simplex-noise`, `mini-svg-data-uri`, `three` + `@react-three/fiber` + `@react-three/drei` + `three-globe`, `@tsparticles/*`, `dotted-map`, `qss`, `react-syntax-highlighter`. **Check the dependency before installing** — see the performance budget in §8.
 
@@ -460,6 +475,35 @@ Pricing: free tier = **2 component copies/day** plus full registry browsing. Bui
 
 Highest-value categories for this app: **Dashboards (400)**, **Charts & Data Viz (246)**, **Progress (375)**, **Grids & Bento (620)**, **Empty States (77)**, **Onboarding (53)**, **Steppers (124)**, **Spinner Loaders (480)**, **Sidebars (95)**, **Tabs (239)**, **Toasts (79)**, **File Uploads (154)**, **Calendars (239)**, **Stats & KPIs (153)**. Browse at `https://21st.dev/community/components/s/<slug>` or `https://21st.dev/s/<slug>`.
 
+### 5.6 The MIT stack — where the code actually comes from
+
+With Aceternity out as a code source, structure comes from these. All verified MIT.
+
+**Magic UI — `https://magicui.design`** · **MIT** (confirmed in `github.com/magicuidesign/magicui/blob/main/LICENSE.md`). ~78 components. The closest thing to a drop-in Aceternity replacement for effects.
+
+```bash
+npx shadcn@latest add "https://magicui.design/r/<name>.json"   # URL form — verified live
+pnpm dlx shadcn@latest add @magicui/<name>                     # namespaced form the docs now show
+```
+
+> **⚠ Tailwind version split.** `magicui.design` is now **Tailwind v4**. The **Tailwind v3 catalogue lives at a separate domain: `v3.magicui.design`** (per `https://magicui.design/docs/legacy`). You are on 3.4 — **pull from `v3.magicui.design`**, or translate per Appendix B. The v3 set is a subset; the newest components (Light Rays, Noise Texture, Backlight, Glyph Matrix, Progressive Blur, Dia Text Reveal, Text 3D Flip, Hexagon/Striped Pattern, Dotted Map) may be absent there. **The exact v3 registry URL form was not verified — check it before scripting installs.**
+
+Uses `motion` (registry declares `"dependencies": ["motion"]`, source imports `motion/react`) — same package as Animata, so no second animation library. Has an official Vite guide at `/docs/installation/vite`. Contains `"use client"` (strip it); a couple of components may use `next/image` (Tweet Card, Hero Video Dialog are the likely ones) — **grep each `.json` for `next/` before adding.**
+
+Verified components you will actually use: `dock` · `magic-card` · `bento-grid` · `marquee` · `lens` · `globe` · `dotted-map` · `number-ticker` · `text-animate` · `text-reveal` · `blur-fade` · `animated-list` · `border-beam` · `shine-border` · `neon-gradient-card` · `animated-beam` · `meteors` · `particles` · `scroll-progress` · `animated-circular-progress-bar` · `dot-pattern` · `grid-pattern` · `flickering-grid` · `retro-grid` · `ripple` · `warp-background` · `light-rays` · `progressive-blur` · `typing-animation` · `number-ticker` · `word-rotate` · `hyper-text` · `sparkles-text` · `animated-shiny-text` · `aurora-text` · `line-shadow-text` · `morphing-text` · `spinning-text` · `highlighter` (slug is `highlighter`, **not** `text-highlighter`) · `shimmer-button` · `ripple-button` · `rainbow-button` · `pulsating-button` · `shiny-button` · `interactive-hover-button` · `file-tree` · `terminal` · `safari` / `iphone` / `android` device mocks · `confetti` (do not use — see the motion contract).
+
+**Magic UI has no interactive primitives at all** — no modal, tooltip, sidebar, carousel, input, or stateful button. That is what the next two are for.
+
+**shadcn/ui — `https://ui.shadcn.com`** · **MIT.** The interactive primitives: `dialog`, `tooltip`, `sidebar`, `carousel` (Embla), `tabs`, `popover`, `select`. Installs through the same CLI. Note v2.0 of the design language dropped shadcn deliberately — re-adding it is one of the reversals the §10 changelog must record. **Adopt primitives selectively**; do not replace the hand-rolled `Input`/`Select`/`Combobox`, whose ARIA wiring is better than a default install and is covered by tests.
+
+**Animate UI — `https://animate-ui.com`** · **MIT** (confirmed via repo). Animated versions of shadcn primitives — the likely home for the animated dialog, tooltip and stateful button. Component list and Tailwind v3 support **UNVERIFIED**; check `/docs` before committing to it.
+
+**Animata** (§5.2) · **MIT.** Widgets and micro-interactions.
+
+> **Origin UI — do not use.** `originui.com` now redirects to `coss.com/ui`, and `github.com/origin-space/originui` is **AGPLv3 at the repo root** with only `apps/origin/` and `apps/ui/` under MIT. AGPL anywhere near this app is a licensing problem you do not want. Wrong component category anyway.
+
+**Add a `THIRD_PARTY_LICENSES.md` at the repo root** listing every vendored component, its source URL and its licence, and retain each MIT notice. That file is what makes this migration defensible; it is a Phase 2 deliverable, not a Phase 10 one.
+
 ### 5.4 recent.design — `https://recent.design`
 
 **Inspiration, not code.** A curated daily gallery (it is the rebranded *Godly* — `godly.website` now redirects here). 250k monthly visitors, 35k+ newsletter subscribers, weekly. No API, no RSS; `sitemap.xml` lists ~780 entry URLs.
@@ -512,6 +556,38 @@ Rules that apply to the whole map:
 - **Adapt, don't wrap.** Put adapted sources in `apps/web/src/components/aceternity/` and `apps/web/src/components/animata/`, re-export the app-facing version from `src/components/ui.tsx` or a sibling. Screens import from the app's own barrel, never from a vendor folder directly. This keeps the swap surface small.
 - **Every adopted component gets a one-line source comment**: `/** Adapted from Aceternity UI <name> — https://ui.aceternity.com/components/<slug>. Token-bound, reduce-motion aware. */`
 - **Effort ranking.** Where two components do the same job, prefer the one with fewer dependencies. `focus-cards` (the registry index lists no npm dependencies — confirm at install) beats `card-spotlight` (pulls three.js via `canvas-reveal-effect`) unless the extra weight buys something real.
+
+### 6.0 Source substitution table — read before §6.1
+
+Every Aceternity name in the sections below is now a **visual reference**. Build it from the MIT column. Verified by checking Magic UI's catalogue component by component.
+
+| Wanted (Aceternity name) | MIT route | Notes |
+|---|---|---|
+| Floating Dock | **Magic UI `dock`** | Direct replacement — cursor-proximity magnification, `iconSize`/`iconMagnification`/`iconDistance` |
+| Glowing Effect / Card Spotlight | **Magic UI `magic-card`** | Cursor-tracked radial gradient **and** border glow. `gradientSize`/`gradientColor`/`gradientOpacity`/`gradientFrom`/`gradientTo`. Also `backlight`, `shine-border`, `border-beam`, `glare-hover`. **Bonus: no three.js**, so the Achievements WebGL exception in §8 disappears |
+| Bento Grid | **Magic UI `bento-grid`** or Animata `bento-grid/*` | |
+| Infinite Moving Cards | **Magic UI `marquee`** | Vertical, reverse, pause-on-hover |
+| Lens | **Magic UI `lens`** | Near-identical API — `zoomFactor`, `lensSize`, `isStatic` |
+| World Map / Globe | **Magic UI `dotted-map`** / `globe` | Prefer `dotted-map` per the perf budget |
+| Text Generate Effect | **Magic UI `text-animate`** `by="word"` | Scroll-driven variant: `text-reveal` |
+| Number counter | **Magic UI `number-ticker`** or Animata `text/counter` | |
+| Moving Border / Hover Border Gradient | **Magic UI `border-beam`**, `shine-border`, `neon-gradient-card` | |
+| Meteors / Spotlight / Aurora Background | **Magic UI `meteors`**, `light-rays`, `warp-background`, `particles` | No direct aurora-background equivalent — hand-roll the mesh with CSS gradients, which is what §4 wants anyway |
+| Animated Modal | **shadcn/ui `dialog`** + `motion`, or Animate UI | **Better: keep the existing `Modal`** and port only the entrance animation. Its focus trap is better than a default install |
+| Animated Tooltip | **shadcn/ui `tooltip`** + `motion` | |
+| Sidebar | **shadcn/ui `sidebar`** + a width transition | Magic UI has none |
+| Apple Cards Carousel | **shadcn/ui `carousel`** (Embla) | |
+| Stateful Button | **Animate UI**, or write it | ~30 lines: idle → pending → success, awaiting the caller's promise |
+| Focus Cards | **Write it** | `group-hover` + `blur-sm` on siblings. Genuinely trivial |
+| **Compare** (before/after slider) | **Write it** | No MIT equivalent exists — Magic UI's `code-comparison` is a *code* diff. This is the highest-value component in the brief, so build it: two stacked images, a `clip-path` inset driven by pointer/drag x, a handle, keyboard arrows. Half a day, and it's yours under MIT |
+| **Timeline** (scroll-progress vertical) | **Write it** | `motion`'s `useScroll` + `useTransform` on a rail height. Magic UI's `scroll-progress` is a horizontal top bar, not this |
+| Tracing Beam | **Write it** or skip | Same mechanism as the timeline rail |
+| Multi Step Loader | **Write it** | Magic UI `animated-list` + `animated-circular-progress-bar` get you partway |
+| Placeholders And Vanish Input | **Write it** or drop | Magic UI has no inputs. The canvas-vanish is expensive and fights reduce-motion — **recommend dropping it**; rotating placeholders alone give most of the value |
+| Container Scroll Animation / Sticky Scroll Reveal / Layout Grid | **Write it** | `useScroll` + `layoutId`. Landing-page only, so cheap to defer |
+| Expandable Card | **Write it** with `motion` `layoutId` | The shared-layout transition is ~20 lines |
+
+**Net effect:** roughly two-thirds drops in from MIT sources; about eight components get written. Those eight are mostly small, and three of them (`compare`, the timeline rail, the streak grid) are the most distinctive things in the app — worth owning outright.
 
 ### 6.1 Primitives — `src/components/ui.tsx`
 
@@ -637,7 +713,7 @@ The most-visited screen. Highest polish, tightest performance budget.
 
 The one page where a heavier effect is justified — it is visited rarely and is inherently celebratory.
 
-- Badge grid → Aceternity `card-spotlight` **(accepted here, and only here — it pulls `three` via `canvas-reveal-effect`; the route must be lazy-loaded)** or `glowing-effect` if the budget is tight.
+- Badge grid → **Magic UI `magic-card`**. This replaces the old plan of Aceternity `card-spotlight`, which pulled `three` via `canvas-reveal-effect` — `magic-card` gives the same cursor-tracked spotlight with no WebGL, so the lazy-load exception is no longer needed here.
 - Locked vs unlocked → Animata `card/flip-card`.
 - Badge hover detail → Aceternity `animated-tooltip`.
 - Featured achievement → `3d-pin`.
@@ -687,7 +763,7 @@ This ships to GitHub Pages, talks to a free-tier Render API that sleeps after 15
 |---|---|
 | Interior route JS (Dashboard, Plants, Fitness, Nutrition, Settings) | **≤ 250 KB gzip** including shared chunks |
 | Landing route | ≤ 400 KB gzip, lazy-loaded |
-| WebGL routes | **At most one route in the entire app.** Lazy-loaded. Never Dashboard. |
+| WebGL routes | **Ideally zero.** Magic UI's `magic-card` replaces `card-spotlight` without three.js, which removes the only reason the app had for a WebGL route. If one survives: at most one, lazy-loaded, never Dashboard. |
 | Largest Contentful Paint, dashboard, 4G | ≤ 2.5s |
 | Cumulative Layout Shift | ≤ 0.1 — skeletons must match the real layout's dimensions |
 | Long tasks on route change | none > 200ms |
@@ -705,7 +781,7 @@ Rules that follow:
 
 ## 9. Tests — 72 web tests, and how not to lie to them
 
-`apps/web` has 72 component and behaviour tests under jsdom, part of 307 across the monorepo. They exist because two adversarial multi-agent audits found and closed 6 critical and 4 major defects. Treat them as the specification.
+`apps/web` has 72 component and behaviour tests under jsdom, part of **347 across the monorepo** (335 passing + 12 skipped — not the 307 the README claims; the drift is entirely in the API suite). They exist because two adversarial multi-agent audits found and closed 6 critical and 4 major defects. Treat them as the specification.
 
 Test files you will touch: `components/ui.test.tsx` · `layouts/AppShell.test.tsx` · `pages/NutritionPage.customFood.test.tsx` · `pages/OnboardingPage.test.tsx` · `pages/PlantDetailPage.growth.test.tsx` · `pages/PlantsPage.edit.test.tsx` · `pages/SettingsPage.test.tsx` · `lib/apiClient.test.ts` · `lib/errorMessages.test.ts`
 
@@ -739,7 +815,9 @@ npm test
 npm run build --workspace @plantpal/web
 ```
 
-The 12 auth integration tests skip themselves without `DATABASE_URL` — that is expected and not a failure. CI runs `typecheck` + `test` on Node 20.11 and 22 against a real PostgreSQL service container on every push and PR to `main`.
+The 12 auth integration tests skip themselves without `DATABASE_URL` — that is expected and not a failure.
+
+**Count drift is itself a finding.** If the totals move for a reason you did not cause, say so in the gate report rather than adjusting the expected number silently. CI runs `typecheck` + `test` on Node 20.11 and 22 against a real PostgreSQL service container on every push and PR to `main`.
 
 ---
 
@@ -788,6 +866,7 @@ Update the component tables, and extend **§7 (dependency decisions)** with the 
 
 - "Technology" section: record the new web dependencies.
 - The Phase table: Phase 2 (Design) and Phase 3 (Implementation) both have new work under them. Add a line rather than silently changing a ✅.
+- **Correct the test count.** The README says 307; the repo has 347 (335 + 12 skipped). Restate the per-workspace breakdown with the real API figure.
 - Keep every "Known gaps" entry accurate — the restyle does not close any of them. Photos are still links, quiet hours still unenforced, no purge sweep, no password reset delivery, custom foods still undeletable.
 
 ---
@@ -804,7 +883,7 @@ npm run typecheck && npm run lint && npm test && npm run build --workspace @plan
 |---|---|---|
 | **0 — Foundation** | `@/` alias in all three configs · `src/lib/utils.ts` with the strict-mode-safe `cn` · install `motion clsx tailwind-merge tailwindcss-animate` · jsdom stubs in `src/test/setup.ts` · `useReducedMotion` hook · `MotionConfig` in `App.tsx` | **All 307 tests pass and the app looks identical.** Zero visual change in Phase 0. If anything looks different, you did too much. |
 | **1 — Tokens** | v3.0 tokens in `index.css` · `tailwind.config.js` colours, radii, keyframes, animation · `[data-high-contrast]` glass override · mirror in `apps/mobile/src/theme.ts` | Contrast checks pass in both themes and in high-contrast. Tests green. |
-| **2 — Primitives** | Rewrite `src/components/ui.tsx`. All 14 exports keep their names and signatures. | `ui.test.tsx` green **without edits**. If it needs edits, classify them per §9. |
+| **2 — Primitives** | **First: create `THIRD_PARTY_LICENSES.md` and confirm every source you are about to vendor is MIT.** Then rewrite `src/components/ui.tsx`. All 14 exports keep their names and signatures. | `ui.test.tsx` green **without edits**. If it needs edits, classify them per §9. **No Aceternity source anywhere in `apps/web`** — grep for it. |
 | **3 — Shell** | `AppShell`, `navItems`, ambient background, route-level lazy loading | `AppShell.test.tsx` green. Module gating verified by hand with each toggle off. |
 | **4 — Auth + landing** | Login, Register, AuthLayout, NotFound, new LandingPage + route | Landing route absent from the initial bundle (check the Vite chunk output). |
 | **5 — Dashboard** | Tiles, contribution grid, reminders, today list, skeletons | All three `ErrorState` branches still reachable — test by forcing failures. Interior bundle ≤ 250 KB gzip. |
@@ -825,7 +904,7 @@ Do not report completion until every line is true.
 **Correctness**
 - [ ] `npm run typecheck` clean across all four workspaces
 - [ ] `npm run lint` clean
-- [ ] `npm test` — 307 passing (12 auth integration tests skipping without `DATABASE_URL` is expected)
+- [ ] `npm test` — no regressions against the 347-test baseline (335 passing + the same 12 auth integration tests skipping without `DATABASE_URL`)
 - [ ] `npm run build --workspace @plantpal/web` succeeds
 - [ ] No test was weakened; every modified test is classified A/B/C in a commit body
 - [ ] `tsconfig.base.json` strict flags unchanged — nothing relaxed to accommodate vendor code
@@ -865,7 +944,9 @@ Do not report completion until every line is true.
 - [ ] `01-design-language.md` at v3.0 with an honest §10 changelog
 - [ ] `02-component-inventory.md` §7 records every re-added dependency and its licence position
 - [ ] `README.md` technology and phase tables updated; Known gaps still accurate
-- [ ] Aceternity's unverified licence flagged in writing
+- [ ] `THIRD_PARTY_LICENSES.md` exists, lists every vendored component with source URL and licence, and retains each MIT notice
+- [ ] **No Aceternity-derived source in the repository** — verified by grep, not by memory
+- [ ] Magic UI components taken from the Tailwind v3 catalogue, or translated per Appendix B
 
 ---
 
@@ -1034,7 +1115,9 @@ Pin these while working. Every one was verified at the URL given.
 
 ## One-line source-of-truth summary
 
-- **Aceternity UI** → structure and hero effects. `npx shadcn@latest add https://ui.aceternity.com/registry/<name>.json`. Verified Next-free. Licence **unverified**.
+- **Aceternity UI** → ⛔ **visual reference only, never vendored.** Its licence forbids redistributing source files "regardless of modifications", and this repo is public and MIT. Browse it for ideas; build from the MIT column in §6.0.
+- **Magic UI** (`magicui.design`, **MIT**) → the structural replacement. Tailwind v3 catalogue at **`v3.magicui.design`**. Uses `motion`, same as Animata.
+- **shadcn/ui** (**MIT**) → interactive primitives Magic UI lacks: dialog, tooltip, sidebar, carousel.
 - **Animata** (this is what "animaster" meant — no such library exists) → widgets and micro-interactions. `npx shadcn@latest add https://animata.design/r/<cat>/<slug>.json`. **MIT.** Needs `tailwindcss-animate` on Tailwind 3.4.
 - **21st.dev** → gap-filling via MCP: `npx @21st-dev/cli@latest init --client claude`. Per-author licences — check each. Free tier: 2 copies/day.
 - **recent.design** → inspiration and pattern validation. No API, no RSS; browse by `?category=`.

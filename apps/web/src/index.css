@@ -3,41 +3,133 @@
 @tailwind utilities;
 
 /*
- * Theme tokens — "field notebook" direction (2026-07 redesign).
- * A gardener's ledger: green-tinted ink on paper white, one deep leaf accent,
- * sharp corners, hairline borders. Metrics render in mono (font-mono) so the
- * numbers read like ledger entries. Light is the default; [data-theme="dark"]
- * on <html> flips every token to a near-black neutral tinted the same green.
+ * Theme tokens — "Glasshouse" v3.0 (supersedes the 2026-07 "field notebook"
+ * direction). The deep leaf green stops being ink on paper and becomes the
+ * living thing behind glass: translucent surfaces, directional glow, and depth
+ * carry hierarchy. The ledger survives underneath — metrics stay in font-mono,
+ * rules stay hairline, eyebrows stay uppercase — which is what keeps this from
+ * reading as generic glassmorphism.
+ *
+ * Dark is the primary theme: it was designed first and light is derived from
+ * it. That is a design statement, not a cascade one — the blocks below are
+ * still ordered light-then-dark on purpose. `:root` and `[data-theme='dark']`
+ * have identical specificity (0,1,0), so on <html data-theme="dark"> whichever
+ * block comes last wins. Light must therefore be declared first, as the base
+ * that dark overrides. Swapping these two blocks silently disables dark mode.
+ *
+ * Every colour in the app resolves through one of these custom properties and
+ * is mapped in tailwind.config.js; no component hard-codes a colour. The React
+ * Native mirror is apps/mobile/src/theme.ts and must stay in lock-step.
  */
 :root,
 [data-theme='light'] {
-  --color-background: #f6f7f4;
-  --color-surface: #ffffff;
-  --color-primary: #226d3c;
-  --color-primary-hover: #1a5530;
-  --color-secondary: #38708f;
-  --color-tertiary: #9a6b0f;
-  --color-accent: #b3402e;
-  --color-text-main: #1b241e;
-  --color-text-muted: #5d6a61;
-  --color-border: #dce1da;
-  /* Text placed on a solid primary fill. Dark ink on the lighter dark-mode
-     green keeps WCAG AA; white passes only against the light-mode leaf. */
+  --color-background: #fbfcfa;
+  /* Banded section grounds — a second ground so a page can have rhythm
+     without every band needing a card. */
+  --color-background-alt: #f3f5f1;
+  /* Off-white rather than pure white; #FFFFFD reads as paper, #FFFFFF as a
+     screenshot. */
+  --color-surface: #fffffd;
+  --color-surface-raised: #ffffff;
+
+  /* Deepened from the v2.0 #226d3c: glass lifts the surface toward the ink,
+     so the leaf green needs more depth to hold 4.5:1 on a translucent card. */
+  --color-primary: #17603a;
+  --color-primary-hover: #0f4a2b;
+  /* Glow and highlight only. Never use this as a text or icon colour — it is
+     not contrast-checked as ink. */
+  --color-primary-glow: #34a867;
+  /* Text on a solid primary fill. Inverts between themes; see the dark block. */
   --color-on-primary: #ffffff;
+
+  --color-secondary: #2f6484;
+  --color-tertiary: #8a5e0c;
+  /* Darkened 4% from the specified #d6391a. That value measures 4.29:1 against
+     --color-background-alt and fails AA there; the banded grounds are new in
+     v3.0 and were not in the original contrast pass. This clears 4.5:1 on every
+     light surface (worst case 4.61 on background-alt) at an imperceptible cost
+     to the hue. */
+  --color-accent: #cd3719;
+
+  --color-text-main: #0c1410;
+  --color-text-muted: #55625a;
+  --color-border: #dde3dc;
+
+  /* Glass. --glass-bg is composited over --color-background at render time, so
+     any contrast claim about ink on glass has to be measured against that
+     composite, not against this value. */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(12, 20, 16, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-blur: 14px;
+
+  /* Glow — consumed in box-shadow, never as a colour. */
+  --glow-primary: 0 0 0 1px rgba(23, 96, 58, 0.1), 0 8px 28px -10px rgba(23, 96, 58, 0.28);
+  --glow-accent: 0 0 0 1px rgba(214, 57, 26, 0.12), 0 8px 28px -10px rgba(214, 57, 26, 0.25);
+  --glow-soft: 0 1px 0 0 var(--glass-highlight), 0 10px 32px -14px rgba(12, 20, 16, 0.18);
+
+  /* Elevation. v2.0 banned box-shadow outright; v3.0 permits exactly four
+     steps, so depth stays a system rather than a per-component guess. */
+  --shadow-1: 0 1px 2px rgba(12, 20, 16, 0.06);
+  --shadow-2: 0 4px 16px -4px rgba(12, 20, 16, 0.1);
+  --shadow-3: 0 12px 40px -12px rgba(12, 20, 16, 0.14);
+  --shadow-4: 0 24px 64px -16px rgba(12, 20, 16, 0.18);
 }
 
 [data-theme='dark'] {
-  --color-background: #0b0e0c;
-  --color-surface: #141815;
+  --color-background: #050807;
+  --color-background-alt: #0a0f0c;
+  --color-surface: #0f1512;
+  --color-surface-raised: #151d19;
+
   --color-primary: #46a96c;
   --color-primary-hover: #5fbf80;
+  --color-primary-glow: #6ee7a0;
+  /* Inverts. White on this green measures 2.94:1 and fails AA; the near-black
+     ground measures 6.85:1 and passes. This token exists to make that
+     impossible to get wrong, so do not set it to white. */
+  --color-on-primary: #050807;
+
   --color-secondary: #6fa7c7;
   --color-tertiary: #c99a3c;
-  --color-accent: #d96c57;
+  /* Hotter than v2.0's #d96c57 — one hot accent against a green-only system,
+     which is the structure the palette research pointed at. */
+  --color-accent: #ff5a2b;
+
   --color-text-main: #ecf0ec;
   --color-text-muted: #8b968d;
-  --color-border: #242a25;
-  --color-on-primary: #0b0e0c;
+  --color-border: #232b26;
+
+  --glass-bg: rgba(20, 28, 24, 0.55);
+  --glass-bg-strong: rgba(20, 28, 24, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-blur: 14px;
+
+  --glow-primary: 0 0 0 1px rgba(110, 231, 160, 0.14), 0 8px 32px -8px rgba(70, 169, 108, 0.45);
+  --glow-accent: 0 0 0 1px rgba(255, 90, 43, 0.18), 0 8px 32px -8px rgba(255, 90, 43, 0.4);
+  --glow-soft: 0 1px 0 0 var(--glass-highlight), 0 12px 40px -12px rgba(0, 0, 0, 0.65);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 16px -4px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+  --shadow-4: 0 24px 64px -16px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * Motion tokens. Theme-independent, so they sit in their own :root block that
+ * neither theme overrides. The contract: nothing animates longer than the
+ * reveal step, entrances grow rather than slide, and state changes use the
+ * flatter curve.
+ */
+:root {
+  --motion-micro: 120ms;
+  --motion-standard: 220ms;
+  --motion-entrance: 400ms;
+  --motion-reveal: 700ms;
+  --ease-entrance: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html,
@@ -104,10 +196,26 @@ body {
   font-size: 112.5%;
 }
 
+/*
+ * High contrast switches glass off entirely rather than merely tinting it.
+ * Translucency is what costs contrast, so a "high contrast glassmorphism" is a
+ * contradiction: the panes become opaque surfaces and the glow disappears.
+ * With the blur gone the border is the only thing separating a card from the
+ * ground, which is why both themes also darken (or lighten) it below.
+ */
+[data-high-contrast] {
+  --glass-bg: var(--color-surface);
+  --glass-bg-strong: var(--color-surface);
+  --glass-blur: 0px;
+  --glow-primary: none;
+  --glow-accent: none;
+  --glow-soft: none;
+}
+
 [data-high-contrast],
 [data-high-contrast][data-theme='light'] {
-  --color-border: #9aa39b;
-  --color-text-muted: #3f4a42;
+  --color-border: #8e9a90;
+  --color-text-muted: #38443c;
 }
 
 [data-high-contrast][data-theme='dark'] {
