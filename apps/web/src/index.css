@@ -230,6 +230,19 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /*
+     * Delay has to be cleared too, and it is the one people forget. Collapsing
+     * only the duration leaves a staggered list arriving one row at a time —
+     * and because the entrance animation is declared with fill-mode `both`,
+     * each row is held at opacity 0 through its delay and then hard-cuts in
+     * with no fade at all. That is precisely the jump-cut the motion contract
+     * forbids, delivered to the person who asked for less motion.
+     *
+     * `!important` here also beats the inline animationDelay a staggered list
+     * sets per row, which a non-important declaration could not.
+     */
+    animation-delay: 0ms !important;
+    transition-delay: 0ms !important;
   }
 }
 
@@ -244,6 +257,10 @@ body {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+  /* See the note in the media query above — clearing the delay is what stops a
+     staggered list becoming a sequence of jump-cuts. */
+  animation-delay: 0ms !important;
+  transition-delay: 0ms !important;
 }
 
 [data-larger-text] {

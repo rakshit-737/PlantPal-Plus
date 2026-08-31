@@ -21,6 +21,7 @@
  */
 import type {
   ButtonHTMLAttributes,
+  CSSProperties,
   InputHTMLAttributes,
   KeyboardEvent as ReactKeyboardEvent,
   ReactNode,
@@ -402,12 +403,20 @@ export function Combobox({
 export function Card({
   children,
   className = '',
+  style,
 }: {
   children: ReactNode
   className?: string
+  /**
+   * Escape hatch for values a class cannot carry. It exists for one thing —
+   * the per-row `animationDelay` a staggered list entrance needs, which is a
+   * different number on every row and so cannot be a Tailwind utility.
+   */
+  style?: CSSProperties | undefined
 }) {
   return (
     <div
+      style={style}
       className={`rounded-lg border border-glass-border bg-glass p-lg shadow-glass backdrop-blur-glass ${className}`}
     >
       {children}
@@ -761,11 +770,18 @@ export function StatCard({
   value,
   sub,
   accent,
+  subTone = 'text-text-muted',
 }: {
   label: string
   value: string
   sub: string
   accent: string
+  /**
+   * Tone for the context line. Optional and muted by default — it exists so a
+   * tile can raise its own alarm without a second component: an overdue count
+   * is the one thing on this grid that should not read as quiet context.
+   */
+  subTone?: string
 }) {
   const shown = useCountUp(value)
   return (
@@ -779,8 +795,30 @@ export function StatCard({
         <span className="sr-only">{value}</span>
         <span aria-hidden>{shown}</span>
       </p>
-      <p className="mt-xs font-mono text-xs text-text-muted">{sub}</p>
+      <p className={`mt-xs font-mono text-xs ${subTone}`}>{sub}</p>
     </Card>
+  )
+}
+
+/**
+ * A placeholder for content that has not arrived yet.
+ *
+ * Deliberately static. The motion contract permits exactly two looping
+ * animations app-wide — the spinner and the ambient mesh — so a shimmer would
+ * be a third; it would also collapse to a single frame under reduced motion,
+ * where every animation is forced to one iteration. The shape carries the
+ * meaning instead of the movement.
+ *
+ * Size it to match what it replaces. A skeleton that is not dimensionally
+ * honest just trades a spinner for a layout shift, which is the thing it
+ * exists to prevent.
+ */
+export function Skeleton({ className = '' }: { className?: string }) {
+  // The test id is the only handle a test has on these: they are aria-hidden by
+  // design, so every accessible query is blind to them, and a placeholder that
+  // silently stops rendering is invisible in review too.
+  return (
+    <div aria-hidden data-testid="skeleton" className={`rounded-sm bg-border-control/30 ${className}`} />
   )
 }
 
