@@ -31,7 +31,7 @@ export function LoginPage() {
       if (res.account_pending_deletion) {
         navigate('/settings?recover=1', { replace: true })
       } else {
-        navigate(from ?? '/', { replace: true })
+        navigate(from ?? '/dashboard', { replace: true })
       }
     } catch (err) {
       setError(authErrorMessage(err))

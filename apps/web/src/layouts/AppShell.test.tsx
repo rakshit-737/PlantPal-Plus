@@ -91,6 +91,14 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('link', { name: 'Nutrition' }).length).toBeGreaterThan(0)
   })
 
+  it('hides the Nutrition tab when nutrition is disabled', () => {
+    settingsValue = settings({ nutrition_enabled: false })
+    renderShell()
+    expect(screen.queryAllByRole('link', { name: 'Nutrition' })).toHaveLength(0)
+    expect(screen.getAllByRole('link', { name: 'Plants' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'Fitness' }).length).toBeGreaterThan(0)
+  })
+
   it('keeps a tab bar even with only one module enabled (Invariant 34 floor)', () => {
     settingsValue = settings({ fitness_enabled: false, nutrition_enabled: false })
     renderShell()

@@ -3,9 +3,28 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    /*
+     * "node" is here for the token contract test, which reads index.css off
+     * disk to measure the real shipped values rather than a copy of them.
+     * Vite's `?raw` would have avoided this, but vitest runs with `css: false`
+     * and returns an empty string for any CSS import, `?raw` included.
+     */
+    "types": ["vite/client", "node"],
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+
+    /*
+     * Adapted vendor components (Aceternity, Animata, 21st.dev) are published
+     * against the shadcn convention and import `@/lib/utils`. The alias has to
+     * exist in three places to work everywhere: here for the editor and
+     * `tsc --noEmit`, in vite.config.ts for dev and build, and in
+     * vitest.config.ts for jsdom — that last one is a separate file and is the
+     * easy one to miss.
+     */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

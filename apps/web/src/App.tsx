@@ -1,22 +1,55 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
+import { lazy, Suspense, type ReactNode } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
+import { useAuth } from './auth/AuthContext'
 import { AuthProvider } from './auth/AuthContext'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { ToastProvider } from './components/ui'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { useTheme } from './hooks/useTheme'
 import { AppShell } from './layouts/AppShell'
-import { AchievementsPage } from './pages/AchievementsPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { FitnessPage } from './pages/FitnessPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
-import { NutritionPage } from './pages/NutritionPage'
-import { OnboardingPage } from './pages/OnboardingPage'
-import { PlantDetailPage } from './pages/PlantDetailPage'
-import { PlantsPage } from './pages/PlantsPage'
 import { RegisterPage } from './pages/RegisterPage'
-import { SettingsPage } from './pages/SettingsPage'
 import { SettingsProvider } from './settings/SettingsContext'
+
+/*
+ * Route-level code splitting. Three routes stay in the initial bundle because
+ * they are the first thing someone sees: the two auth pages for a signed-out
+ * visitor, and the dashboard for a signed-in one. Everything else is fetched
+ * when it is first opened.
+ *
+ * Achievements matters most here — it is the route slated to carry the
+ * heaviest visual work and the least-visited one in the app. AppShell renders
+ * these inside a Suspense boundary in <main>, so the shell stays put while a
+ * chunk loads.
+ */
+const AchievementsPage = lazy(() =>
+  import('./pages/AchievementsPage').then((m) => ({ default: m.AchievementsPage })),
+)
+const FitnessPage = lazy(() =>
+  import('./pages/FitnessPage').then((m) => ({ default: m.FitnessPage })),
+)
+const NutritionPage = lazy(() =>
+  import('./pages/NutritionPage').then((m) => ({ default: m.NutritionPage })),
+)
+const OnboardingPage = lazy(() =>
+  import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })),
+)
+const PlantDetailPage = lazy(() =>
+  import('./pages/PlantDetailPage').then((m) => ({ default: m.PlantDetailPage })),
+)
+const PlantsPage = lazy(() =>
+  import('./pages/PlantsPage').then((m) => ({ default: m.PlantsPage })),
+)
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+)
+const LandingPage = lazy(() =>
+  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
+)
 
 /**
  * Mounts the theme hook at the root so every route — including /login and
@@ -28,49 +61,100 @@ function ThemeBoot() {
   return null
 }
 
+/**
+ * Applies the reduce-motion decision to every animation in the app from one
+ * place. Motion defaults to ignoring the user's preference entirely, so this
+ * has to be wired explicitly: `always` suppresses animation, `user` defers to
+ * the OS query. useReducedMotion already folds the in-app toggle into that
+ * answer.
+ *
+ * It wraps `children` rather than living inside App's own return so that a
+ * toggle re-renders this component alone — `children` arrives as the same
+ * element and React skips the subtree. Components that need to branch on the
+ * value themselves call the same hook; none should read matchMedia directly.
+ */
+function MotionBoot({ children }: { children: ReactNode }) {
+  const reduced = useReducedMotion()
+  return <MotionConfig reducedMotion={reduced ? 'always' : 'user'}>{children}</MotionConfig>
+}
+
+/**
+ * `/` means two different things depending on who is asking. A signed-out
+ * visitor gets the landing page — the demo used to drop strangers onto a login
+ * form, which asks them to authenticate before saying what the product is. A
+ * signed-in one is sent to the dashboard.
+ *
+ * The wait for the bootstrap refresh is deliberately blank rather than a
+ * spinner: it usually resolves within a frame or two, and a flash of loading
+ * state before the hero is worse than nothing at all.
+ */
+function RootRoute() {
+  const { isAuthenticated, isLoading } = useAuth()
+  if (isLoading) return null
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  return <LandingPage />
+}
+
 export function App() {
   return (
-    <AuthProvider>
-      <ThemeBoot />
-      <ToastProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <Routes>
-          {/* Public auth routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+    <MotionBoot>
+      <AuthProvider>
+        <ThemeBoot />
+        <ToastProvider>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Routes>
+              {/*
+                Public. The landing page is lazy like the interior routes, so
+                its weight never reaches someone who only ever opens the
+                dashboard — it needs its own Suspense because it renders
+                outside the shell, which owns the boundary for everything else.
+              */}
+              <Route
+                path="/"
+                element={
+                  <Suspense fallback={null}>
+                    <RootRoute />
+                  </Suspense>
+                }
+              />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated app */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <SettingsProvider>
-                  <AppShell />
-                </SettingsProvider>
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/" element={<DashboardPage />} />
-            {/*
-              Onboarding lives inside the shell and is reached by link only.
-              Nothing redirects into it: no endpoint exposes
-              profiles.onboarding_completed_at (see OnboardingPage's header),
-              so the app cannot distinguish a new account from a returning one.
-              Once the API surfaces that flag, gate the redirect here.
-            */}
-            <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/plants" element={<PlantsPage />} />
-            <Route path="/plants/:id" element={<PlantDetailPage />} />
-            <Route path="/fitness" element={<FitnessPage />} />
-            <Route path="/nutrition" element={<NutritionPage />} />
-            <Route path="/achievements" element={<AchievementsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
+              {/* Authenticated app */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <SettingsProvider>
+                      <AppShell />
+                    </SettingsProvider>
+                  </ProtectedRoute>
+                }
+              >
+                {/* The app lives under /dashboard now that / is the public
+                    landing page. */}
+                <Route path="/dashboard" element={<DashboardPage />} />
+                {/*
+                  Onboarding lives inside the shell and is reached by link only.
+                  Nothing redirects into it: no endpoint exposes
+                  profiles.onboarding_completed_at (see OnboardingPage's header),
+                  so the app cannot distinguish a new account from a returning one.
+                  Once the API surfaces that flag, gate the redirect here.
+                */}
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/plants" element={<PlantsPage />} />
+                <Route path="/plants/:id" element={<PlantDetailPage />} />
+                <Route path="/fitness" element={<FitnessPage />} />
+                <Route path="/nutrition" element={<NutritionPage />} />
+                <Route path="/achievements" element={<AchievementsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
 
-          {/* Unknown paths get a real 404 rather than a silent redirect. */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        </BrowserRouter>
-      </ToastProvider>
-    </AuthProvider>
+              {/* Unknown paths get a real 404 rather than a silent redirect. */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
+    </MotionBoot>
   )
 }

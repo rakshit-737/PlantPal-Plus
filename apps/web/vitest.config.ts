@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
@@ -11,6 +13,13 @@ import { defineConfig } from 'vitest/config'
  */
 export default defineConfig({
   plugins: [react()],
+  // The `@/*` alias is declared three times — here, in vite.config.ts and in
+  // tsconfig.json. Because this config is separate from the app's, omitting it
+  // here breaks every test that renders a vendor component, while dev and
+  // build stay green.
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

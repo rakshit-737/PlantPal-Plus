@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/AuthContext'
-import { Button } from '../components/ui'
+import { Button, Spinner } from '../components/ui'
 import { useTheme } from '../hooks/useTheme'
 import { NAV_ITEMS } from '../navigation/navItems'
 import { useSettings } from '../settings/SettingsContext'
@@ -72,14 +72,18 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-full bg-background">
+      {/* Decorative, and behind everything: the shell's own layers are given an
+          explicit z-index rather than relying on paint order. */}
+      <div aria-hidden className="app-aurora pointer-events-none fixed inset-0 z-0" />
+
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-md focus:top-md focus:z-[70] focus:rounded-sm focus:border focus:border-border focus:bg-surface focus:px-md focus:py-sm focus:text-sm focus:font-medium focus:text-text-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-md focus:top-md focus:z-[70] focus:rounded-md focus:border focus:border-border-control focus:bg-surface-raised focus:px-md focus:py-sm focus:text-sm focus:font-medium focus:text-text-main focus:shadow-3"
       >
         Skip to content
       </a>
 
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface p-md md:flex">
+      <aside className="relative z-10 hidden w-64 shrink-0 flex-col border-r border-glass-border bg-glass p-md backdrop-blur-glass md:flex">
         <div className="mb-sm flex items-center gap-sm px-sm">
           <SproutMark />
           <span className="font-heading text-xl font-extrabold tracking-tight text-text-main">
@@ -95,11 +99,14 @@ export function AppShell() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              // Active is lit rather than inverted: v2.0 stamped the current
+              // item as a solid ink block, which in a glass world reads as a
+              // hole punched through the pane. Light behind the glass instead.
               className={({ isActive }) =>
-                `flex items-center gap-sm rounded-sm px-md py-sm text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                `flex items-center gap-sm rounded-md px-md py-sm text-sm font-medium transition-[background-color,color,box-shadow] duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   isActive
-                    ? 'bg-text-main text-background'
-                    : 'text-text-muted hover:bg-background hover:text-text-main'
+                    ? 'bg-primary/15 text-text-main shadow-glow-primary'
+                    : 'text-text-muted hover:bg-primary/10 hover:text-text-main'
                 }`
               }
             >
@@ -108,7 +115,7 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-lg flex flex-col gap-sm border-t border-border pt-md">
+        <div className="mt-lg flex flex-col gap-sm border-t border-glass-border pt-md">
           <Button variant="ghost" onClick={toggle} className="justify-start">
             {theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
           </Button>
@@ -127,14 +134,33 @@ export function AppShell() {
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className="flex-1 overflow-y-auto p-lg pb-[calc(84px+env(safe-area-inset-bottom))] outline-none md:p-xl md:pb-xl"
+        className="relative z-10 flex-1 overflow-y-auto p-lg pb-[calc(84px+env(safe-area-inset-bottom))] outline-none md:p-xl md:pb-xl"
       >
-        <Outlet />
+        {/*
+          The boundary sits inside <main>, not around the router, so a
+          code-split route loads without the shell unmounting and reappearing.
+          Focus has already moved here by then, so the spinner is what the user
+          is pointed at.
+        */}
+        <Suspense
+          fallback={
+            <div className="flex min-h-[40vh] items-center justify-center">
+              <Spinner size="lg" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
-      {/* Mobile: bottom tab bar mirrors the sidebar (same NAV_ITEMS). */}
+      {/*
+        Mobile: bottom tab bar mirrors the sidebar (same NAV_ITEMS). Kept as a
+        tab bar rather than becoming a floating dock — the dock's whole idea is
+        cursor-proximity magnification, which does not exist on touch, and it
+        would trade a full-width thumb target for a smaller centred one.
+      */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-glass-border bg-glass-strong pb-[env(safe-area-inset-bottom)] backdrop-blur-glass md:hidden"
         aria-label="Primary"
       >
         {visibleItems.map((item) => (
@@ -143,7 +169,7 @@ export function AppShell() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-[2px] py-sm text-[10px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+              `flex flex-1 flex-col items-center gap-[2px] py-sm text-[10px] font-medium transition-colors duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
                 isActive ? 'text-primary' : 'text-text-muted'
               }`
             }

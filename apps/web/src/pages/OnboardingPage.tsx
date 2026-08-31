@@ -214,7 +214,7 @@ function OnboardingFlow({ initial }: { initial: UserSettings }) {
 
   function skip() {
     toast.info('Setup skipped. Your defaults are unchanged — adjust them in Settings.')
-    navigate('/')
+    navigate('/dashboard')
   }
 
   async function finish() {
@@ -227,7 +227,7 @@ function OnboardingFlow({ initial }: { initial: UserSettings }) {
     try {
       await update(draft)
       toast.success('Setup saved')
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       const message =
         err instanceof ApiError && err.code === 'NETWORK_ERROR'

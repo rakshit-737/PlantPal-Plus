@@ -3,41 +3,141 @@
 @tailwind utilities;
 
 /*
- * Theme tokens — "field notebook" direction (2026-07 redesign).
- * A gardener's ledger: green-tinted ink on paper white, one deep leaf accent,
- * sharp corners, hairline borders. Metrics render in mono (font-mono) so the
- * numbers read like ledger entries. Light is the default; [data-theme="dark"]
- * on <html> flips every token to a near-black neutral tinted the same green.
+ * Theme tokens — "Glasshouse" v3.0 (supersedes the 2026-07 "field notebook"
+ * direction). The deep leaf green stops being ink on paper and becomes the
+ * living thing behind glass: translucent surfaces, directional glow, and depth
+ * carry hierarchy. The ledger survives underneath — metrics stay in font-mono,
+ * rules stay hairline, eyebrows stay uppercase — which is what keeps this from
+ * reading as generic glassmorphism.
+ *
+ * Dark is the primary theme: it was designed first and light is derived from
+ * it. That is a design statement, not a cascade one — the blocks below are
+ * still ordered light-then-dark on purpose. `:root` and `[data-theme='dark']`
+ * have identical specificity (0,1,0), so on <html data-theme="dark"> whichever
+ * block comes last wins. Light must therefore be declared first, as the base
+ * that dark overrides. Swapping these two blocks silently disables dark mode.
+ *
+ * Every colour in the app resolves through one of these custom properties and
+ * is mapped in tailwind.config.js; no component hard-codes a colour. The React
+ * Native mirror is apps/mobile/src/theme.ts and must stay in lock-step.
  */
 :root,
 [data-theme='light'] {
-  --color-background: #f6f7f4;
-  --color-surface: #ffffff;
-  --color-primary: #226d3c;
-  --color-primary-hover: #1a5530;
-  --color-secondary: #38708f;
-  --color-tertiary: #9a6b0f;
-  --color-accent: #b3402e;
-  --color-text-main: #1b241e;
-  --color-text-muted: #5d6a61;
-  --color-border: #dce1da;
-  /* Text placed on a solid primary fill. Dark ink on the lighter dark-mode
-     green keeps WCAG AA; white passes only against the light-mode leaf. */
+  --color-background: #fbfcfa;
+  /* Banded section grounds — a second ground so a page can have rhythm
+     without every band needing a card. */
+  --color-background-alt: #f3f5f1;
+  /* Off-white rather than pure white; #FFFFFD reads as paper, #FFFFFF as a
+     screenshot. */
+  --color-surface: #fffffd;
+  --color-surface-raised: #ffffff;
+
+  /* Deepened from the v2.0 #226d3c: glass lifts the surface toward the ink,
+     so the leaf green needs more depth to hold 4.5:1 on a translucent card. */
+  --color-primary: #17603a;
+  --color-primary-hover: #0f4a2b;
+  /* Glow and highlight only. Never use this as a text or icon colour — it is
+     not contrast-checked as ink. */
+  --color-primary-glow: #34a867;
+  /* Text on a solid primary fill. Inverts between themes; see the dark block. */
   --color-on-primary: #ffffff;
+
+  --color-secondary: #2f6484;
+  --color-tertiary: #8a5e0c;
+  /* Darkened 4% from the specified #d6391a. That value measures 4.29:1 against
+     --color-background-alt and fails AA there; the banded grounds are new in
+     v3.0 and were not in the original contrast pass. This clears 4.5:1 on every
+     light surface (worst case 4.61 on background-alt) at an imperceptible cost
+     to the hue. */
+  --color-accent: #cd3719;
+
+  --color-text-main: #0c1410;
+  --color-text-muted: #55625a;
+  /* Decorative hairlines ONLY. At 1.27:1 against the ground this is far below
+     the 3:1 WCAG 1.4.11 needs, which is fine for a rule that merely separates
+     content and not fine for anything a user has to find and operate. */
+  --color-border: #dde3dc;
+  /* Every interactive boundary — inputs, selects, comboboxes, the secondary
+     button. Clears 3:1 on all four light grounds and on light glass. */
+  --color-border-control: #898f8b;
+
+  /* Glass. --glass-bg is composited over --color-background at render time, so
+     any contrast claim about ink on glass has to be measured against that
+     composite, not against this value. */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(12, 20, 16, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-blur: 14px;
+
+  /* Glow — consumed in box-shadow, never as a colour. */
+  --glow-primary: 0 0 0 1px rgba(23, 96, 58, 0.1), 0 8px 28px -10px rgba(23, 96, 58, 0.28);
+  --glow-accent: 0 0 0 1px rgba(214, 57, 26, 0.12), 0 8px 28px -10px rgba(214, 57, 26, 0.25);
+  --glow-soft: 0 1px 0 0 var(--glass-highlight), 0 10px 32px -14px rgba(12, 20, 16, 0.18);
+
+  /* Elevation. v2.0 banned box-shadow outright; v3.0 permits exactly four
+     steps, so depth stays a system rather than a per-component guess. */
+  --shadow-1: 0 1px 2px rgba(12, 20, 16, 0.06);
+  --shadow-2: 0 4px 16px -4px rgba(12, 20, 16, 0.1);
+  --shadow-3: 0 12px 40px -12px rgba(12, 20, 16, 0.14);
+  --shadow-4: 0 24px 64px -16px rgba(12, 20, 16, 0.18);
 }
 
 [data-theme='dark'] {
-  --color-background: #0b0e0c;
-  --color-surface: #141815;
+  --color-background: #050807;
+  --color-background-alt: #0a0f0c;
+  --color-surface: #0f1512;
+  --color-surface-raised: #151d19;
+
   --color-primary: #46a96c;
   --color-primary-hover: #5fbf80;
+  --color-primary-glow: #6ee7a0;
+  /* Inverts. White on this green measures 2.94:1 and fails AA; the near-black
+     ground measures 6.85:1 and passes. This token exists to make that
+     impossible to get wrong, so do not set it to white. */
+  --color-on-primary: #050807;
+
   --color-secondary: #6fa7c7;
   --color-tertiary: #c99a3c;
-  --color-accent: #d96c57;
+  /* Hotter than v2.0's #d96c57 — one hot accent against a green-only system,
+     which is the structure the palette research pointed at. */
+  --color-accent: #ff5a2b;
+
   --color-text-main: #ecf0ec;
   --color-text-muted: #8b968d;
-  --color-border: #242a25;
-  --color-on-primary: #0b0e0c;
+  /* Decorative hairlines ONLY — 1.38:1. See the light block. */
+  --color-border: #232b26;
+  --color-border-control: #646866;
+
+  --glass-bg: rgba(20, 28, 24, 0.55);
+  --glass-bg-strong: rgba(20, 28, 24, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-blur: 14px;
+
+  --glow-primary: 0 0 0 1px rgba(110, 231, 160, 0.14), 0 8px 32px -8px rgba(70, 169, 108, 0.45);
+  --glow-accent: 0 0 0 1px rgba(255, 90, 43, 0.18), 0 8px 32px -8px rgba(255, 90, 43, 0.4);
+  --glow-soft: 0 1px 0 0 var(--glass-highlight), 0 12px 40px -12px rgba(0, 0, 0, 0.65);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 16px -4px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+  --shadow-4: 0 24px 64px -16px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * Motion tokens. Theme-independent, so they sit in their own :root block that
+ * neither theme overrides. The contract: nothing animates longer than the
+ * reveal step, entrances grow rather than slide, and state changes use the
+ * flatter curve.
+ */
+:root {
+  --motion-micro: 120ms;
+  --motion-standard: 220ms;
+  --motion-entrance: 400ms;
+  --motion-reveal: 700ms;
+  --ease-entrance: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html,
@@ -59,21 +159,68 @@ body {
   color: var(--color-on-primary);
 }
 
-/* Toast entrance — a short rise, like a stamp landing. The reduced-motion
-   block below zeroes it for users who ask. */
+/* Toast entrance. Growth rather than a slide, per the v3.0 motion contract —
+   the toast scales up into place instead of rising. The reduced-motion block
+   below zeroes it for users who ask, which leaves the toast simply present. */
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
 .toast-enter {
-  animation: toast-in 160ms ease-out;
+  animation: toast-in var(--motion-standard) var(--ease-entrance);
+}
+
+/*
+ * Ambient mesh — condensation on the glass. Three very low opacity radial
+ * washes drifting across the app ground, which give the panes something to sit
+ * on: glass over a flat fill reads as a grey box.
+ *
+ * This is one of exactly two animations permitted to loop app-wide (the other
+ * is the spinner). It is CSS-only and purely decorative, so it costs no
+ * JavaScript and carries aria-hidden at the call site. The reduce-motion rules
+ * below collapse the duration, which parks it on its final frame — static, and
+ * still doing its job.
+ */
+.app-aurora {
+  background-image:
+    radial-gradient(
+      60rem 40rem at 12% 8%,
+      color-mix(in srgb, var(--color-primary) 13%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      50rem 34rem at 88% 18%,
+      color-mix(in srgb, var(--color-secondary) 10%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      46rem 46rem at 50% 104%,
+      color-mix(in srgb, var(--color-primary-glow) 9%, transparent),
+      transparent 65%
+    );
+  animation: aurora-drift 44s var(--ease-state) infinite alternate;
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(1.5%, 1%, 0) scale(1.08);
+  }
+}
+
+/* High contrast removes it outright: every wash costs a little contrast, and
+   this mode trades atmosphere for legibility everywhere else already. */
+[data-high-contrast] .app-aurora {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -83,6 +230,19 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /*
+     * Delay has to be cleared too, and it is the one people forget. Collapsing
+     * only the duration leaves a staggered list arriving one row at a time —
+     * and because the entrance animation is declared with fill-mode `both`,
+     * each row is held at opacity 0 through its delay and then hard-cuts in
+     * with no fade at all. That is precisely the jump-cut the motion contract
+     * forbids, delivered to the person who asked for less motion.
+     *
+     * `!important` here also beats the inline animationDelay a staggered list
+     * sets per row, which a non-important declaration could not.
+     */
+    animation-delay: 0ms !important;
+    transition-delay: 0ms !important;
   }
 }
 
@@ -97,6 +257,10 @@ body {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+  /* See the note in the media query above — clearing the delay is what stops a
+     staggered list becoming a sequence of jump-cuts. */
+  animation-delay: 0ms !important;
+  transition-delay: 0ms !important;
 }
 
 [data-larger-text] {
@@ -104,13 +268,50 @@ body {
   font-size: 112.5%;
 }
 
+/*
+ * High contrast switches glass off entirely rather than merely tinting it.
+ * Translucency is what costs contrast, so a "high contrast glassmorphism" is a
+ * contradiction: the panes become opaque surfaces and the glow disappears.
+ * With the blur gone the border is the only thing separating a card from the
+ * ground, which is why both themes also darken (or lighten) it below.
+ */
+[data-high-contrast] {
+  --glass-bg: var(--color-surface);
+  --glass-bg-strong: var(--color-surface);
+  --glass-blur: 0px;
+  /*
+   * `0 0 #0000` and not `none`. These tokens get composed into shadow lists —
+   * Tailwind emits `box-shadow: <ring-offset>, <ring>, var(--tw-shadow)` for
+   * any element carrying both a focus ring and a shadow. `none` is only valid
+   * as the whole property, so a single `none` in that list makes the entire
+   * declaration invalid and the browser drops it, taking the focus ring with
+   * it. That would remove focus indication in the exact mode that needs it
+   * most. A transparent zero-size shadow is the same nothing, safely.
+   */
+  --glow-primary: 0 0 #0000;
+  --glow-accent: 0 0 #0000;
+  --glow-soft: 0 0 #0000;
+}
+
+/*
+ * The obvious high-contrast borders do not actually clear 3:1 — #4a544c
+ * measures 2.34:1 on the dark surface and #8e9a90 measures 2.92:1 on the light
+ * one. So in this mode the decorative border is promoted to the control
+ * token's strength, and the control token goes stronger still.
+ *
+ * The bare [data-high-contrast] is a deliberate fallback for the case where
+ * high contrast is on before a data-theme attribute exists. It cannot override
+ * the dark rule below, which matches two attributes to its one.
+ */
 [data-high-contrast],
 [data-high-contrast][data-theme='light'] {
-  --color-border: #9aa39b;
-  --color-text-muted: #3f4a42;
+  --color-border: #898f8b;
+  --color-border-control: #6b726d;
+  --color-text-muted: #38443c;
 }
 
 [data-high-contrast][data-theme='dark'] {
-  --color-border: #4a544c;
+  --color-border: #646866;
+  --color-border-control: #7e8580;
   --color-text-muted: #b6c0b8;
 }
