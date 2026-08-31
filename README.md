@@ -22,7 +22,7 @@ This is a full software-engineering project delivered phase by phase, with every
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
 | 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
 | 3 — Implementation | ✅ Core complete — REST API (auth, account lifecycle, plants + growth log, fitness, nutrition + custom foods, dashboard, achievements, reminders + Expo Push, offline sync outbox, settings, engagement loop), web app (responsive, toasts, full error/retry states, accessible pickers), Expo mobile app with a durable offline outbox. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: binary photo upload (the growth log stores image links — see [Known gaps](#known-gaps)), email digest |
-| 4 — Testing | ✅ 307 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 158 API incl. a 12-test auth integration suite against real PostgreSQL (skipped without a `DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 72 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
+| 4 — Testing | ✅ 421 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 198 API incl. a 12-test auth integration suite against real PostgreSQL (skipped without a `DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 146 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
 | 5 — Documentation | ✅ Complete — install + deployment in this README, endpoint index in [docs/api-reference.md](docs/api-reference.md), OpenAPI 3.1 in [docs/architecture/](docs/architecture/) |
 | 6 — Deployment | 🟡 In progress — website live on GitHub Pages ([demo](https://rakshit-737.github.io/PlantPal-Plus/)); API one-click via render.yaml; mobile via EAS |
 
@@ -37,7 +37,7 @@ This is a full software-engineering project delivered phase by phase, with every
 | Use cases with full specifications | 89 |
 | Mermaid diagrams | 119 |
 
-Start at **[docs/requirements/SRS.md](docs/requirements/SRS.md)** for the Software Requirements Specification, or **[docs/requirements/README.md](docs/requirements/README.md)** for a guided reading path.
+Start at **[docs/](docs/)** for an index of everything written down, **[docs/requirements/SRS.md](docs/requirements/SRS.md)** for the Software Requirements Specification, or **[docs/requirements/README.md](docs/requirements/README.md)** for a guided reading path.
 
 ---
 
@@ -66,7 +66,7 @@ git clone https://github.com/rakshit-737/PlantPal-Plus.git
 cd PlantPal-Plus
 npm install
 
-npm test            # run every workspace's tests (307; the 12 auth integration
+npm test            # run every workspace's tests (421; the 12 auth integration
                     # tests skip themselves unless DATABASE_URL is set)
 npm run typecheck   # strict TypeScript across all packages
 ```

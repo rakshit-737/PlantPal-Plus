@@ -69,13 +69,14 @@ pgdata/
 .scratch/
 tmp/
 
-# Local agent/tooling state (not project source)
+# Local agent and tooling state — machine-specific, never project source.
+# .claude/ holds settings.local.json, which is per-developer and has no
+# business in a public repository.
+.agents/
+.claude/
 .opencode/
-.opencode
+.neon
+skills-lock.json
+
 # Graphify knowledge-graph output
 graphify-out/
-
-# Local tool state
-.neon
-.agents/
-skills-lock.json

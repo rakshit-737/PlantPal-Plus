@@ -57,4 +57,4 @@ GitHub Pages serves the demo, but its cross-origin refresh cookie is blocked
 by Safari. [vercel.json](../vercel.json) is ready: import the repo at
 https://vercel.com/new (defaults work), then add the assigned domain (e.g.
 `https://plantpal.vercel.app`) to `CORS_ORIGINS` in the Render dashboard.
-Details: [docs/deploy-vercel.md](deploy-vercel.md).
+Details: [docs/deployment/vercel.md](vercel.md).
