@@ -35,7 +35,7 @@ import process from 'node:process'
 import express from 'express'
 
 import { createApp } from '../src/app.ts'
-import { loadEnv } from '../src/config/env.ts'
+import { configureEnv } from '../src/config/env.ts'
 import { initPool } from '../src/db/pool.ts'
 import { logger } from '../src/logging.ts'
 import { runPurgePass } from '../src/modules/account/purgeService.ts'
@@ -93,8 +93,12 @@ const publicOrigin = new URL(Deno.env.get('SUPABASE_URL') ?? 'https://localhost'
  * bypassing it. A missing or malformed value must fail here, at boot, with the
  * same message it would produce on Render — not at the first request that
  * happens to need it.
+ *
+ * `configureEnv`, not `loadEnv`: this configuration has to be the one every
+ * module sees. `loadEnv` would validate it and hand it back, leaving `env()`
+ * to lazily load `process.env` instead — which on this host holds none of it.
  */
-const env = loadEnv({
+const env = configureEnv({
   ...process.env,
   NODE_ENV: 'production',
   DATABASE_URL: databaseUrl,

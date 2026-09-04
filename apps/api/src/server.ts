@@ -7,7 +7,7 @@
  */
 
 import { createApp } from './app.ts'
-import { loadEnv } from './config/env.ts'
+import { configureEnv } from './config/env.ts'
 import { initPool } from './db/pool.ts'
 import { runMigrations } from './db/migrate.ts'
 import { runSeeds } from './db/seed.ts'
@@ -15,7 +15,7 @@ import { logger } from './logging.ts'
 import { startPurgeJob, stopPurgeJob } from './modules/account/purgeService.ts'
 import { startReminderEngine, stopReminderEngine } from './modules/reminders/reminderService.ts'
 
-const env = loadEnv()
+const env = configureEnv()
 initPool(env.DATABASE_URL)
 
 // Run migrations at boot so every deploy is self-migrating. The migration runner
