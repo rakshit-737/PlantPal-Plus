@@ -28,6 +28,13 @@ export interface AppOptions {
   corsOrigins: string[]
   /** FR-SYS-21 — request body size limit. */
   bodyLimit?: string
+  /**
+   * Path prefix the host mounts this app under, e.g. `/functions/v1/plantpal`
+   * on Supabase Edge Functions. Stripped before routing so every route below
+   * stays written at its canonical path and no module has to know where the
+   * app is deployed. Omit for a deployment served at the domain root.
+   */
+  basePath?: string
   /** Authentication middleware, optionally replaced in tests. */
   authenticate?: typeof import('./modules/auth/authController.ts').authenticate
 }
@@ -40,6 +47,31 @@ export function createApp(options: AppOptions): Express {
   // spoof X-Forwarded-For and defeat per-IP limits.
   app.set('trust proxy', 1)
   app.disable('x-powered-by')
+
+  /*
+   * Strip the host's mount prefix before anything reads the path, so every
+   * route below stays written at its canonical path.
+   *
+   * `req.originalUrl` is rewritten alongside `req.url`. Express stamps it once,
+   * before the stack runs, and it is the value a later diagnostic reaches for
+   * when it wants "the URL as sent" — leaving it prefixed here would make the
+   * two disagree for the rest of the request's life. Nothing in this codebase
+   * reads it today; the point is that the next thing to read it gets a path
+   * consistent with the one the routes matched.
+   */
+  const basePath = options.basePath?.replace(/\/+$/, '')
+  if (basePath) {
+    app.use((req, _res, next) => {
+      if (req.url === basePath) {
+        req.url = '/'
+        req.originalUrl = '/'
+      } else if (req.url.startsWith(`${basePath}/`)) {
+        req.url = req.url.slice(basePath.length)
+        req.originalUrl = req.url
+      }
+      next()
+    })
+  }
 
   app.use(requestId)
   app.use(helmet())

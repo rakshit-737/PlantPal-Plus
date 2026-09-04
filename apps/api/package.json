@@ -2,7 +2,7 @@
   "name": "@plantpal/api",
   "version": "0.1.0",
   "private": true,
-  "description": "PlantPal+ REST API — Express + TypeScript",
+  "description": "PlantPal+ REST API \u2014 Express + TypeScript",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@plantpal/shared": "*",
-    "@types/cookie-parser": "^1.4.10",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -33,6 +32,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",

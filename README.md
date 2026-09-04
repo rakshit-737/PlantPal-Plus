@@ -176,10 +176,10 @@ TypeScript monorepo throughout. **Mobile:** React Native (Expo) + Expo Push. **W
 Stated plainly rather than left to be discovered:
 
 - **Photos are links, not uploads.** The growth log stores an image URL; there is no object-storage bucket, so a file picker would need a Supabase/Cloudinary/R2 account. The API validates that the link is `http(s)`.
-- **Quiet hours are recorded but not yet enforced.** The setting persists and the UI says only that; the reminder dispatcher does not read those columns yet.
-- **No purge sweep.** Requesting account deletion schedules a 30-day window and blocks session renewal, and cancelling restores the account — but no job yet deletes rows once `purge_after` has passed.
+- **No email delivery.** `DELETION_SCHEDULED`, `DELETION_CANCELLED` and `DELETION_COMPLETED` (BR-ACC-20 cl.11) are specified but no mail provider is wired, so the erasure sweep runs without sending the final message.
+- **Erasure is rows only, not objects.** The FR-ACC-22 sweep erases every row in BR-ACC-20 Table H, but rule 4's object-storage queue has nothing to talk to — there is no bucket (see the photo gap above), so there are no stored objects to enqueue.
 - **No password reset or email verification delivery.** Both token tables exist; there is no mail provider wired, so the UI does not offer a flow it cannot complete.
-- **Custom foods cannot be deleted** (200 per account), and reminders have no retry after a failed push — the in-app list is the delivery baseline.
+- **Reminders have no retry after a failed push** — the in-app list is the delivery baseline.
 
 ---
 

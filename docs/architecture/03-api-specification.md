@@ -154,7 +154,7 @@ The three literal paths are declared before `/:id`, so `exercises`, `personal-re
 
 ### 3.7 Account Lifecycle (implemented — `/api/v1/account`)
 
-Every route is authenticated and acts on the token subject alone — no account identifier is ever accepted from the request (`FR-ACC-23`). Nothing here erases data: the state change is soft and reversible for the whole window, and the irreversible sweep is `FR-ACC-22`'s job.
+Every route is authenticated and acts on the token subject alone — no account identifier is ever accepted from the request (`FR-ACC-23`). Nothing on these routes erases data: the state change is soft and reversible for the whole window. The irreversible half is `FR-ACC-22`'s hourly sweep (`purgeService`), which no route can reach.
 
 - **`GET /account`** — Current status and the countdown instants: `status`, `deletion_requested_at`, `purge_after`, `deletion_scheduled_at` (ISO-8601, or `null` outside the window). The schema calls the sweep instant `purge_after` where `FR-ACC-21` and the login response call it `deletion_scheduled_at`; both names are published, carrying the same value. A valid token whose user row has gone answers `401 AUTHENTICATION_REQUIRED` — the signal that makes a client drop its tokens.
 - **`POST /account/deletion`** — Schedules deletion and stamps a 30-day grace window (`BR-ACC-20` cl.1). Requires a step-up: the strict body is `{ "password": string }`, verified against the caller's stored hash (`FR-ACC-21` cl.1), so a stolen access token alone cannot schedule a deletion. A wrong password is `401 INVALID_CREDENTIALS` and never reaches the repository. `FR-ACC-21` also specifies `confirmation_phrase` and `reason`; neither is implemented, so sending either is a `422` rather than a silently discarded field — the typed-`DELETE` confirmation is enforced client-side only. **Idempotent** — a repeat confirmation returns the window already running, never re-stamps the instants (which would extend the deletion date), and flags the response with `already_pending: true`. The spec's alternate flow names `409 ACC_ALREADY_PENDING_DELETION`; `200` is returned instead so a double tap is not surfaced as a failure.
@@ -164,7 +164,5 @@ Every route is authenticated and acts on the token subject alone — no account 
 
 ## 4. Known Gaps
 
-- **No purge sweep job.** `FR-ACC-22`'s erasure pass over `BR-ACC-20` Table H does not exist; accounts past `purge_after` remain in `PENDING_DELETION` and retain their data until it is built.
-- **Quiet hours and the daily notification cap are stored but not applied.** The reminders module never reads `quiet_hours_mode`, `quiet_start_time`, `quiet_end_time` or `daily_notification_cap` — the dispatcher consults none of them when it delivers, so both settings currently only persist intent.
 - **Growth photos are links, not uploads.** There is no object storage and no upload endpoint (`BR-PLT-25` assumes one); `photo_url` must reference an image the user already hosts, and `photo_storage_key` falls back to that URL.
-- **No delete endpoint for custom foods.** A created food cannot be removed through the API and keeps counting toward the 200-per-user ceiling.
+- **The erasure sweep sends no email and clears no object storage.** `FR-ACC-22` rule 2 dispatches `DELETION_COMPLETED` before the address is erased and rule 4 enqueues owned storage keys; neither has a provider wired, so the sweep erases rows silently. Rule 9's `410 ACC_ACCOUNT_DELETED` for a queued write naming an erased account is likewise absent — the token fails authentication first and the client sees `401`.

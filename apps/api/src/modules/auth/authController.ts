@@ -111,6 +111,31 @@ export async function enforceTimingFloor(
  * credential and need no gate. Fetch/XHR always attach Origin on POST, so a
  * missing header on a cookie-bearing POST is itself suspect and is refused.
  */
+/**
+ * Cookie attributes for the refresh token, in one place.
+ *
+ * The three call sites (login, refresh, logout) must agree exactly: a browser
+ * matches a clear against name *and* path, so a logout whose path differs from
+ * the login that set the cookie silently leaves the credential in place. Having
+ * written them out three times, the path is now read from configuration, and
+ * that is precisely the attribute that would have drifted.
+ */
+function refreshCookieOptions(): {
+  httpOnly: true
+  secure: true
+  sameSite: 'none'
+  path: string
+  maxAge: number
+} {
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: env().REFRESH_COOKIE_PATH,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  }
+}
+
 function assertTrustedOriginForCookieAuth(req: Request): void {
   const hasCookieCredential = Boolean(req.cookies?.refresh_token)
   if (!hasCookieCredential) return
@@ -335,13 +360,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     // Return refresh token as a cookie on web, raw on mobile (BR-ACC-07 clause 7).
     const isWeb = platform(req) === 'WEB'
     if (isWeb) {
-      res.cookie('refresh_token', session.refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/api/auth',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      })
+      res.cookie('refresh_token', session.refreshToken, refreshCookieOptions())
     } else {
       body.refresh_token = session.refreshToken
     }
@@ -403,13 +422,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     }
 
     if (isWeb) {
-      res.cookie('refresh_token', result.refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/api/auth',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      })
+      res.cookie('refresh_token', result.refreshToken, refreshCookieOptions())
     } else {
       body.refresh_token = result.refreshToken
     }
@@ -450,7 +463,7 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
       )
     }
 
-    res.clearCookie('refresh_token', { path: '/api/auth' })
+    res.clearCookie('refresh_token', { path: env().REFRESH_COOKIE_PATH })
     res.status(200).json({ status: 'logged_out' })
   } catch (err) {
     next(err)

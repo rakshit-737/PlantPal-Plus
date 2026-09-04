@@ -1,0 +1,15 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Generated deployment artefacts. deploy/api/index.js is an esbuild bundle and
+# deploy/web/ is a Vite build; both are committed because the deployed edge
+# functions load them from this repository (see deploy/README.md), and neither
+# is source anyone should format or review.
+deploy/api/
+deploy/web/assets/
+deploy/web/index.html
+
+# Lockfiles are npm's to format.
+package-lock.json

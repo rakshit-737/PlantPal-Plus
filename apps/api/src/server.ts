@@ -12,6 +12,7 @@ import { initPool } from './db/pool.ts'
 import { runMigrations } from './db/migrate.ts'
 import { runSeeds } from './db/seed.ts'
 import { logger } from './logging.ts'
+import { startPurgeJob, stopPurgeJob } from './modules/account/purgeService.ts'
 import { startReminderEngine, stopReminderEngine } from './modules/reminders/reminderService.ts'
 
 const env = loadEnv()
@@ -39,10 +40,14 @@ const server = app.listen(env.PORT, () => {
 // RSK-01: the reminder tick lives in this process. Keep /healthz pinged by an
 // external monitor so the free-tier instance does not sleep through it.
 startReminderEngine()
+// FR-ACC-22: the hourly erasure sweep. Same process, same RSK-01 exposure, and
+// the same mitigation — a missed hour delays an erasure, it never skips one.
+startPurgeJob()
 
 function shutdown(signal: string): void {
   logger.info({ signal }, 'shutting down')
   stopReminderEngine()
+  stopPurgeJob()
   server.close((err) => {
     if (err) {
       logger.error({ err }, 'error during shutdown')
