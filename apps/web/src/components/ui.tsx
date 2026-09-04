@@ -771,6 +771,7 @@ export function StatCard({
   sub,
   accent,
   subTone = 'text-text-muted',
+  meter,
 }: {
   label: string
   value: string
@@ -782,6 +783,16 @@ export function StatCard({
    * is the one thing on this grid that should not read as quiet context.
    */
   subTone?: string
+  /**
+   * Progress towards this tile's goal, 0–100, drawn as a hairline under the
+   * number in the tile's own accent.
+   *
+   * Only pass it where a denominator actually exists. "1,180 of 2,000" is a
+   * fraction a bar can draw honestly; a streak of 12 days is not — inventing a
+   * target so every tile could have a bar would make the grid look consistent
+   * by making one of the bars a lie.
+   */
+  meter?: number
 }) {
   const shown = useCountUp(value)
   return (
@@ -796,6 +807,17 @@ export function StatCard({
         <span aria-hidden>{shown}</span>
       </p>
       <p className={`mt-xs font-mono text-xs ${subTone}`}>{sub}</p>
+      {meter !== undefined && (
+        <div
+          aria-hidden
+          className="mt-sm h-1 overflow-hidden rounded-full bg-background-alt"
+        >
+          <div
+            className={`h-full rounded-full bg-current opacity-70 transition-[width] duration-entrance ease-entrance ${accent}`}
+            style={{ width: `${Math.max(0, Math.min(100, meter))}%` }}
+          />
+        </div>
+      )}
     </Card>
   )
 }
