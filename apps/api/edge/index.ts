@@ -82,6 +82,18 @@ function fromEdge(key: string, fallback: string): string {
   return value && value.length > 0 ? value : fallback
 }
 
+/**
+ * Additional trusted web origins, comma-separated — a Vercel or Netlify domain
+ * put in front of this API, or a separately hosted build.
+ *
+ * `CORS_ORIGINS` is accepted under its own name too, so the variable the rest
+ * of the project documents does the expected thing here.
+ */
+const extraOrigins = (Deno.env.get('EXTRA_CORS_ORIGINS') ?? Deno.env.get('CORS_ORIGINS') ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
 const databaseUrl = Deno.env.get('DATABASE_URL') ?? Deno.env.get('SUPABASE_DB_URL')
 if (!databaseUrl) throw new Error('Neither DATABASE_URL nor SUPABASE_DB_URL is set.')
 
@@ -106,19 +118,35 @@ const env = configureEnv({
   AUDIT_PEPPER: fromEdge('AUDIT_PEPPER', derivedSecret('audit-pepper')),
   LOG_LEVEL: fromEdge('LOG_LEVEL', 'info'),
   /*
-   * Same-origin in the normal case, so this list is a formality — but the
-   * mobile app and any separately hosted web build are cross-origin, and the
-   * CSRF gate on the cookie session endpoints checks membership of exactly
-   * this list. An origin missing here fails closed, which is the right way
-   * round.
+   * This project's own origin, plus anything configured.
+   *
+   * A union rather than a replacement: the function serves the web app from
+   * this same origin, so trusting it is not a policy choice but a description
+   * of the deployment. Making CORS_ORIGINS overwrite that would mean adding a
+   * Vercel domain silently switched off the built-in site — a footgun with a
+   * slow fuse, since sign-in would keep working and only session refresh would
+   * start failing.
+   *
+   * The list matters beyond CORS: the CSRF gate on the cookie session
+   * endpoints checks membership of exactly it, so a front-end whose origin is
+   * missing can sign in and then fail every refresh. Fails closed, which is
+   * the right way round, but it is the thing to set when putting another host
+   * in front of this API.
    */
-  CORS_ORIGINS: fromEdge('CORS_ORIGINS', publicOrigin),
+  CORS_ORIGINS: [publicOrigin, ...extraOrigins].join(','),
   /*
-   * The browser sees /functions/v1/<slug>/api/auth/*, so a cookie scoped to
-   * /api/auth would be set and never sent back. Scoping to the function's own
-   * path keeps it as narrow as this host allows.
+   * Scoped to the root, because the path a browser matches a cookie against is
+   * the one it requested — not the one Express sees.
+   *
+   * Served directly, that path is /functions/v1/<slug>/api/auth/*. Behind a
+   * host that rewrites /api/* to this function (Vercel, Netlify), the browser
+   * only ever sees /api/auth/*. The two share no prefix but the root, so any
+   * narrower value works for exactly one of the two deployments and silently
+   * breaks refresh on the other. Narrower scoping was defence in depth here,
+   * never the control: httpOnly, Secure, SameSite and the CSRF origin gate
+   * above are what actually hold.
    */
-  REFRESH_COOKIE_PATH: fromEdge('REFRESH_COOKIE_PATH', `/functions/v1/${SLUG}`),
+  REFRESH_COOKIE_PATH: fromEdge('REFRESH_COOKIE_PATH', '/'),
 } as NodeJS.ProcessEnv)
 
 /*
