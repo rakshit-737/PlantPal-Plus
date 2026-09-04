@@ -25,18 +25,21 @@ import pino from 'pino'
  * deployment with no log line to explain it, including the boot line that
  * should have been there.)
  *
- * The check is for Node's presence rather than Deno's, so any other runtime
- * without a Node stdout gets the working path rather than the silent one.
+ * The check names Deno rather than testing for Node, because Deno's node
+ * compatibility layer sets `process.versions.node` to a real Node version — a
+ * "does this look like Node?" test passes there and picks the silent path,
+ * which is the first version of this fix and why it is written down.
  */
-const destination =
-  typeof process !== 'undefined' && process.versions?.node
-    ? undefined
-    : {
-        write(line: string): void {
-          // pino appends the newline; console.log adds its own.
-          console.log(line.endsWith('\n') ? line.slice(0, -1) : line)
-        },
-      }
+const isDeno = typeof (globalThis as { Deno?: unknown }).Deno !== 'undefined'
+
+const destination = !isDeno
+  ? undefined
+  : {
+      write(line: string): void {
+        // pino appends the newline; console.log adds its own.
+        console.log(line.endsWith('\n') ? line.slice(0, -1) : line)
+      },
+    }
 
 export const logger = pino(
   {
