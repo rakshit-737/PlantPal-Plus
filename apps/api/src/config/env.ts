@@ -73,6 +73,35 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return parsed.data
 }
 
+/**
+ * Validate a configuration source and install it as the process's configuration.
+ *
+ * The distinction from `loadEnv` matters, and getting it wrong is a real bug
+ * this codebase shipped: `loadEnv` is pure — it validates a source and hands
+ * the result back — so an entrypoint that called it and kept the return value
+ * left `env()` still unconfigured. Every module that later asked `env()` for a
+ * secret got a *second*, lazy load straight from `process.env`.
+ *
+ * On Node that difference is invisible, because the entrypoint was reading
+ * `process.env` anyway. On a host that assembles its configuration from
+ * somewhere else — Supabase Edge Functions inject theirs through `Deno.env` —
+ * the two sources disagree, and the failure is remote from its cause: a login
+ * that 500s at the line asking for the signing secret, while registration,
+ * which never asks for one, succeeds.
+ *
+ * So an entrypoint calls this, once, before serving.
+ */
+export function configureEnv(source: NodeJS.ProcessEnv = process.env): Env {
+  cached = loadEnv(source)
+  return cached
+}
+
+/**
+ * The installed configuration.
+ *
+ * Falls back to loading `process.env` if no entrypoint configured one, which
+ * keeps tests and scripts working without ceremony.
+ */
 export function env(): Env {
   cached ??= loadEnv()
   return cached
