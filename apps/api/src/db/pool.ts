@@ -10,7 +10,19 @@ import pg from 'pg'
 
 let pool: pg.Pool | undefined
 
-export function initPool(connectionString: string, max = 10): pg.Pool {
+/**
+ * `ssl` is passed through for hosts that terminate TLS with a chain the
+ * runtime does not carry — Supabase's pooler presents one that Deno's edge
+ * runtime will not verify, and there is no way to install a CA there. Node on
+ * Render verifies it fine and passes nothing, which is why this is a parameter
+ * rather than a hardcoded relaxation: the weaker setting is opted into by the
+ * one host that needs it, not applied everywhere by default.
+ */
+export function initPool(
+  connectionString: string,
+  max = 10,
+  ssl?: pg.PoolConfig['ssl'],
+): pg.Pool {
   pool = new pg.Pool({
     connectionString,
     max,
@@ -19,6 +31,7 @@ export function initPool(connectionString: string, max = 10): pg.Pool {
     // first connect after a pause can exceed 5s. 15s covers the wake without
     // masking a genuinely unreachable database for long.
     connectionTimeoutMillis: 15_000,
+    ...(ssl === undefined ? {} : { ssl }),
   })
   pool.on('error', (err) => {
     // Pool emits `error` on an idle client that the database terminated behind

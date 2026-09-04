@@ -15,6 +15,10 @@ export default tseslint.config(
       '**/.expo/**',
       '**/coverage/**',
       '**/*.config.{js,ts,mjs,cjs}',
+      // Generated deployment artefacts: an esbuild bundle and a Vite build,
+      // committed so the edge functions can load them (see deploy/README.md).
+      'deploy/api/**',
+      'deploy/web/assets/**',
     ],
   },
   {

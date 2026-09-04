@@ -21,6 +21,18 @@ const schema = z.object({
   /* Token secrets. Minimum length is enforced so a placeholder such as "secret" cannot reach production. */
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
 
+  /*
+   * BR-ACC-20 Table I — the HMAC key under which an erased account's audit
+   * tombstone is filed. Optional: purgeService falls back to
+   * JWT_ACCESS_SECRET, which is already a secret of the required length, so a
+   * deployment that never sets this still writes keyed subjects rather than a
+   * reversible plain hash.
+   */
+  AUDIT_PEPPER: z
+    .string()
+    .min(32, 'AUDIT_PEPPER must be at least 32 characters')
+    .optional(),
+
   /* CORS allow-list (NFR-SEC-06). Comma-separated; never "*" in production. */
   CORS_ORIGINS: z
     .string()
@@ -28,6 +40,19 @@ const schema = z.object({
     .transform((value) => value.split(',').map((o) => o.trim()).filter(Boolean)),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+  /*
+   * Path scope of the refresh cookie. The default keeps the cookie off every
+   * request that is not a session operation, which is what a deployment served
+   * at the domain root wants.
+   *
+   * A host that mounts the API under a prefix — a Supabase Edge Function lives
+   * at /functions/v1/<name> — must widen this, because the browser matches the
+   * cookie against the URL it sees, not against the path Express sees after the
+   * prefix is stripped. Left at the default there, the cookie is set and then
+   * never sent back, and every refresh fails with no visible cause.
+   */
+  REFRESH_COOKIE_PATH: z.string().startsWith('/').default('/api/auth'),
 })
 
 export type Env = z.infer<typeof schema>
