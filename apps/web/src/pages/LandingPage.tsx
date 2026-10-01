@@ -340,8 +340,8 @@ export function LandingPage() {
             scrolled ? 'border-b border-glass-border bg-glass-strong shadow-1 backdrop-blur-glass' : 'border-b border-transparent'
           }`}
         >
-          <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-md px-lg">
-            <Link to="/" className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="PlantPal+ home">
+          <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-sm px-md sm:gap-md sm:px-lg">
+            <Link to="/" className="shrink-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="PlantPal+ home">
               <Wordmark />
             </Link>
             <nav className="hidden items-center gap-xl text-sm font-medium text-text-muted md:flex" aria-label="Sections">
@@ -359,9 +359,11 @@ export function LandingPage() {
               </Link>
               <Link
                 to="/register"
-                className="btn-primary inline-flex h-10 items-center rounded-full px-5 text-sm font-medium transition-[transform,filter,box-shadow] duration-standard ease-state hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="btn-primary inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-[transform,filter,box-shadow] duration-standard ease-state hover:-translate-y-px focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-5"
               >
-                Create account
+                {/* The phone header has room for one short verb, not two words. */}
+                <span className="sm:hidden">Sign up</span>
+                <span className="hidden sm:inline">Create account</span>
               </Link>
             </nav>
           </div>
@@ -378,7 +380,7 @@ export function LandingPage() {
                 transition={{ duration: 0.5, ease: EASE }}
               >
                 <span className="rounded-full bg-primary/[0.12] px-[10px] py-[2px] text-xs font-semibold text-primary">New</span>
-                Plant care, fitness and nutrition — one streak
+                Plant care, fitness and nutrition<span className="hidden sm:inline">&nbsp;— one streak</span>
               </motion.p>
 
               <motion.h1
@@ -609,7 +611,7 @@ export function LandingPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-tertiary/60" />
                   <span className="h-2.5 w-2.5 rounded-full bg-primary/60" />
                 </div>
-                <pre className="font-mono text-[13px] leading-loose text-text-main md:text-sm">
+                <pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-loose text-text-main sm:whitespace-pre sm:text-[13px] md:text-sm">
                   <code>
                     <span className="text-text-muted">{'// watering interval\n'}</span>
                     {'7 × 0.80 × 1.10 × 0.80 × 1.00 = 4.928 → '}
