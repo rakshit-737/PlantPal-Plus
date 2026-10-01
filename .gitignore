@@ -69,13 +69,14 @@ pgdata/
 .scratch/
 tmp/
 
-# Local agent/tooling state (not project source)
+# Local agent and tooling state: machine-specific, never project source.
+# Shared Claude Code settings (.claude/settings.json) may be committed; the
+# per-developer settings.local.json may not.
+**/.claude/settings.local.json
+.agents/
 .opencode/
-.opencode
+.neon
+skills-lock.json
+
 # Graphify knowledge-graph output
 graphify-out/
-
-# Local tool state
-.neon
-.agents/
-skills-lock.json

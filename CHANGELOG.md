@@ -22,6 +22,7 @@ PlantPal+ is deployed continuously from `main` and has no numbered releases yet,
 - The design language (v4.0 "Conservatory"), the component inventory and the navigation flow now describe the interface as built.
 - The system architecture adds the deployed topology, and the API reference documents the base URLs, the readiness probe and the verification flag returned at sign-up.
 - The CI and GitHub Pages workflows use `actions/checkout` and `actions/setup-node` v5, which run on Node 24, clearing the Node 20 deprecation warnings.
+- `.gitignore` keeps per-developer Claude Code settings (`settings.local.json`) out of the repository and drops a duplicate entry.
 
 ### Removed
 
