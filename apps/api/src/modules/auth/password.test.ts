@@ -5,7 +5,9 @@ import {
   PASSWORD_MIN_LENGTH,
   PasswordPolicyError,
   assertPasswordPolicy,
+  hashArgon2Portable,
   hashPassword,
+  verifyArgon2Portable,
   verifyPassword,
 } from './password.ts'
 
@@ -74,5 +76,36 @@ describe('hashing round trip', () => {
     // from "corrupt row", which is an enumeration oracle.
     expect(await verifyPassword(VALID, 'not-a-hash')).toBe(false)
     expect(await verifyPassword(VALID, '')).toBe(false)
+  })
+})
+
+describe('portable Argon2 (WebAssembly) — the edge runtime has no native build', () => {
+  it('encodes Argon2id with the NFR-SEC-03 parameters', async () => {
+    const hash = await hashArgon2Portable(VALID)
+    expect(hash).toMatch(/^\$argon2id\$v=19\$m=19456,t=2,p=1\$/)
+    expect(await verifyArgon2Portable(hash, VALID)).toBe(true)
+    expect(await verifyArgon2Portable(hash, `${VALID}!`)).toBe(false)
+  })
+
+  it('verifies a hash the native build wrote, so Node-created accounts sign in on the edge', async () => {
+    let native: typeof import('@node-rs/argon2') | null = null
+    try {
+      native = await import('@node-rs/argon2')
+    } catch {
+      native = null
+    }
+    if (!native) return // nothing native on this platform to cross-check against
+    const nativeHash = await native.hash(VALID, {
+      memoryCost: 19_456,
+      timeCost: 2,
+      parallelism: 1,
+      outputLen: 32,
+    })
+    expect(await verifyArgon2Portable(nativeHash, VALID)).toBe(true)
+    expect(await verifyArgon2Portable(nativeHash, 'not the password at all')).toBe(false)
+
+    // …and the other way round: the native build accepts a portable hash.
+    const portableHash = await hashArgon2Portable(VALID)
+    expect(await native.verify(portableHash, VALID)).toBe(true)
   })
 })
