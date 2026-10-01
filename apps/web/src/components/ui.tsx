@@ -4,13 +4,13 @@
  * tokens stay the single source of styling truth and nothing here carries a
  * third-party licence (see THIRD_PARTY_LICENSES.md).
  *
- * Glasshouse rules (v3.0): panes are translucent — `--glass-bg` with a 1px
- * `--glass-highlight` top edge and one of four elevation steps. Glow marks
- * state, never cursor position. Radii open up (6px for anything holding a
- * metric, 10px for controls, 16px for panels, 22px for modals) but numbers
- * still sit in square-ish cells. Carried over from v2.0 unchanged: uppercase
- * letterspaced eyebrows for labels, and every metric in font-mono so numbers
- * line up like ledger entries.
+ * Conservatory rules (v4.0): every card is one material — the `.pane` in
+ * index.css, translucent glass with a lit top edge over a layered shadow. Glow
+ * marks state, never cursor position. Radii are generous (8px for anything
+ * holding a metric, 12px for controls, 18px for panels, 24px for modals).
+ * Labels are quiet sentence case; eyebrows stay uppercase and letterspaced;
+ * every metric sits in the monospace with tabular figures, so numbers line up
+ * like ledger entries.
  *
  * Two contrast rules this file has to respect:
  *  - anything a user operates draws its boundary with `--color-border-control`,
@@ -40,30 +40,40 @@ import {
 
 import { useReducedMotion } from '../hooks/useReducedMotion'
 
+/* ----------------------------------------------------------------- buttons */
+
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
+type ButtonSize = 'sm' | 'md' | 'lg'
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  // Light behind the glass: the primary action is the only thing in the app
-  // that glows at rest.
-  primary:
-    'bg-primary text-on-primary shadow-glow-primary hover:bg-primary-hover focus-visible:ring-primary',
+  // Lit behind the glass: the primary action is the only thing in the app
+  // that glows at rest. The gradient and inner highlight live in `.btn-primary`.
+  primary: 'btn-primary focus-visible:ring-primary',
   secondary:
-    'border border-border-control bg-glass text-text-main backdrop-blur-glass hover:border-text-muted hover:bg-surface focus-visible:ring-primary',
+    'border border-border-control bg-glass text-text-main shadow-1 backdrop-blur-glass hover:-translate-y-px hover:border-text-muted hover:bg-surface-raised hover:shadow-2 focus-visible:ring-primary',
   ghost:
-    'bg-transparent text-text-muted hover:bg-glass hover:text-text-main focus-visible:ring-primary',
+    'bg-transparent text-text-muted hover:bg-text-main/[0.06] hover:text-text-main focus-visible:ring-primary',
   // Full-strength accent border, not a tint: this is a control boundary and
   // has to clear 3:1 like every other one.
   danger:
     'border border-accent bg-transparent text-accent hover:bg-accent/10 hover:shadow-glow-accent focus-visible:ring-accent',
 }
 
+const buttonSizes: Record<ButtonSize, string> = {
+  sm: 'h-8 gap-xs rounded-md px-3 text-[13px]',
+  md: 'h-10 gap-sm rounded-md px-4 text-sm',
+  lg: 'h-12 gap-sm rounded-[14px] px-6 text-[15px]',
+}
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
+  size?: ButtonSize
   loading?: boolean
 }
 
 export function Button({
   variant = 'primary',
+  size = 'md',
   loading = false,
   disabled,
   className = '',
@@ -72,7 +82,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-sm rounded-md px-md py-sm text-sm font-semibold transition-[background-color,border-color,box-shadow,color] duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 ${buttonVariants[variant]} ${className}`}
+      className={`inline-flex select-none items-center justify-center whitespace-nowrap font-medium tracking-[-0.005em] transition-[background-color,border-color,box-shadow,color,transform,filter] duration-standard ease-state active:translate-y-0 active:scale-[0.985] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-55 ${buttonSizes[size]} ${buttonVariants[variant]} ${className}`}
       disabled={disabled || loading}
       aria-busy={loading}
       {...rest}
@@ -89,11 +99,13 @@ export function Button({
   )
 }
 
-/** The eyebrow that names a field. Identical across all three text controls. */
-const FIELD_LABEL = 'text-xs font-medium uppercase tracking-[0.08em] text-text-muted'
+/* ------------------------------------------------------------------ fields */
+
+/** The label that names a field. Identical across all three text controls. */
+const FIELD_LABEL = 'text-[13px] font-medium leading-5 text-text-main'
 
 /**
- * Shared field styling. A glass pane with a control-strength boundary, and on
+ * Shared field styling. A glass well with a control-strength boundary, and on
  * focus a ring *plus* a glow — the ring is what survives high-contrast mode,
  * where the glow token resolves to nothing.
  *
@@ -101,9 +113,32 @@ const FIELD_LABEL = 'text-xs font-medium uppercase tracking-[0.08em] text-text-m
  * fill their wrapper.
  */
 function fieldClass(error?: string | undefined): string {
-  return `rounded-sm border bg-glass px-md py-sm text-base text-text-main backdrop-blur-glass transition-[border-color,box-shadow] duration-standard ease-state placeholder:text-text-muted focus:outline-none focus-visible:shadow-glow-primary focus-visible:ring-2 focus-visible:ring-primary ${
+  return `h-11 rounded-md border bg-surface/70 px-md text-[15px] text-text-main shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-glass transition-[border-color,box-shadow,background-color] duration-standard ease-state placeholder:text-text-muted/80 hover:border-text-muted focus:bg-surface-raised focus:outline-none focus-visible:shadow-glow-primary focus-visible:ring-2 focus-visible:ring-primary/70 ${
     error ? 'border-accent' : 'border-border-control'
   }`
+}
+
+/** The error or hint line under a field. */
+function FieldNote({ id, error, hint }: { id: string; error?: string | undefined; hint?: string | undefined }) {
+  if (error) {
+    return (
+      <p id={`${id}-error`} className="flex items-start gap-xs text-[13px] text-accent">
+        <svg aria-hidden viewBox="0 0 16 16" className="mt-[3px] h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <circle cx="8" cy="8" r="6.25" />
+          <path d="M8 4.75v3.75M8 10.75v.5" strokeLinecap="round" />
+        </svg>
+        <span>{error}</span>
+      </p>
+    )
+  }
+  if (hint) {
+    return (
+      <p id={`${id}-hint`} className="text-[13px] leading-5 text-text-muted">
+        {hint}
+      </p>
+    )
+  }
+  return null
 }
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -123,7 +158,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       ? `${inputId}-hint`
       : undefined
   return (
-    <div className="flex flex-col gap-xs">
+    <div className="flex flex-col gap-[6px]">
       <label htmlFor={inputId} className={FIELD_LABEL}>
         {label}
       </label>
@@ -135,15 +170,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         className={`${fieldClass(error)} ${className}`}
         {...rest}
       />
-      {error ? (
-        <p id={`${inputId}-error`} className="text-sm text-accent">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${inputId}-hint`} className="text-sm text-text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldNote id={inputId} error={error} hint={hint} />
     </div>
   )
 })
@@ -166,7 +193,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       ? `${selectId}-hint`
       : undefined
   return (
-    <div className="flex flex-col gap-xs">
+    <div className="flex flex-col gap-[6px]">
       <label htmlFor={selectId} className={FIELD_LABEL}>
         {label}
       </label>
@@ -176,7 +203,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           id={selectId}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`w-full appearance-none pr-xl ${fieldClass(error)} ${className}`}
+          className={`w-full cursor-pointer appearance-none pr-xl ${fieldClass(error)} ${className}`}
           {...rest}
         >
           {children}
@@ -184,23 +211,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         <svg
           aria-hidden
           viewBox="0 0 16 16"
-          className="pointer-events-none absolute right-sm top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          className="pointer-events-none absolute right-md top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="1.6"
         >
-          <path d="M4 6l4 4 4-4" strokeLinecap="square" />
+          <path d="M4.5 6.5L8 10l3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
-      {error ? (
-        <p id={`${selectId}-error`} className="text-sm text-accent">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${selectId}-hint`} className="text-sm text-text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldNote id={selectId} error={error} hint={hint} />
     </div>
   )
 })
@@ -305,7 +324,7 @@ export function Combobox({
 
   return (
     <div
-      className="flex flex-col gap-xs"
+      className="flex flex-col gap-[6px]"
       ref={rootRef}
       onBlur={(e) => {
         // Close when focus leaves the whole widget (Tab to the next field),
@@ -317,6 +336,17 @@ export function Combobox({
         {label}
       </label>
       <div className="relative">
+        <svg
+          aria-hidden
+          viewBox="0 0 16 16"
+          className="pointer-events-none absolute left-md top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        >
+          <circle cx="7" cy="7" r="4.75" />
+          <path d="M10.5 10.5L14 14" strokeLinecap="round" />
+        </svg>
         <input
           id={inputId}
           role="combobox"
@@ -340,10 +370,10 @@ export function Combobox({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          className={`w-full ${fieldClass(error)}`}
+          className={`w-full pl-[40px] ${fieldClass(error)}`}
         />
         {loading ? (
-          <span className="absolute right-sm top-1/2 -translate-y-1/2">
+          <span className="absolute right-md top-1/2 -translate-y-1/2">
             <Spinner size="sm" />
           </span>
         ) : null}
@@ -355,7 +385,7 @@ export function Combobox({
             // The popup sits above other content, so it takes the stronger
             // pane: at resting opacity the list would read through to whatever
             // it covers.
-            className="absolute z-30 mt-xs max-h-56 w-full overflow-y-auto rounded-md border border-glass-border bg-glass-strong py-xs shadow-glass-raised backdrop-blur-glass"
+            className="animate-grow-in absolute z-30 mt-[6px] max-h-64 w-full overflow-y-auto rounded-lg border border-glass-border bg-glass-strong p-xs shadow-4 backdrop-blur-glass"
           >
             {options.length === 0 ? (
               <li className="px-md py-sm text-sm text-text-muted" aria-disabled>
@@ -371,15 +401,15 @@ export function Combobox({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(option)}
                   onMouseEnter={() => setActiveIndex(i)}
-                  className={`cursor-pointer px-md py-sm text-sm transition-colors duration-micro ease-state ${
+                  className={`cursor-pointer rounded-sm px-md py-sm text-sm transition-colors duration-micro ease-state ${
                     i === activeIndex
-                      ? 'bg-primary/15 text-text-main'
-                      : 'text-text-main hover:bg-primary/10'
+                      ? 'bg-primary/[0.12] text-text-main'
+                      : 'text-text-main hover:bg-primary/[0.08]'
                   }`}
                 >
-                  <span className="block">{option.label}</span>
+                  <span className="block font-medium">{option.label}</span>
                   {option.sub ? (
-                    <span className="block font-mono text-xs text-text-muted">{option.sub}</span>
+                    <span className="mt-[1px] block font-mono text-xs text-text-muted">{option.sub}</span>
                   ) : null}
                 </li>
               ))
@@ -387,18 +417,12 @@ export function Combobox({
           </ul>
         ) : null}
       </div>
-      {error ? (
-        <p id={`${inputId}-error`} className="text-sm text-accent">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${inputId}-hint`} className="text-sm text-text-muted">
-          {hint}
-        </p>
-      ) : null}
+      <FieldNote id={inputId} error={error} hint={hint} />
     </div>
   )
 }
+
+/* ------------------------------------------------------------------- cards */
 
 export function Card({
   children,
@@ -415,16 +439,13 @@ export function Card({
   style?: CSSProperties | undefined
 }) {
   return (
-    <div
-      style={style}
-      className={`rounded-lg border border-glass-border bg-glass p-lg shadow-glass backdrop-blur-glass ${className}`}
-    >
+    <div style={style} className={`pane rounded-lg p-lg ${className}`}>
       {children}
     </div>
   )
 }
 
-/** A dismissible inline notice used for form-level auth errors and successes. */
+/** An inline notice used for form-level auth errors and successes. */
 export function Alert({
   tone = 'error',
   children,
@@ -432,19 +453,28 @@ export function Alert({
   tone?: 'error' | 'success' | 'info'
   children: ReactNode
 }) {
-  // Tinted glass rather than a flat fill, plus a heavier edge on the leading
-  // side so the tone is legible before the text is read.
+  // Tinted glass rather than a flat fill, with a leading glyph so the tone is
+  // legible before the text is read.
   const tones = {
-    error: 'border-accent/40 border-l-accent bg-accent/10 text-accent',
-    success: 'border-primary/40 border-l-primary bg-primary/10 text-primary-hover',
-    info: 'border-secondary/40 border-l-secondary bg-secondary/10 text-secondary',
+    error: 'border-accent/35 bg-accent/[0.07] text-accent',
+    success: 'border-primary/35 bg-primary/[0.07] text-primary-hover',
+    info: 'border-secondary/35 bg-secondary/[0.07] text-secondary',
+  }
+  const glyphs = {
+    error: 'M8 4.75v3.75M8 10.75v.5',
+    success: 'M5.25 8.25l1.9 1.9 3.6-4.15',
+    info: 'M8 7.25v4M8 4.75v.5',
   }
   return (
     <div
       role="alert"
-      className={`rounded-md border border-l-2 px-md py-sm text-sm backdrop-blur-glass ${tones[tone]}`}
+      className={`flex items-start gap-sm rounded-md border px-md py-[10px] text-sm leading-5 backdrop-blur-glass ${tones[tone]}`}
     >
-      {children}
+      <svg aria-hidden viewBox="0 0 16 16" className="mt-[2px] h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <circle cx="8" cy="8" r="6.25" />
+        <path d={glyphs[tone]} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   )
 }
@@ -458,14 +488,14 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
       aria-label="Loading"
       // Control-strength track: at the decorative border's ~1.3:1 the ring
       // would be invisible and only the moving head would read.
-      className={`inline-block animate-spin rounded-full border-2 border-border-control border-t-primary ${sizes[size]}`}
+      className={`inline-block animate-spin rounded-full border-2 border-border-control/60 border-t-primary ${sizes[size]}`}
     />
   )
 }
 
 type BadgeTone = 'default' | 'success' | 'warning' | 'danger' | 'info'
 
-/** A small tag for statuses, tiers and counts — squared, ledger-stamp style. */
+/** A small pill for statuses, tiers and counts, led by a tone dot. */
 export function Badge({
   children,
   tone = 'default',
@@ -474,22 +504,29 @@ export function Badge({
   tone?: BadgeTone
 }) {
   const tones: Record<BadgeTone, string> = {
-    default: 'border-border-control bg-glass text-text-muted',
-    success: 'border-primary/40 bg-primary/10 text-primary-hover',
-    warning: 'border-tertiary/40 bg-tertiary/10 text-tertiary',
-    danger: 'border-accent/40 bg-accent/10 text-accent',
-    info: 'border-secondary/40 bg-secondary/10 text-secondary',
+    default: 'border-border-control/60 bg-glass text-text-muted',
+    success: 'border-primary/30 bg-primary/10 text-primary-hover',
+    warning: 'border-tertiary/30 bg-tertiary/10 text-tertiary',
+    danger: 'border-accent/30 bg-accent/10 text-accent',
+    info: 'border-secondary/30 bg-secondary/10 text-secondary',
   }
   return (
     <span
-      className={`inline-flex items-center gap-xs rounded-sm border px-sm py-xs text-[11px] font-medium uppercase tracking-[0.06em] ${tones[tone]}`}
+      className={`inline-flex w-fit shrink-0 items-center gap-[6px] whitespace-nowrap rounded-full border px-[10px] py-[3px] text-[11px] font-semibold uppercase tracking-[0.06em] ${tones[tone]}`}
     >
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
       {children}
     </span>
   )
 }
 
 type ProgressTone = 'primary' | 'secondary' | 'tertiary'
+
+const toneFill: Record<ProgressTone, string> = {
+  primary: 'from-primary/70 to-primary',
+  secondary: 'from-secondary/70 to-secondary',
+  tertiary: 'from-tertiary/70 to-tertiary',
+}
 
 /** An accessible linear progress bar with an optional label + value read-out. */
 export function Progress({
@@ -506,14 +543,9 @@ export function Progress({
   srLabel?: string
   tone?: ProgressTone
 }) {
-  const fills: Record<ProgressTone, string> = {
-    primary: 'bg-primary',
-    secondary: 'bg-secondary',
-    tertiary: 'bg-tertiary',
-  }
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
   return (
-    <div className="flex flex-col gap-xs">
+    <div className="flex flex-col gap-[6px]">
       {label ? (
         <div className="flex items-center justify-between text-sm text-text-muted">
           <span>{label}</span>
@@ -522,7 +554,7 @@ export function Progress({
           </span>
         </div>
       ) : null}
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-border-control/40">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-text-muted/[0.14]">
         <div
           role="progressbar"
           aria-valuenow={value}
@@ -532,11 +564,65 @@ export function Progress({
           // The fill grows into place on the entrance curve rather than
           // snapping. Only width transitions — `transition-all` would also
           // animate the colour on a tone change, which reads as a glitch.
-          className={`h-full rounded-full transition-[width] duration-entrance ease-entrance ${fills[tone]}`}
+          className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-reveal ease-entrance ${toneFill[tone]}`}
           style={{ width: `${pct}%` }}
         />
       </div>
     </div>
+  )
+}
+
+/**
+ * A progress ring on the native <progress> element (see `progress.ring` in
+ * index.css): real progressbar semantics, drawn with a conic gradient. Rings
+ * can be stacked concentrically by giving each a smaller `size`.
+ */
+export function Ring({
+  value,
+  max = 100,
+  label,
+  size = 160,
+  thickness = 14,
+  tone = 'primary',
+  className = '',
+}: {
+  value: number
+  max?: number
+  /** Accessible name — rings have no visible label of their own. */
+  label: string
+  size?: number
+  thickness?: number
+  tone?: ProgressTone
+  className?: string
+}) {
+  const reduced = useReducedMotion()
+  const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0
+  // Start at zero and draw to the value after mount, so the ring sweeps in.
+  const [shown, setShown] = useState(reduced ? pct : 0)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(pct))
+    return () => cancelAnimationFrame(id)
+  }, [pct])
+  const fills: Record<ProgressTone, string> = {
+    primary: 'var(--color-primary)',
+    secondary: 'var(--color-secondary)',
+    tertiary: 'var(--color-tertiary)',
+  }
+  return (
+    <progress
+      className={`ring ${className}`}
+      value={Math.round(Math.max(0, Math.min(value, max)))}
+      max={max}
+      aria-label={label}
+      style={
+        {
+          '--size': `${size}px`,
+          '--thickness': `${thickness}px`,
+          '--fill': fills[tone],
+          '--value': shown,
+        } as CSSProperties
+      }
+    />
   )
 }
 
@@ -553,10 +639,14 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-sm px-lg py-lg text-center">
-      {icon ? <div className="text-text-muted">{icon}</div> : null}
-      <h3 className="font-heading text-base font-semibold text-text-main">{title}</h3>
-      {body ? <p className="max-w-sm text-sm text-text-muted">{body}</p> : null}
+    <div className="flex flex-col items-center justify-center gap-sm px-lg py-xl text-center">
+      {icon ? (
+        <div className="relative mb-xs grid h-14 w-14 place-items-center rounded-2xl border border-glass-border bg-primary/[0.08] text-primary shadow-glow-soft">
+          {icon}
+        </div>
+      ) : null}
+      <h3 className="font-heading text-base font-semibold tracking-[-0.01em] text-text-main">{title}</h3>
+      {body ? <p className="max-w-sm text-sm leading-6 text-text-muted">{body}</p> : null}
       {action ? <div className="mt-sm">{action}</div> : null}
     </div>
   )
@@ -580,13 +670,17 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center justify-center gap-sm rounded-lg border border-accent/40 bg-accent/5 px-lg py-lg text-center shadow-glass backdrop-blur-glass"
+      className="pane flex flex-col items-center justify-center gap-sm rounded-lg border-accent/30 px-lg py-xl text-center"
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-accent">
-        Connection trouble
-      </p>
+      <div className="mb-xs grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent">
+        <svg aria-hidden viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M3 9a13 13 0 0118 0M6.5 12.5a8 8 0 0111 0M10 16a3 3 0 014 0" strokeLinecap="round" />
+          <path d="M12 19.5h.01" strokeLinecap="round" strokeWidth="2.4" />
+        </svg>
+      </div>
+      <p className="eyebrow !text-accent">Connection trouble</p>
       <h3 className="font-heading text-base font-semibold text-text-main">{title}</h3>
-      <p className="max-w-sm text-sm text-text-muted">{body}</p>
+      <p className="max-w-sm text-sm leading-6 text-text-muted">{body}</p>
       {onRetry ? (
         <div className="mt-sm">
           {/* Primary, not secondary: retrying is the whole point of this panel
@@ -597,6 +691,8 @@ export function ErrorState({
     </div>
   )
 }
+
+/* ------------------------------------------------------------------- modal */
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -676,7 +772,7 @@ export function Modal({
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-md backdrop-blur-sm"
+      className="animate-fade-in fixed inset-0 z-50 flex items-end justify-center bg-[rgba(4,8,6,0.55)] p-md backdrop-blur-[6px] sm:items-center"
       onClick={() => {
         if (!busy) onClose()
       }}
@@ -691,17 +787,20 @@ export function Modal({
         // elevation step, and the widest radius. It grows in rather than
         // sliding; [data-reduce-motion] zeroes the duration, which leaves it
         // simply present instead of jump-cutting mid-transform.
-        className="animate-grow-in relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-glass-border bg-glass-strong p-lg shadow-4 backdrop-blur-glass focus:outline-none"
+        className="animate-grow-in relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-glass-border bg-glass-strong p-lg shadow-4 backdrop-blur-glass focus:outline-none sm:p-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="mb-md font-heading text-lg font-bold text-text-main">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-xl bg-gradient-to-b from-primary/[0.07] to-transparent" />
+        <h2 id={titleId} className="relative mb-lg font-display text-[26px] font-medium leading-tight tracking-[-0.02em] text-text-main">
           {title}
         </h2>
-        {children}
+        <div className="relative">{children}</div>
       </div>
     </div>
   )
 }
+
+/* ------------------------------------------------------------------ metrics */
 
 /**
  * The whole-number value of a stat string, or null when it is not one.
@@ -726,7 +825,7 @@ function metricValue(text: string): number | null {
  * skips to the answer — a counter that must be waited out is exactly the kind
  * of animation someone turns that setting on to avoid.
  */
-function useCountUp(text: string): string {
+export function useCountUp(text: string): string {
   const reduced = useReducedMotion()
   const target = metricValue(text)
   const [shown, setShown] = useState(0)
@@ -745,9 +844,7 @@ function useCountUp(text: string): string {
     let frame = 0
     const started = performance.now()
     const tick = (now: number) => {
-      // 400ms is the entrance step of the motion contract; the cubic ease-out
-      // matches --ease-entrance closely enough for a number.
-      const t = Math.min(1, (now - started) / 400)
+      const t = Math.min(1, (now - started) / 700)
       const eased = 1 - (1 - t) ** 3
       setShown(from + (target - from) * eased)
       if (t < 1) frame = requestAnimationFrame(tick)
@@ -760,7 +857,7 @@ function useCountUp(text: string): string {
   if (target === null) return text
   const rounded = Math.round(shown)
   // Keep whatever grouping the caller chose, so 1,240 does not become 1240
-  // for 400ms and then jump back.
+  // for the length of the count and then jump back.
   return text.includes(',') ? rounded.toLocaleString() : String(rounded)
 }
 
@@ -772,6 +869,7 @@ export function StatCard({
   accent,
   subTone = 'text-text-muted',
   meter,
+  icon,
 }: {
   label: string
   value: string
@@ -793,12 +891,27 @@ export function StatCard({
    * by making one of the bars a lie.
    */
   meter?: number
+  /** A glyph for the tile's corner, drawn in the tile's accent. */
+  icon?: ReactNode
 }) {
   const shown = useCountUp(value)
   return (
-    <Card className="transition-shadow duration-standard ease-state hover:shadow-glass-raised">
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">{label}</p>
-      <p className={`mt-xs font-mono text-3xl font-semibold tracking-tight ${accent}`}>
+    <Card className="group relative overflow-hidden transition-[box-shadow,transform] duration-standard ease-state hover:-translate-y-0.5 hover:shadow-glass-raised">
+      {/* A wash of the tile's ink in the corner — colour as atmosphere. */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-current opacity-[0.07] blur-2xl transition-opacity duration-standard group-hover:opacity-[0.12] ${accent}`}
+      />
+      <div className="flex items-start justify-between gap-sm">
+        <p className="eyebrow">{label}</p>
+        {icon ? (
+          <span aria-hidden className={`relative grid h-8 w-8 place-items-center rounded-md ${accent}`}>
+            <span className="absolute inset-0 rounded-md bg-current opacity-[0.12]" />
+            <span className="relative">{icon}</span>
+          </span>
+        ) : null}
+      </div>
+      <p className={`mt-sm font-mono text-[34px] font-medium leading-none tracking-[-0.03em] ${accent}`}>
         {/* Counting is decorative. Assistive technology gets the settled
             number outright rather than whatever frame it happens to land on —
             aria-label would not do this reliably, since a <p> has no implicit
@@ -806,14 +919,11 @@ export function StatCard({
         <span className="sr-only">{value}</span>
         <span aria-hidden>{shown}</span>
       </p>
-      <p className={`mt-xs font-mono text-xs ${subTone}`}>{sub}</p>
+      <p className={`mt-sm font-mono text-xs ${subTone}`}>{sub}</p>
       {meter !== undefined && (
-        <div
-          aria-hidden
-          className="mt-sm h-1 overflow-hidden rounded-full bg-background-alt"
-        >
+        <div aria-hidden className="mt-md h-1.5 overflow-hidden rounded-full bg-text-muted/[0.12]">
           <div
-            className={`h-full rounded-full bg-current opacity-70 transition-[width] duration-entrance ease-entrance ${accent}`}
+            className={`h-full rounded-full bg-current transition-[width] duration-reveal ease-entrance ${accent}`}
             style={{ width: `${Math.max(0, Math.min(100, meter))}%` }}
           />
         </div>
@@ -840,30 +950,32 @@ export function Skeleton({ className = '' }: { className?: string }) {
   // design, so every accessible query is blind to them, and a placeholder that
   // silently stops rendering is invisible in review too.
   return (
-    <div aria-hidden data-testid="skeleton" className={`rounded-sm bg-border-control/30 ${className}`} />
+    <div aria-hidden data-testid="skeleton" className={`rounded-sm bg-text-muted/[0.12] ${className}`} />
   )
 }
 
-/** A consistent page header with an optional subtitle and right-side action slot. */
+/** A consistent page header with an optional eyebrow, subtitle and action slot. */
 export function PageHeader({
   title,
   subtitle,
   action,
+  eyebrow,
 }: {
   title: string
   subtitle?: string
   action?: ReactNode
+  eyebrow?: string
 }) {
   return (
-    <div className="flex items-start justify-between gap-md">
-      <div>
-        {/* Larger and tighter than v2.0's 26px, but well short of the landing
-            page's display step: this heads a working screen, and scanning it
-            beats admiring it. */}
-        <h1 className="font-heading text-[30px] font-bold leading-tight tracking-[-0.02em] text-text-main">
+    <div className="flex flex-col gap-md sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        {eyebrow ? <p className="eyebrow mb-sm">{eyebrow}</p> : null}
+        {/* The display serif marks where a working screen starts. Sized for
+            scanning, not admiring: the landing page owns the big steps. */}
+        <h1 className="font-display text-[34px] font-medium leading-[1.08] tracking-[-0.025em] text-text-main sm:text-[40px]">
           {title}
         </h1>
-        {subtitle ? <p className="mt-xs text-sm text-text-muted">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-sm text-[15px] text-text-muted">{subtitle}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>
@@ -889,9 +1001,9 @@ interface ToastApi {
 const ToastContext = createContext<ToastApi | null>(null)
 
 /**
- * Ephemeral feedback, stamped like a ledger entry: hairline border, tone-coloured
- * edge, quiet auto-dismiss. Success confirms the action verb that caused it
- * ("Watered Monstera"); errors say what failed and that retrying is safe.
+ * Ephemeral feedback: a glass card with a tone glyph and a quiet auto-dismiss.
+ * Success confirms the action verb that caused it ("Watered Monstera"); errors
+ * say what failed and that retrying is safe.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -940,20 +1052,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     info: (m) => push('info', m),
   })
 
-  const edges: Record<ToastTone, string> = {
-    success: 'border-l-primary',
-    error: 'border-l-accent',
-    info: 'border-l-secondary',
-  }
   const eyebrows: Record<ToastTone, string> = {
     success: 'Logged',
     error: 'Not saved',
     info: 'Note',
   }
-  const eyebrowColor: Record<ToastTone, string> = {
-    success: 'text-primary-hover',
-    error: 'text-accent',
-    info: 'text-secondary',
+  const inks: Record<ToastTone, string> = {
+    success: 'text-primary bg-primary/10',
+    error: 'text-accent bg-accent/10',
+    info: 'text-secondary bg-secondary/10',
+  }
+  const glyphs: Record<ToastTone, string> = {
+    success: 'M5 8.5l2 2 4-4.5',
+    error: 'M8 4.75v3.75M8 10.75v.5',
+    info: 'M8 7.25v4M8 4.75v.5',
   }
 
   return (
@@ -961,7 +1073,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] z-[60] flex flex-col items-center gap-sm px-md md:inset-x-auto md:right-lg md:bottom-lg md:items-end"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[60] flex flex-col items-center gap-sm px-md md:inset-x-auto md:bottom-lg md:right-lg md:items-end"
       >
         {toasts.map((t) => (
           <div
@@ -973,21 +1085,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onBlur={(e) => {
               if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) resume(t.id)
             }}
-            className={`toast-enter pointer-events-auto flex w-full max-w-sm items-start gap-sm rounded-md border border-glass-border border-l-2 bg-glass-strong px-md py-sm shadow-glass-raised backdrop-blur-glass ${edges[t.tone]}`}
+            className="toast-enter pointer-events-auto flex w-full max-w-sm items-start gap-md rounded-lg border border-glass-border bg-glass-strong p-md shadow-4 backdrop-blur-glass"
           >
-            <div className="min-w-0 flex-1">
-              <p className={`text-[10px] font-medium uppercase tracking-[0.08em] ${eyebrowColor[t.tone]}`}>
-                {eyebrows[t.tone]}
-              </p>
-              <p className="mt-[2px] text-sm text-text-main">{t.message}</p>
+            <span aria-hidden className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${inks[t.tone]}`}>
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d={glyphs[t.tone]} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1 pt-[1px]">
+              <p className={`eyebrow !text-[10px] ${inks[t.tone].split(' ')[0]}`}>{eyebrows[t.tone]}</p>
+              <p className="mt-[2px] text-sm leading-5 text-text-main">{t.message}</p>
             </div>
             <button
               onClick={() => dismissById(t.id)}
               aria-label="Dismiss notification"
-              className="shrink-0 rounded-sm p-xs text-text-muted transition-colors duration-micro ease-state hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="shrink-0 rounded-full p-[6px] text-text-muted transition-colors duration-micro ease-state hover:bg-text-main/[0.06] hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="square" />
+              <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" strokeLinecap="round" />
               </svg>
             </button>
           </div>
