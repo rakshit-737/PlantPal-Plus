@@ -171,6 +171,7 @@ function Frame({ action, children }: { action?: ReactNode; children: ReactNode }
     <div className="mx-auto max-w-2xl">
       <div className="mb-xl">
         <PageHeader
+          eyebrow="Getting started"
           title="First entries"
           subtitle="Two steps to set up the ledger. Every answer can be changed later in Settings."
           action={action}

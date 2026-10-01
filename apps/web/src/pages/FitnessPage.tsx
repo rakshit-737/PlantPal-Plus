@@ -16,6 +16,7 @@ import {
   useToast,
 } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { fmtDay } from '../lib/dates'
 import {
   getPersonalRecords,
   getSummary,
@@ -85,6 +86,16 @@ function formatSets(sets: WorkoutSet[]): string {
     else runs.push({ reps: s.reps, weight: s.weight_kg, count: 1 })
   }
   return runs.map((r) => `${r.count} × ${r.reps} @ ${fmtKg(r.weight)} kg`).join(' · ')
+}
+
+/**
+ * Newest day first, and within a day the latest entry first. The API orders by
+ * when an entry was written, so a workout back-filled for yesterday would
+ * otherwise sit above today's.
+ */
+function byDayDesc(a: Workout, b: Workout): number {
+  if (a.local_date_str !== b.local_date_str) return a.local_date_str < b.local_date_str ? 1 : -1
+  return a.logged_at_utc < b.logged_at_utc ? 1 : a.logged_at_utc > b.logged_at_utc ? -1 : 0
 }
 
 function recordValue(r: PersonalRecord): string {
@@ -318,12 +329,35 @@ export function FitnessPage() {
     }
   }
 
-  const maxSteps = summary ? Math.max(...summary.by_day.map((d) => d.steps), 1) : 1
+  // The seven days of the summary's week, filling the days with no workouts
+  // as zeroes so the chart always reads as a week.
+  const todayIso = (() => {
+    const d = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  })()
+  const weekDays = (() => {
+    const start = new Date(`${weekStart()}T00:00:00`)
+    const byDate = new Map((summary?.by_day ?? []).map((d) => [d.date, d.steps]))
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      return {
+        date: iso,
+        label: new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(d),
+        steps: byDate.get(iso) ?? 0,
+      }
+    })
+  })()
+  const maxWeekSteps = Math.max(...weekDays.map((d) => d.steps), 1)
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-xl">
         <PageHeader
+          eyebrow="Movement"
           title="Fitness"
           subtitle="Workouts, steps and weekly progress."
           action={<Button onClick={() => setLogOpen(true)}>Log workout</Button>}
@@ -364,30 +398,49 @@ export function FitnessPage() {
                 accent="text-tertiary"
               />
             </div>
-            <Card>
-              <div className="mb-md flex items-baseline justify-between gap-sm">
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
-                  Steps this week
-                </p>
-                <p className="font-mono text-sm text-text-main">
+            <Card className="relative overflow-hidden">
+              <div className="mb-lg flex items-baseline justify-between gap-sm">
+                <div>
+                  <p className="eyebrow">Steps this week</p>
+                  <p className="mt-[2px] text-xs text-text-muted">
+                    {weekDays.filter((d) => d.steps > 0).length} active day
+                    {weekDays.filter((d) => d.steps > 0).length === 1 ? '' : 's'}
+                  </p>
+                </div>
+                <p className="font-mono text-2xl font-medium tracking-[-0.02em] text-secondary">
                   {summary.total_steps.toLocaleString()}
                 </p>
               </div>
-              <div className="flex items-end gap-xs" style={{ height: 80 }}>
-                {summary.by_day.map((d) => (
-                  <div key={d.date} className="flex flex-1 flex-col items-center gap-xs">
-                    <span className="sr-only">{`${d.date}: ${d.steps.toLocaleString()} steps`}</span>
-                    <div
-                      aria-hidden
-                      className="w-full rounded-sm bg-secondary/60"
-                      style={{ height: `${Math.round((d.steps / maxSteps) * 64)}px`, minHeight: 2 }}
-                      title={`${d.steps.toLocaleString()} steps`}
-                    />
-                    <span aria-hidden className="font-mono text-[10px] text-text-muted">
-                      {d.date.slice(5)}
-                    </span>
-                  </div>
-                ))}
+              {/* The whole week, zero days included: a chart of only the days
+                  with data reads as two fat bars rather than a week. */}
+              <div className="flex h-[148px] items-end gap-sm">
+                {weekDays.map((d) => {
+                  const isToday = d.date === todayIso
+                  const h = d.steps > 0 ? Math.max(6, Math.round((d.steps / maxWeekSteps) * 112)) : 4
+                  return (
+                    <div key={d.date} className="flex flex-1 flex-col items-center gap-sm">
+                      <span className="sr-only">{`${d.date}: ${d.steps.toLocaleString()} steps`}</span>
+                      <span aria-hidden className={`font-mono text-[10px] ${d.steps > 0 ? 'text-text-muted' : 'text-transparent'}`}>
+                        {d.steps >= 1000 ? `${(d.steps / 1000).toFixed(1)}k` : d.steps}
+                      </span>
+                      <div
+                        aria-hidden
+                        title={`${d.steps.toLocaleString()} steps`}
+                        className={`w-full max-w-[44px] rounded-t-[10px] rounded-b-[4px] transition-[height] duration-reveal ease-entrance ${
+                          d.steps > 0
+                            ? isToday
+                              ? 'bg-gradient-to-t from-secondary/50 to-secondary shadow-[0_8px_24px_-8px_var(--color-secondary)]'
+                              : 'bg-gradient-to-t from-secondary/25 to-secondary/70'
+                            : 'bg-text-muted/[0.12]'
+                        }`}
+                        style={{ height: `${h}px` }}
+                      />
+                      <span aria-hidden className={`text-[11px] font-medium ${isToday ? 'text-secondary' : 'text-text-muted'}`}>
+                        {d.label}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </Card>
           </div>
@@ -419,10 +472,10 @@ export function FitnessPage() {
             </Card>
           ) : (
             <div className="flex flex-col gap-sm">
-              {workouts.map((w) => {
+              {[...workouts].sort(byDayDesc).map((w) => {
                 const details = [
                   w.duration_mins ? `${w.duration_mins} min` : null,
-                  w.calories_burned ? `${Math.round(w.calories_burned)} kcal` : null,
+                  w.calories_burned ? `~${Math.round(w.calories_burned)} kcal` : null,
                   w.steps ? `${w.steps.toLocaleString()} steps` : null,
                   w.perceived_intensity
                     ? (INTENSITY_LABELS[w.perceived_intensity] ?? w.perceived_intensity).toLowerCase()
@@ -451,9 +504,9 @@ export function FitnessPage() {
                       ) : null}
                       {w.note ? <p className="mt-xs text-xs text-text-muted">{w.note}</p> : null}
                     </div>
-                    <span className="shrink-0 font-mono text-xs text-text-muted">
-                      {w.local_date_str}
-                    </span>
+                    <time dateTime={w.local_date_str} className="shrink-0 font-mono text-xs text-text-muted">
+                      {fmtDay(w.local_date_str)}
+                    </time>
                   </Card>
                 )
               })}

@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { PlantAvatar } from '../components/PlantAvatar'
 import {
-  Alert, Badge, Button, Card, EmptyState, ErrorState, Input, Modal, PageHeader, Spinner, useToast,
+  Alert, Badge, Button, Card, EmptyState, ErrorState, Input, Modal, Ring, Spinner, useToast,
 } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { fmtDay } from '../lib/dates'
 import { ApiError } from '../lib/apiClient'
 import {
   addGrowthEntry, deleteGrowthEntry, deletePlant, getCareHistory, getPlant, listGrowth, logCare,
-  type CareEvent, type GrowthEntry, type Plant,
+  searchSpecies,
+  type CareEvent, type GrowthEntry, type Plant, type Species,
 } from '../lib/plantsApi'
 
 const todayStr = () => {
@@ -58,6 +61,13 @@ type CareAction = (typeof CARE_ACTIONS)[number]
 const ACTION_PATHS: Record<string, string> = Object.fromEntries(
   CARE_ACTIONS.map((a) => [a.type, a.path]),
 )
+
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'default'> = {
+  THRIVING: 'success',
+  NEEDS_ATTENTION: 'warning',
+  CRITICAL: 'danger',
+  DORMANT: 'default',
+}
 
 /** Fallback mark for history entries whose action type we don't recognise. */
 const TICK_PATH = 'M5.5 12.5l4 4 9-9.5'
@@ -228,6 +238,26 @@ export function PlantDetailPage() {
     void loadGrowth()
   }, [loadGrowth])
 
+  // The species names are a caption, not content: fetched after the plant,
+  // and a failure just leaves the caption out.
+  const speciesId = plant?.species_id ?? null
+  const [species, setSpecies] = useState<Species | null>(null)
+  useEffect(() => {
+    if (!speciesId) {
+      setSpecies(null)
+      return
+    }
+    let alive = true
+    searchSpecies('')
+      .then((list) => {
+        if (alive) setSpecies(list.find((sp) => sp.id === speciesId) ?? null)
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [speciesId])
+
   async function handleCare(action: CareAction) {
     if (!id || !plant) return
     setCaring(action.type)
@@ -388,6 +418,7 @@ export function PlantDetailPage() {
   const due = plant.next_water_due_at
     ? Math.round((new Date(plant.next_water_due_at).getTime() - Date.now()) / 86400000)
     : null
+  const interval = Math.max(1, plant.effective_interval_days ?? plant.base_interval_days)
 
   // Entries are newest-first, so heights[0] is the latest measurement and the
   // last element is the earliest. Two readings are the fewest that describe a
@@ -420,31 +451,66 @@ export function PlantDetailPage() {
           All plants
         </Link>
       </div>
-      <div className="mb-xl">
-        <PageHeader
-          title={plant.nickname}
-          subtitle={plant.room ?? 'No room set'}
-          action={
-            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
-              Remove
-            </Button>
-          }
-        />
+      <div className="mb-xl flex flex-col gap-lg sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex min-w-0 items-center gap-lg">
+          <PlantAvatar name={plant.nickname} size="lg" />
+          <div className="min-w-0">
+            <p className="eyebrow mb-xs">{species?.common_name ?? 'Your plant'}</p>
+            <h1 className="truncate font-display text-[34px] font-medium leading-[1.08] tracking-[-0.025em] text-text-main sm:text-[40px]">
+              {plant.nickname}
+            </h1>
+            <p className="mt-xs truncate text-[15px] text-text-muted">
+              {species ? <span className="font-display italic">{species.scientific_name}</span> : null}
+              {species ? ' · ' : null}
+              {plant.room ?? 'No room set'}
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-sm">
+          <Badge tone={STATUS_TONE[plant.status] ?? 'default'}>{plant.status.replace(/_/g, ' ')}</Badge>
+          <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+            Remove
+          </Button>
+        </div>
       </div>
 
       <div className="mb-xl grid grid-cols-1 gap-md sm:grid-cols-2">
-        <Card>
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">Watering</p>
-          <p className="mt-xs font-mono text-2xl font-semibold tracking-tight text-primary">
-            {due === null ? '—' : due < 0 ? `${Math.abs(due)}d overdue` : due === 0 ? 'due today' : `in ${due}d`}
-          </p>
-          <p className="mt-xs font-mono text-xs text-text-muted">
-            every ~{plant.effective_interval_days ?? plant.base_interval_days}d
-            {' · '}last {plant.last_watered_at ? fmtDate(plant.last_watered_at) : 'never'}
-          </p>
+        <Card className="flex items-center justify-between gap-md">
+          <div className="min-w-0">
+            <p className="eyebrow">Watering</p>
+            <p className="mt-sm font-display text-[28px] font-medium leading-none tracking-[-0.02em] text-text-main">
+              {due === null
+                ? 'Not yet watered'
+                : due < 0
+                  ? `${Math.abs(due)} day${Math.abs(due) === 1 ? '' : 's'} overdue`
+                  : due === 0
+                    ? 'Due today'
+                    : `In ${due} day${due === 1 ? '' : 's'}`}
+            </p>
+            <p className="mt-sm font-mono text-xs text-text-muted">
+              every ~{interval}d
+              {' · '}last {plant.last_watered_at ? fmtDate(plant.last_watered_at) : 'never'}
+            </p>
+            {due === null ? (
+              <p className="mt-xs text-xs text-text-muted">The first watering starts its schedule.</p>
+            ) : null}
+          </div>
+          {due !== null ? (
+            // How far through the interval the plant is: empty just after a
+            // watering, full when due. The sentence beside it says the same.
+            <Ring
+              value={Math.max(0, Math.min(interval, interval - due))}
+              max={interval}
+              label="Progress towards the next watering"
+              size={88}
+              thickness={9}
+              tone={due <= 0 ? 'tertiary' : 'primary'}
+              className="shrink-0"
+            />
+          ) : null}
         </Card>
         <Card>
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">Conditions</p>
+          <p className="eyebrow">Conditions</p>
           <div className="mt-sm flex flex-wrap gap-sm">
             <Badge>{plant.light_exposure.replace(/_/g, ' ')}</Badge>
             <Badge>{plant.placement}</Badge>
@@ -496,7 +562,9 @@ export function PlantDetailPage() {
                 {e.action_type.charAt(0) + e.action_type.slice(1).toLowerCase()}
                 {e.note ? <span className="text-text-muted"> — {e.note}</span> : null}
               </span>
-              <span className="shrink-0 font-mono text-xs text-text-muted">{e.local_date_str}</span>
+              <time dateTime={e.local_date_str} className="shrink-0 font-mono text-xs text-text-muted">
+                {fmtDay(e.local_date_str)}
+              </time>
             </div>
           ))}
         </Card>

@@ -64,6 +64,50 @@ function RosetteIcon({ className = 'h-8 w-8' }: { className?: string }) {
   )
 }
 
+/** Tier metal, as a decorative gradient for the medallion only — never ink. */
+const TIER_METAL: Record<string, [string, string]> = {
+  BRONZE: ['#d69a63', '#8a5a2b'],
+  SILVER: ['#dfe6ea', '#8d9aa3'],
+  GOLD: ['#f2d27c', '#b8862b'],
+  PLATINUM: ['#bfe7f7', '#5aa6c7'],
+}
+
+/**
+ * The badge itself: a metal-rimmed medallion with the rosette inside. Unlocked
+ * medallions carry their tier's metal and a soft glow; locked ones are a quiet
+ * outline with a padlock, so the grid shows at a glance what is earned.
+ */
+function Medallion({ tier, unlocked }: { tier: string; unlocked: boolean }) {
+  const [hi, lo] = TIER_METAL[tier] ?? TIER_METAL['BRONZE']!
+  if (!unlocked) {
+    return (
+      <span aria-hidden className="relative grid h-16 w-16 place-items-center rounded-full border border-dashed border-border-control/70 bg-text-muted/[0.05] text-text-muted">
+        <RosetteIcon className="h-7 w-7 opacity-60" />
+        <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border border-glass-border bg-surface-raised shadow-1">
+          <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" />
+            <path d="M5.5 7V5.5a2.5 2.5 0 015 0V7" />
+          </svg>
+        </span>
+      </span>
+    )
+  }
+  return (
+    <span
+      aria-hidden
+      className="relative grid h-16 w-16 place-items-center rounded-full p-[3px]"
+      style={{
+        background: `conic-gradient(from 210deg, ${hi}, ${lo}, ${hi}, ${lo}, ${hi})`,
+        boxShadow: `0 10px 28px -10px ${lo}`,
+      }}
+    >
+      <span className="grid h-full w-full place-items-center rounded-full bg-surface-raised text-primary">
+        <RosetteIcon className="h-7 w-7" />
+      </span>
+    </span>
+  )
+}
+
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     day: 'numeric',
@@ -111,9 +155,9 @@ export function AchievementsPage() {
   }, [loadAchievements, loadStreaks])
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-xl">
-        <PageHeader title="Achievements" subtitle="Badges, streaks and milestones." />
+        <PageHeader eyebrow="Milestones" title="Achievements" subtitle="Badges, streaks and milestones." />
       </div>
 
       {/* Streaks load independently of the badge grid: one failing never blanks the other. */}
@@ -137,15 +181,18 @@ export function AchievementsPage() {
                 No streaks yet. Log a care task, workout or meal to start one.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-lg sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-md sm:grid-cols-4">
                 {streaks.map((s) => (
-                  <div key={s.streak_type} className="flex flex-col items-start gap-xs">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
-                      {STREAK_LABELS[s.streak_type] ?? s.streak_type}
-                    </p>
-                    <p className="font-mono text-2xl font-semibold tracking-tight text-text-main">
+                  <div
+                    key={s.streak_type}
+                    className={`flex flex-col items-start gap-xs rounded-md p-md ${
+                      s.streak_type === 'OVERALL' ? 'bg-primary/[0.07]' : 'bg-text-muted/[0.04]'
+                    }`}
+                  >
+                    <p className="eyebrow">{STREAK_LABELS[s.streak_type] ?? s.streak_type}</p>
+                    <p className="font-mono text-3xl font-medium tracking-[-0.03em] text-text-main">
                       {s.current_length}
-                      <span className="text-sm font-normal text-text-muted">
+                      <span className="text-sm font-normal tracking-normal text-text-muted">
                         {' '}
                         / longest {s.longest_length}
                       </span>
@@ -153,7 +200,7 @@ export function AchievementsPage() {
                     {/* BR-GAM-07: a freeze spares one missed day before the streak resets. */}
                     <span
                       title="A freeze spares one missed day"
-                      className="inline-flex items-center gap-xs rounded-sm border border-border px-sm py-[2px] text-[11px] text-text-muted"
+                      className="inline-flex items-center gap-xs rounded-full border border-glass-border bg-surface/60 px-sm py-[2px] text-[11px] text-text-muted"
                     >
                       <span className="font-mono">{s.freeze_tokens}</span>
                       {s.freeze_tokens === 1 ? 'freeze day left' : 'freeze days left'}
@@ -186,12 +233,34 @@ export function AchievementsPage() {
         </Card>
       ) : (
         <div className="flex flex-col gap-xl">
+          {(() => {
+            const earned = items.filter((ua) => ua.unlocked_at !== null)
+            const points = earned.reduce((sum, ua) => sum + ua.achievement.points, 0)
+            const pct = Math.round((earned.length / items.length) * 100)
+            return (
+              <Card className="edge-gradient flex flex-col gap-md sm:flex-row sm:items-center">
+                <div className="flex-1">
+                  <p className="eyebrow">Your collection</p>
+                  <p className="mt-xs font-display text-3xl font-medium tracking-[-0.02em] text-text-main">
+                    {earned.length} of {items.length} badges
+                  </p>
+                  <div aria-hidden className="mt-md h-2 max-w-md overflow-hidden rounded-full bg-text-muted/[0.12]">
+                    <div className="h-full rounded-full bg-gradient-to-r from-primary/70 via-primary to-tertiary" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+                <div className="sm:text-right">
+                  <p className="font-mono text-3xl font-medium tracking-[-0.03em] text-tertiary">{points}</p>
+                  <p className="text-xs text-text-muted">points earned</p>
+                </div>
+              </Card>
+            )
+          })()}
           {MODULES.map((mod) => {
             const group = items.filter((ua) => ua.achievement.module === mod)
             if (group.length === 0) return null
             return (
               <section key={mod}>
-                <h2 className="mb-md font-heading text-lg font-semibold text-text-main">
+                <h2 className="mb-md font-heading text-xl font-semibold tracking-[-0.015em] text-text-main">
                   {MODULE_LABELS[mod] ?? mod}
                 </h2>
                 <div className="grid grid-cols-2 gap-md sm:grid-cols-3 lg:grid-cols-4">
@@ -201,15 +270,18 @@ export function AchievementsPage() {
                     return (
                       <Card
                         key={ua.id}
-                        className="flex flex-col items-center gap-sm text-center"
+                        className={`group relative flex flex-col items-center gap-sm overflow-hidden text-center transition-[transform,box-shadow] duration-standard ease-state hover:-translate-y-0.5 hover:shadow-glass-raised ${
+                          unlocked ? '' : 'opacity-[0.92]'
+                        }`}
                       >
-                        {/* Locked state dims the icon only — text keeps AA contrast. */}
-                        <span className={unlocked ? 'text-primary' : 'text-text-muted opacity-60 grayscale'}>
-                          <RosetteIcon />
-                        </span>
-                        <p className="text-sm font-semibold text-text-main">{a.name}</p>
-                        <p className="text-xs text-text-muted">{a.description}</p>
-                        <div className="flex flex-wrap items-center justify-center gap-xs">
+                        {unlocked ? (
+                          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-primary/[0.08] to-transparent" />
+                        ) : null}
+                        {/* Locked state dims the medallion only — text keeps AA contrast. */}
+                        <Medallion tier={a.tier} unlocked={unlocked} />
+                        <p className="mt-xs text-sm font-semibold text-text-main">{a.name}</p>
+                        <p className="text-xs leading-5 text-text-muted">{a.description}</p>
+                        <div className="mt-auto flex flex-wrap items-center justify-center gap-xs pt-xs">
                           <Badge tone={TIER_TONE[a.tier] ?? 'default'}>{a.tier}</Badge>
                           {!unlocked && <Badge>Locked</Badge>}
                           <span className="font-mono text-xs text-text-muted">{a.points} pts</span>
@@ -219,9 +291,14 @@ export function AchievementsPage() {
                             Unlocked <span className="font-mono">{fmtDate(ua.unlocked_at)}</span>
                           </p>
                         ) : ua.progress_pct > 0 ? (
-                          <p className="text-xs text-text-muted">
-                            <span className="font-mono">{ua.progress_pct}%</span> complete
-                          </p>
+                          <div className="w-full">
+                            <div aria-hidden className="h-1 overflow-hidden rounded-full bg-text-muted/[0.12]">
+                              <div className="h-full rounded-full bg-primary/70" style={{ width: `${ua.progress_pct}%` }} />
+                            </div>
+                            <p className="mt-xs text-xs text-text-muted">
+                              <span className="font-mono">{ua.progress_pct}%</span> complete
+                            </p>
+                          </div>
                         ) : null}
                       </Card>
                     )

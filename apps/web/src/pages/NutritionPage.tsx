@@ -11,6 +11,7 @@ import {
   Modal,
   PageHeader,
   Progress,
+  Ring,
   Select,
   Spinner,
   useToast,
@@ -31,6 +32,24 @@ const MEAL_LABELS: Record<MealType, string> = {
   LUNCH: 'Lunch',
   DINNER: 'Dinner',
   SNACK: 'Snack',
+}
+
+/** A 24-viewBox stroke glyph per meal, in the navigation's icon style. */
+const MEAL_GLYPHS: Record<MealType, string> = {
+  BREAKFAST: 'M3 18.5h18M6.5 18.5a5.5 5.5 0 0111 0M12 5v3M5.5 9.5l1.6 1.4M18.5 9.5l-1.6 1.4M7 21.5h10',
+  LUNCH:
+    'M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6',
+  DINNER: 'M19.5 14.6A7.6 7.6 0 019.4 4.5a7.6 7.6 0 1010.1 10.1z',
+  SNACK:
+    'M12 8c-1.6-1-5.1-1.1-6.3 1.9-1.3 3.3.7 8.4 3.4 9.6 1.2.5 2-.3 2.9-.3s1.7.8 2.9.3c2.7-1.2 4.7-6.3 3.4-9.6C17.1 6.9 13.6 7 12 8zM12 8c0-2 1-3.6 3-4.2',
+}
+
+/** Glyph tile colour per meal — static class strings so Tailwind keeps them. */
+const MEAL_TONE: Record<MealType, string> = {
+  BREAKFAST: 'bg-tertiary/10 text-tertiary',
+  LUNCH: 'bg-accent/10 text-accent',
+  DINNER: 'bg-secondary/10 text-secondary',
+  SNACK: 'bg-primary/10 text-primary',
 }
 
 // Plural + singular display names for the API's serving-unit enum.
@@ -174,10 +193,42 @@ function addDays(d: Date, n: number) {
   return r
 }
 
-const circumference = 2 * Math.PI * 50
 // No user-settable calorie target exists in the API yet; this is an honest,
 // labelled default rather than a value we pretend the user chose.
 const DEFAULT_KCAL_TARGET = 2000
+
+/**
+ * A glass that fills towards the day's goal. Decorative: the figure beside it
+ * and the progress bar below carry the value for assistive technology.
+ */
+function WaterGlass({ fraction }: { fraction: number }) {
+  const pct = Math.max(0, Math.min(1, fraction)) * 100
+  return (
+    <div
+      aria-hidden
+      className="relative h-[92px] w-[62px] shrink-0 overflow-hidden rounded-b-[20px] rounded-t-[8px] border border-secondary/30 bg-secondary/[0.06] shadow-[inset_0_1px_0_var(--glass-highlight)]"
+    >
+      <div
+        className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-secondary to-secondary/55 transition-[height] duration-reveal ease-entrance"
+        style={{ height: `${pct}%` }}
+      >
+        {/* A soft crest on the waterline so the fill reads as liquid. */}
+        <svg viewBox="0 0 62 8" preserveAspectRatio="none" className="absolute -top-[6px] left-0 h-[8px] w-full text-secondary/55">
+          <path d="M0 8V4c8-4 15-4 23 0s15 4 23 0 12-4 16-2v6z" fill="currentColor" />
+        </svg>
+      </div>
+      <div className="absolute inset-y-[10px] left-[8px] w-[5px] rounded-full bg-white/25" />
+    </div>
+  )
+}
+
+function DropIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M12 3.5c3.5 4.3 5.5 7.2 5.5 10a5.5 5.5 0 11-11 0c0-2.8 2-5.7 5.5-10z" />
+    </svg>
+  )
+}
 
 function ChevronIcon({ direction }: { direction: 'left' | 'right' }) {
   return (
@@ -289,9 +340,6 @@ export function NutritionPage() {
   const [goalError, setGoalError] = useState('')
   const [pendingGoal, setPendingGoal] = useState<number | null>(null)
 
-  // The ring animates its stroke from zero once the first summary renders.
-  const [ringReady, setRingReady] = useState(false)
-
   const ds = dateStr(date)
   const isToday = ds === dateStr(new Date())
 
@@ -312,15 +360,6 @@ export function NutritionPage() {
   useEffect(() => {
     load()
   }, [load])
-
-  // Arm the ring transition one frame after the ring first paints at zero.
-  useEffect(() => {
-    if (loading || loadError || ringReady) return
-    const raf = requestAnimationFrame(() =>
-      requestAnimationFrame(() => setRingReady(true)),
-    )
-    return () => cancelAnimationFrame(raf)
-  }, [loading, loadError, ringReady])
 
   // ?log=1 (optionally &meal=LUNCH) opens the modal preselected, then the
   // params are stripped so refresh/back does not re-open it.
@@ -629,15 +668,14 @@ export function NutritionPage() {
   }
 
   const kcal = summary?.totals.kcal ?? 0
-  const calPct = Math.min(1, kcal / DEFAULT_KCAL_TARGET)
-  const strokeOffset = ringReady ? circumference * (1 - calPct) : circumference
   const goalMl = summary?.water_goal_ml ?? 2000
   const waterMl = summary?.water_ml_total ?? 0
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-xl">
         <PageHeader
+          eyebrow="Nourishment"
           title="Nutrition"
           subtitle="Daily calories, macros and hydration."
           action={
@@ -676,40 +714,48 @@ export function NutritionPage() {
       ) : (
         <>
           <div className="mb-xl grid grid-cols-1 gap-md md:grid-cols-2">
-            <Card className="flex flex-col items-center gap-md">
-              <svg width={140} height={140} viewBox="0 0 120 120">
-                <circle cx={60} cy={60} r={50} fill="none" stroke="var(--color-border)" strokeWidth={10} />
-                <circle
-                  cx={60} cy={60} r={50} fill="none"
-                  stroke="var(--color-primary)" strokeWidth={10}
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeOffset}
-                  strokeLinecap="round"
-                  transform="rotate(-90 60 60)"
-                  style={{ transition: 'stroke-dashoffset 700ms ease-out' }}
+            <Card className="flex flex-col gap-lg sm:flex-row sm:items-center">
+              {/* The ring and the figure in its middle are one reading: the
+                  <progress> carries the accessible value, the figure is the
+                  same number for sighted users. */}
+              <div className="relative grid shrink-0 place-items-center self-center">
+                <Ring
+                  value={kcal}
+                  max={DEFAULT_KCAL_TARGET}
+                  label="Calories eaten against the default target"
+                  size={156}
+                  thickness={13}
+                  tone="primary"
                 />
-                <text x={60} y={55} textAnchor="middle" className="fill-text-main font-mono" fontSize={18} fontWeight="bold">
-                  {Math.round(kcal)}
-                </text>
-                <text x={60} y={72} textAnchor="middle" className="fill-text-muted font-mono" fontSize={11}>
-                  / {DEFAULT_KCAL_TARGET.toLocaleString()} kcal
-                </text>
-              </svg>
-              <p className="text-xs text-text-muted">
-                Default target — <span className="font-mono">2,000</span> kcal
-              </p>
-              <div className="w-full flex flex-col gap-sm">
-                <Progress value={summary?.totals.protein_g ?? 0} max={150} label="Protein (g)" tone="primary" />
-                <Progress value={summary?.totals.carbs_g ?? 0} max={250} label="Carbs (g)" tone="secondary" />
-                <Progress value={summary?.totals.fat_g ?? 0} max={65} label="Fat (g)" tone="tertiary" />
+                <div aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+                  <div>
+                    <p className="font-display text-[34px] font-medium leading-none tracking-[-0.02em] text-text-main">
+                      {Math.round(kcal).toLocaleString()}
+                    </p>
+                    <p className="mt-[5px] font-mono text-[11px] text-text-muted">
+                      of {DEFAULT_KCAL_TARGET.toLocaleString()} kcal
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-md">
+                <div>
+                  <p className="eyebrow">Calories &amp; macros</p>
+                  <p className="mt-xs text-xs text-text-muted">
+                    Default target — <span className="font-mono">2,000</span> kcal
+                  </p>
+                </div>
+                <div className="flex w-full flex-col gap-sm">
+                  <Progress value={summary?.totals.protein_g ?? 0} max={150} label="Protein (g)" tone="primary" />
+                  <Progress value={summary?.totals.carbs_g ?? 0} max={250} label="Carbs (g)" tone="secondary" />
+                  <Progress value={summary?.totals.fat_g ?? 0} max={65} label="Fat (g)" tone="tertiary" />
+                </div>
               </div>
             </Card>
 
             <Card className="flex flex-col gap-md">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
-                  Hydration
-                </p>
+                <p className="eyebrow">Hydration</p>
                 {!goalEditing ? (
                   <button
                     onClick={() => {
@@ -723,10 +769,21 @@ export function NutritionPage() {
                   </button>
                 ) : null}
               </div>
-              <p className="font-mono text-2xl font-semibold tracking-tight text-secondary">
-                {waterMl}
-                <span className="text-base font-normal text-text-muted"> / {goalMl} ml</span>
-              </p>
+              <div className="flex items-end gap-lg">
+                <WaterGlass fraction={goalMl > 0 ? waterMl / goalMl : 0} />
+                <div className="min-w-0 pb-[2px]">
+                  <p className="font-display text-[40px] font-medium leading-none tracking-[-0.02em] text-text-main">
+                    {waterMl.toLocaleString()}
+                    <span className="ml-[6px] font-mono text-sm font-normal tracking-normal text-text-muted">ml</span>
+                  </p>
+                  <p className="mt-xs font-mono text-xs text-text-muted">
+                    of {goalMl.toLocaleString()} ml goal
+                  </p>
+                  <p className="mt-sm text-sm font-medium text-secondary">
+                    {waterMl >= goalMl ? 'Goal reached' : `${(goalMl - waterMl).toLocaleString()} ml to go`}
+                  </p>
+                </div>
+              </div>
               <Progress value={waterMl} max={goalMl} srLabel="Water intake (ml)" tone="secondary" />
               {goalEditing ? (
                 <form
@@ -770,21 +827,23 @@ export function NutritionPage() {
                   your next water log.
                 </p>
               ) : null}
-              <div className="flex gap-sm">
+              <div className="mt-auto flex gap-sm">
                 <Button
                   variant="secondary"
-                  className="font-mono"
+                  className="flex-1 font-mono"
                   loading={water250Busy}
                   onClick={() => handleWater(250)}
                 >
+                  {water250Busy ? null : <DropIcon />}
                   +250 ml
                 </Button>
                 <Button
                   variant="secondary"
-                  className="font-mono"
+                  className="flex-1 font-mono"
                   loading={water500Busy}
                   onClick={() => handleWater(500)}
                 >
+                  {water500Busy ? null : <DropIcon />}
                   +500 ml
                 </Button>
               </div>
@@ -817,40 +876,50 @@ export function NutritionPage() {
               />
             </Card>
           ) : (
-            <div className="flex flex-col gap-md">
+            <div className="grid grid-cols-1 gap-md md:grid-cols-2">
               {MEAL_TYPES.map((mt) => {
                 const meals = summary.meals.filter((m) => m.meal_type === mt)
                 const total = meals.reduce((s, m) => s + m.total_kcal, 0)
+                const items = meals.flatMap((m) => m.items)
                 return (
-                  <Card key={mt}>
-                    <div className="mb-sm flex items-center justify-between">
-                      <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
-                        {MEAL_LABELS[mt]}
+                  <Card key={mt} className="flex flex-col gap-md">
+                    <div className="flex items-center gap-sm">
+                      <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${MEAL_TONE[mt]}`}>
+                        <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                          <path d={MEAL_GLYPHS[mt]} />
+                        </svg>
+                      </span>
+                      <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-text-main">{MEAL_LABELS[mt]}</h3>
+                      <p className="ml-auto font-mono text-sm text-text-muted">
+                        {Math.round(total)} kcal
                       </p>
-                      <div className="flex items-center gap-sm">
-                        <p className="font-mono text-sm text-text-muted">
-                          {Math.round(total)} kcal
-                        </p>
-                        <button
-                          onClick={() => openLog(mt)}
-                          aria-label={`Log ${MEAL_LABELS[mt].toLowerCase()}`}
-                          className="rounded-sm border border-border p-xs text-text-muted hover:border-text-muted hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        >
-                          <PlusIcon />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openLog(mt)}
+                        aria-label={`Log ${MEAL_LABELS[mt].toLowerCase()}`}
+                        className="grid h-8 w-8 place-items-center rounded-full border border-border-control/70 text-text-muted transition-colors duration-standard ease-state hover:border-text-muted hover:bg-text-main/[0.04] hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <PlusIcon />
+                      </button>
                     </div>
-                    {meals.length === 0 ? (
-                      <p className="text-sm text-text-muted">Nothing logged.</p>
+                    {items.length === 0 ? (
+                      <p className="rounded-md border border-dashed border-border px-md py-sm text-sm text-text-muted">
+                        Nothing logged yet.
+                      </p>
                     ) : (
-                      meals.flatMap((m) => m.items).map((item) => (
-                        <div key={item.id} className="flex items-center justify-between py-xs text-sm">
-                          <span className="text-text-main">{item.food_name_at_log}</span>
-                          <span className="font-mono text-xs text-text-muted">
-                            {item.grams}g · {Math.round(item.kcal)} kcal
-                          </span>
-                        </div>
-                      ))
+                      <ul className="flex flex-col">
+                        {items.map((item) => (
+                          <li
+                            key={item.id}
+                            className="flex items-baseline justify-between gap-md border-b border-border py-sm text-sm first:pt-0 last:border-b-0 last:pb-0"
+                          >
+                            <span className="min-w-0 truncate text-text-main">{item.food_name_at_log}</span>
+                            <span className="shrink-0 font-mono text-xs text-text-muted">
+                              {item.grams}g · {Math.round(item.kcal)} kcal
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </Card>
                 )

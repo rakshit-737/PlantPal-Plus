@@ -5,6 +5,7 @@ import {
   PageHeader, Select, Spinner, useToast,
   type ComboOption,
 } from '../components/ui'
+import { PlantAvatar } from '../components/PlantAvatar'
 import { usePageTitle } from '../hooks/usePageTitle'
 import {
   listPlants, createPlant, updatePlant, logCare, searchSpecies,
@@ -17,8 +18,40 @@ const today = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/**
+ * How far through its watering interval a plant is — empty just after a
+ * watering, full when it is due. Drawn only from the schedule the API
+ * computed; decorative, because the badge beside it already says it in words.
+ */
+function ThirstMeter({
+  due,
+  intervalDays,
+  tone,
+}: {
+  due: string | null
+  intervalDays: number
+  tone: 'danger' | 'warning' | 'success' | 'default'
+}) {
+  if (!due || !(intervalDays > 0)) return null
+  const daysLeft = (new Date(due).getTime() - Date.now()) / 86400000
+  const pct = Math.max(4, Math.min(100, (1 - daysLeft / intervalDays) * 100))
+  const fill =
+    tone === 'danger'
+      ? 'from-accent/70 to-accent'
+      : tone === 'warning'
+        ? 'from-tertiary/70 to-tertiary'
+        : 'from-primary/60 to-primary'
+  return (
+    <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-text-muted/[0.12]">
+      <div className={`h-full rounded-full bg-gradient-to-r ${fill}`} style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
+
 function wateringLabel(due: string | null): { text: string; tone: 'danger' | 'warning' | 'success' | 'default' } {
-  if (!due) return { text: 'No schedule', tone: 'default' }
+  // No due date means the plant has never been watered: its schedule starts
+  // from the first watering, so say that rather than "No schedule".
+  if (!due) return { text: 'Not yet watered', tone: 'default' }
   const diff = Math.round((new Date(due).getTime() - Date.now()) / 86400000)
   if (diff < 0) return { text: `Overdue ${Math.abs(diff)}d`, tone: 'danger' }
   if (diff === 0) return { text: 'Due today', tone: 'warning' }
@@ -517,9 +550,10 @@ export function PlantsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-xl">
         <PageHeader
+          eyebrow="Your garden"
           title="My Plants"
           subtitle="Watering reminders and care history."
           action={<Button onClick={() => setAddOpen(true)}>Add plant</Button>}
@@ -597,28 +631,49 @@ export function PlantsPage() {
                 const wl = wateringLabel(p.next_water_due_at)
                 const busy = wateringIds.has(p.id)
                 return (
-                  <Card key={p.id} className="flex flex-col gap-sm">
-                    <div className="flex items-start justify-between gap-sm">
-                      <div>
+                  <Card
+                    key={p.id}
+                    className="group relative flex flex-col gap-md overflow-hidden transition-[transform,box-shadow] duration-standard ease-state hover:-translate-y-0.5 hover:shadow-glass-raised"
+                  >
+                    <div className="flex items-start gap-md">
+                      <PlantAvatar name={p.nickname} />
+                      <div className="min-w-0 flex-1">
                         <Link
                           to={`/plants/${p.id}`}
-                          className="font-semibold text-text-main hover:text-primary hover:underline"
+                          className="block truncate text-[15px] font-semibold tracking-[-0.01em] text-text-main after:absolute after:inset-0 after:content-[''] hover:text-primary focus:outline-none focus-visible:underline"
                         >
                           {p.nickname}
                         </Link>
-                        <p className="text-xs text-text-muted">{p.room ?? 'No room set'}</p>
+                        <p className="truncate text-xs text-text-muted">
+                          {[
+                            p.species_id ? speciesById.get(p.species_id)?.common_name : undefined,
+                            p.room ?? (p.species_id ? undefined : 'No room set'),
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
                       </div>
                       <Badge tone={statusTone[p.status] ?? 'default'}>{p.status.replace('_', ' ')}</Badge>
                     </div>
-                    <Badge tone={wl.tone}>{wl.text}</Badge>
-                    <p className="font-mono text-xs text-text-muted">
-                      every ~{p.effective_interval_days ?? p.base_interval_days}d
-                      {' · '}
-                      {p.last_watered_at
-                        ? `last ${new Date(p.last_watered_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
-                        : 'never watered'}
-                    </p>
-                    <div className="mt-auto flex gap-sm">
+                    <div className="flex flex-col gap-sm">
+                      <div className="flex items-center justify-between gap-sm">
+                        <Badge tone={wl.tone}>{wl.text}</Badge>
+                        <span className="font-mono text-xs text-text-muted">
+                          every ~{p.effective_interval_days ?? p.base_interval_days}d
+                        </span>
+                      </div>
+                      <ThirstMeter
+                        due={p.next_water_due_at}
+                        intervalDays={p.effective_interval_days ?? p.base_interval_days}
+                        tone={wl.tone}
+                      />
+                      <p className="font-mono text-xs text-text-muted">
+                        {p.last_watered_at
+                          ? `last watered ${new Date(p.last_watered_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+                          : 'water once to start its schedule'}
+                      </p>
+                    </div>
+                    <div className="relative z-10 mt-auto flex gap-sm">
                       <Button
                         variant="secondary"
                         loading={busy}

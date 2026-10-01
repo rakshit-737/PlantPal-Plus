@@ -6,6 +6,7 @@ import {
   EmptyState,
   ErrorState,
   PageHeader,
+  Ring,
   Skeleton,
   StatCard,
   useToast,
@@ -35,14 +36,21 @@ const formatToday = () =>
     year: 'numeric',
   }).format(new Date())
 
+/** "Good morning" / "Good afternoon" / "Good evening", by the local clock. */
+const greetingFor = (date = new Date()) => {
+  const h = date.getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
+
 /** Inline stroke icons, matching the nav-item style (no emoji). */
 const rowIcon = (path: string, size = 'h-5 w-5') => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth={1.5}
-    strokeLinecap="square"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={`${size} shrink-0`}
     aria-hidden
   >
@@ -50,11 +58,35 @@ const rowIcon = (path: string, size = 'h-5 w-5') => (
   </svg>
 )
 
+/** A glyph in a soft disc of its own ink — the list-row and tile icon chip. */
+function InkChip({ ink, children, size = 'h-10 w-10' }: { ink: string; children: ReactNode; size?: string }) {
+  return (
+    <span aria-hidden className={`relative grid shrink-0 place-items-center rounded-full ${size} ${ink}`}>
+      <span className="absolute inset-0 rounded-full bg-current opacity-[0.12]" />
+      <span className="relative">{children}</span>
+    </span>
+  )
+}
+
+/** Which ink a Today/reminder row takes, by its type. */
+const rowInk: Record<string, string> = {
+  PLANT_WATER: 'text-primary',
+  LOG_MEAL: 'text-tertiary',
+  LOG_WORKOUT: 'text-secondary',
+}
+
 // Keys match dashboardRepo's today_list item types.
+const GLYPHS = {
+  drop: 'M12 3.5c3.6 4.6 6 7.9 6 11a6 6 0 11-12 0c0-3.1 2.4-6.4 6-11z',
+  pulse: 'M3 12h3.5l2.5-6 4 12 2.5-6H21',
+  meal: 'M7 3v8M4 3v5a3 3 0 006 0V3M7 11v10M17 3v18M17 3c-2 2-3 4-3 7 0 2 1 3 3 3',
+  sprout: 'M12 20v-8M12 13c0-4.2-2.9-7-7-7 0 4.2 2.9 7 7 7zM12 10.5c0-3.6 2.4-6.3 6.5-6.3 0 3.6-2.4 6.3-6.5 6.3zM7.5 20h9',
+}
+
 const listIcons: Record<string, ReactNode> = {
-  PLANT_WATER: rowIcon('M12 3c3.5 5 6 8 6 11.5a6 6 0 11-12 0C6 11 8.5 8 12 3z'),
-  LOG_MEAL: rowIcon('M7 3v8M4 3v5a3 3 0 006 0V3M7 11v10M17 3v18M17 3c-2 2-3 4-3 7 0 2 1 3 3 3'),
-  LOG_WORKOUT: rowIcon('M6 6l12 12M4 8l2-2M20 16l-2 2M8 20l-2-2M18 4l2 2'),
+  PLANT_WATER: rowIcon(GLYPHS.drop),
+  LOG_MEAL: rowIcon(GLYPHS.meal),
+  LOG_WORKOUT: rowIcon(GLYPHS.pulse),
 }
 /**
  * The three modules, as dashboard shortcuts.
@@ -70,7 +102,7 @@ const MODULES = [
     body: 'Watering intervals that follow species, pot and season.',
     action: 'Open plants',
     accent: 'text-primary',
-    icon: rowIcon('M12 3c3.5 5 6 8 6 11.5a6 6 0 11-12 0C6 11 8.5 8 12 3z', 'h-6 w-6'),
+    icon: rowIcon(GLYPHS.sprout, 'h-6 w-6'),
   },
   {
     key: 'fitness',
@@ -79,7 +111,7 @@ const MODULES = [
     body: 'Steps and workouts, with energy from MET values.',
     action: 'Open fitness',
     accent: 'text-secondary',
-    icon: rowIcon('M6 6l12 12M4 8l2-2M20 16l-2 2M8 20l-2-2M18 4l2 2', 'h-6 w-6'),
+    icon: rowIcon(GLYPHS.pulse, 'h-6 w-6'),
   },
   {
     key: 'nutrition',
@@ -88,10 +120,7 @@ const MODULES = [
     body: 'Meals and water against a target that adds up.',
     action: 'Open nutrition',
     accent: 'text-tertiary',
-    icon: rowIcon(
-      'M7 3v8M4 3v5a3 3 0 006 0V3M7 11v10M17 3v18M17 3c-2 2-3 4-3 7 0 2 1 3 3 3',
-      'h-6 w-6',
-    ),
+    icon: rowIcon(GLYPHS.meal, 'h-6 w-6'),
   },
 ] as const
 
@@ -131,8 +160,22 @@ function TileSkeleton() {
   return (
     <Card>
       <Skeleton className="h-[13px] w-16" />
-      <Skeleton className="mt-xs h-9 w-24" />
-      <Skeleton className="mt-xs h-4 w-20" />
+      <Skeleton className="mt-sm h-[34px] w-24" />
+      <Skeleton className="mt-sm h-4 w-20" />
+    </Card>
+  )
+}
+
+/** The rings card's placeholder: a ring-sized disc and three legend lines. */
+function HeroSkeleton() {
+  return (
+    <Card className="flex items-center gap-lg">
+      <Skeleton className="h-[148px] w-[148px] shrink-0 !rounded-full" />
+      <div className="flex flex-1 flex-col gap-md">
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
     </Card>
   )
 }
@@ -140,12 +183,18 @@ function TileSkeleton() {
 /** A reminder or Today row's placeholder, at the same height as the real row. */
 function RowSkeleton() {
   return (
-    <Card className="flex items-center gap-md py-sm">
-      <Skeleton className="h-5 w-5 shrink-0" />
+    <div className="flex items-center gap-md px-md py-[14px]">
+      <Skeleton className="h-10 w-10 shrink-0 !rounded-full" />
       <Skeleton className="h-4 w-1/3 flex-1" />
       <Skeleton className="h-9 w-24 shrink-0 rounded-md" />
-    </Card>
+    </div>
   )
+}
+
+/** Percentage of a goal, for display; null when there is no goal to divide by. */
+function percentOf(value: number, goal: number): number | null {
+  if (!(goal > 0)) return null
+  return Math.round((value / goal) * 100)
 }
 
 export function DashboardPage() {
@@ -329,12 +378,20 @@ export function DashboardPage() {
     return null
   }
 
+  const stepsPct = data ? percentOf(data.fitness.steps, data.fitness.goal) : null
+  const kcalPct = data ? percentOf(data.nutrition.calories_consumed, data.nutrition.target) : null
+  // The rings card only draws what has a real denominator: steps against a
+  // goal, calories against a target. Plant care has no "fraction of today
+  // done" in the summary payload, so it gets a tile, not a ring.
+  const showRings = fitnessOn || nutritionOn
+
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className={`mb-xl ${animateGreeting ? 'animate-grow-in' : ''}`}>
         <PageHeader
-          title={`Hello, ${greetingName}`}
-          subtitle={formatToday()}
+          eyebrow={formatToday()}
+          title={`${greetingFor()}, ${greetingName}`}
+          subtitle="Here is today, across everything you tend."
           action={
             streak > 0 ? (
               /*
@@ -351,24 +408,26 @@ export function DashboardPage() {
                * renders as content. So the slot spends itself on the two
                * numbers that are real.
                */
-              <div className="flex items-stretch gap-lg rounded-md border border-glass-border bg-glass px-md py-sm shadow-glass backdrop-blur-glass">
+              <div className="pane flex items-stretch gap-lg rounded-lg px-md py-[10px]">
                 <div className="flex items-center gap-sm">
-                  <span className="text-primary">{flameIcon}</span>
+                  <InkChip ink="text-tertiary" size="h-9 w-9">
+                    {flameIcon}
+                  </InkChip>
                   <div>
-                    <p className="font-mono text-xl font-semibold leading-none text-text-main">
+                    <p className="font-mono text-xl font-medium leading-none text-text-main">
                       {streak}
                     </p>
-                    <p className="mt-[3px] text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">
+                    <p className="mt-[4px] text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
                       day streak
                     </p>
                   </div>
                 </div>
                 {data && data.streak.longest > 0 ? (
-                  <div className="border-l border-glass-border pl-lg">
-                    <p className="font-mono text-xl font-semibold leading-none text-text-muted">
+                  <div className="flex flex-col justify-center border-l border-glass-border pl-lg">
+                    <p className="font-mono text-xl font-medium leading-none text-text-muted">
                       {data.streak.longest}
                     </p>
-                    <p className="mt-[3px] text-[10px] font-medium uppercase tracking-[0.08em] text-text-muted">
+                    <p className="mt-[4px] text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
                       longest
                     </p>
                   </div>
@@ -382,7 +441,7 @@ export function DashboardPage() {
       {showSkeleton ? (
         /*
          * Skeletons rather than a centred spinner, laid out as the real page:
-         * the same tile grid at the same column count, then two rows. A
+         * the rings card, the same tile grid at the same count, then rows. A
          * spinner tells you to wait and then shifts everything when it goes;
          * this holds the layout still, which is what the CLS budget is about.
          *
@@ -396,15 +455,28 @@ export function DashboardPage() {
             Loading your dashboard
           </span>
           <div aria-hidden>
-            <div className={`grid grid-cols-1 gap-md sm:grid-cols-2 ${tileCols}`}>
-              {Array.from({ length: tileCount }, (_, i) => (
-                <TileSkeleton key={i} />
-              ))}
+            <div className={`grid gap-md ${showRings ? 'lg:grid-cols-12' : ''}`}>
+              {showRings ? (
+                <div className="lg:col-span-5">
+                  <HeroSkeleton />
+                </div>
+              ) : null}
+              <div
+                className={`grid grid-cols-1 gap-md sm:grid-cols-2 ${
+                  showRings ? 'lg:col-span-7' : tileCols
+                } sm:[&>*:last-child:nth-child(odd)]:col-span-2`}
+              >
+                {Array.from({ length: tileCount }, (_, i) => (
+                  <TileSkeleton key={i} />
+                ))}
+              </div>
             </div>
-            <div className="mt-xl flex flex-col gap-sm">
+            <div className="mt-xl">
               <Skeleton className="mb-md h-7 w-32" />
-              <RowSkeleton />
-              <RowSkeleton />
+              <Card className="!p-0">
+                <RowSkeleton />
+                <RowSkeleton />
+              </Card>
             </div>
           </div>
         </>
@@ -423,56 +495,137 @@ export function DashboardPage() {
               onRetry={load}
             />
           ) : (
-            <div className={`grid grid-cols-1 gap-md sm:grid-cols-2 ${tileCols}`}>
-              <StatCard
-                label="Streak"
-                value={String(data.streak.current)}
-                sub={
-                  data.streak.current > 0
-                    ? `Longest: ${data.streak.longest}`
-                    : 'Log something to start'
-                }
-                accent="text-primary"
-              />
-              {plantCareOn && (
+            <div className={`grid gap-md ${showRings ? 'lg:grid-cols-12' : ''}`}>
+              {showRings ? (
+                <Card className="edge-gradient relative flex flex-col overflow-hidden lg:col-span-5">
+                  <div aria-hidden className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full bg-[radial-gradient(closest-side,var(--aurora-1),transparent)]" />
+                  <p className="eyebrow relative">Today&apos;s rings</p>
+                  <div className="relative mt-md flex flex-1 flex-col items-center justify-center gap-lg sm:flex-row">
+                    <div className="relative grid shrink-0 place-items-center">
+                      {fitnessOn ? (
+                        <Ring
+                          value={data.fitness.steps}
+                          max={data.fitness.goal > 0 ? data.fitness.goal : 1}
+                          label="Steps towards today's goal"
+                          size={168}
+                          thickness={14}
+                          tone="secondary"
+                        />
+                      ) : null}
+                      {nutritionOn ? (
+                        <Ring
+                          value={data.nutrition.calories_consumed}
+                          max={data.nutrition.target > 0 ? data.nutrition.target : 1}
+                          label="Calories towards today's target"
+                          size={fitnessOn ? 124 : 168}
+                          thickness={14}
+                          tone="tertiary"
+                          className={fitnessOn ? 'absolute' : ''}
+                        />
+                      ) : null}
+                      <div aria-hidden className="absolute text-center">
+                        <p className="font-display text-3xl font-medium leading-none text-text-main">{streak}</p>
+                        <p className="mt-[3px] text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">streak</p>
+                      </div>
+                    </div>
+                    <ul className="flex w-full flex-1 flex-col gap-md">
+                      {fitnessOn ? (
+                        <li className="flex items-center gap-sm">
+                          <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-secondary" />
+                          <span className="flex-1">
+                            <span className="block text-sm font-semibold text-text-main">Move</span>
+                            <span className="block font-mono text-xs text-text-muted">
+                              {data.fitness.steps.toLocaleString()} of {data.fitness.goal.toLocaleString()} steps
+                            </span>
+                          </span>
+                          {stepsPct !== null ? (
+                            <span className="font-mono text-sm font-medium text-secondary">{stepsPct}%</span>
+                          ) : null}
+                        </li>
+                      ) : null}
+                      {nutritionOn ? (
+                        <li className="flex items-center gap-sm">
+                          <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-tertiary" />
+                          <span className="flex-1">
+                            <span className="block text-sm font-semibold text-text-main">Nourish</span>
+                            <span className="block font-mono text-xs text-text-muted">
+                              {Math.round(data.nutrition.calories_consumed).toLocaleString()} of{' '}
+                              {data.nutrition.target.toLocaleString()} kcal
+                            </span>
+                          </span>
+                          {kcalPct !== null ? (
+                            <span className="font-mono text-sm font-medium text-tertiary">{kcalPct}%</span>
+                          ) : null}
+                        </li>
+                      ) : null}
+                      <li className="rule-fade" aria-hidden />
+                      <li className="text-xs leading-5 text-text-muted">
+                        The streak grows on days every habit you track has counted.
+                      </li>
+                    </ul>
+                  </div>
+                </Card>
+              ) : null}
+
+              <div
+                className={`grid grid-cols-1 gap-md sm:grid-cols-2 ${
+                  showRings ? 'lg:col-span-7' : tileCols
+                } sm:[&>*:last-child:nth-child(odd)]:col-span-2`}
+              >
                 <StatCard
-                  label="Plants due"
-                  value={String(data.plants.due_today)}
-                  sub={`${data.plants.overdue} overdue`}
-                  accent="text-primary-hover"
-                  // An overdue plant is the one thing on this grid that is
-                  // actually wrong, so it stops reading as quiet context.
-                  subTone={data.plants.overdue > 0 ? 'text-accent' : 'text-text-muted'}
+                  label="Streak"
+                  value={String(data.streak.current)}
+                  sub={
+                    data.streak.current > 0
+                      ? `Longest: ${data.streak.longest}`
+                      : 'Log something to start'
+                  }
+                  accent="text-primary"
+                  icon={flameIcon}
                 />
-              )}
-              {fitnessOn && (
-                <StatCard
-                  label="Steps"
-                  value={data.fitness.steps.toLocaleString()}
-                  sub={`Goal: ${data.fitness.goal.toLocaleString()}`}
-                  accent="text-secondary"
-                  {...(data.fitness.goal > 0
-                    ? { meter: (data.fitness.steps / data.fitness.goal) * 100 }
-                    : {})}
-                />
-              )}
-              {nutritionOn && (
-                <StatCard
-                  label="Calories"
-                  value={String(Math.round(data.nutrition.calories_consumed))}
-                  sub={`Target: ${data.nutrition.target}`}
-                  accent="text-tertiary"
-                  {...(data.nutrition.target > 0
-                    ? { meter: (data.nutrition.calories_consumed / data.nutrition.target) * 100 }
-                    : {})}
-                />
-              )}
+                {plantCareOn && (
+                  <StatCard
+                    label="Plants due"
+                    value={String(data.plants.due_today)}
+                    sub={`${data.plants.overdue} overdue`}
+                    accent="text-primary-hover"
+                    // An overdue plant is the one thing on this grid that is
+                    // actually wrong, so it stops reading as quiet context.
+                    subTone={data.plants.overdue > 0 ? 'text-accent' : 'text-text-muted'}
+                    icon={rowIcon(GLYPHS.drop, 'h-4 w-4')}
+                  />
+                )}
+                {fitnessOn && (
+                  <StatCard
+                    label="Steps"
+                    value={data.fitness.steps.toLocaleString()}
+                    sub={`Goal: ${data.fitness.goal.toLocaleString()}`}
+                    accent="text-secondary"
+                    icon={rowIcon(GLYPHS.pulse, 'h-4 w-4')}
+                    {...(data.fitness.goal > 0
+                      ? { meter: (data.fitness.steps / data.fitness.goal) * 100 }
+                      : {})}
+                  />
+                )}
+                {nutritionOn && (
+                  <StatCard
+                    label="Calories"
+                    value={String(Math.round(data.nutrition.calories_consumed))}
+                    sub={`Target: ${data.nutrition.target}`}
+                    accent="text-tertiary"
+                    icon={rowIcon(GLYPHS.meal, 'h-4 w-4')}
+                    {...(data.nutrition.target > 0
+                      ? { meter: (data.nutrition.calories_consumed / data.nutrition.target) * 100 }
+                      : {})}
+                  />
+                )}
+              </div>
             </div>
           )}
 
           {remindersError ? (
-            <section className="mt-xl">
-              <h2 className="mb-md font-heading text-xl font-semibold text-text-main">
+            <section className="mt-2xl">
+              <h2 className="mb-md font-heading text-xl font-semibold tracking-[-0.015em] text-text-main">
                 Reminders
               </h2>
               <ErrorState
@@ -482,56 +635,64 @@ export function DashboardPage() {
               />
             </section>
           ) : reminders.length > 0 ? (
-            <section className="mt-xl">
-              <h2 className="mb-md font-heading text-xl font-semibold text-text-main">
-                Reminders
-              </h2>
-              <div className="flex flex-col gap-sm">
+            <section className="mt-2xl">
+              <div className="mb-md flex items-baseline justify-between">
+                <h2 className="font-heading text-xl font-semibold tracking-[-0.015em] text-text-main">
+                  Reminders
+                </h2>
+                <span className="font-mono text-xs text-text-muted">{reminders.length} waiting</span>
+              </div>
+              <div className="pane divide-y divide-glass-border overflow-hidden rounded-lg">
                 {reminders.map((r, i) => (
-                  <Card
+                  <div
                     key={r.id}
-                    className="animate-grow-in flex items-center gap-md py-sm"
+                    className="animate-grow-in flex items-center gap-md px-md py-[12px] transition-colors hover:bg-text-main/[0.02]"
                     style={{ animationDelay: staggerDelay(i, reminders.length, reducedMotion) }}
                   >
-                    <span className="text-text-muted">{bellIcon}</span>
+                    <InkChip ink={rowInk[r.reminder_type] ?? 'text-text-muted'}>{bellIcon}</InkChip>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-text-main">{r.title}</p>
                       {r.body && <p className="text-xs text-text-muted">{r.body}</p>}
                     </div>
-                    <Button variant="ghost" onClick={() => void handleDismiss(r.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => void handleDismiss(r.id)}>
                       Dismiss
                     </Button>
-                  </Card>
+                  </div>
                 ))}
               </div>
             </section>
           ) : null}
 
           {!dashError && data ? (
-            <section className="mt-xl">
-              <h2 className="mb-md font-heading text-xl font-semibold text-text-main">Today</h2>
+            <section className="mt-2xl">
+              <div className="mb-md flex items-baseline justify-between">
+                <h2 className="font-heading text-xl font-semibold tracking-[-0.015em] text-text-main">Today</h2>
+                {todayList.length > 0 ? (
+                  <span className="font-mono text-xs text-text-muted">{todayList.length} to do</span>
+                ) : null}
+              </div>
               {todayList.length > 0 ? (
-                <div className="flex flex-col gap-sm">
+                <div className="pane divide-y divide-glass-border overflow-hidden rounded-lg">
                   {todayList.map((item, i) => (
-                    <Card
+                    <div
                       key={`${item.type}-${item.id}`}
-                      className="animate-grow-in flex items-center gap-md py-sm"
+                      className="animate-grow-in flex items-center gap-md px-md py-[12px] transition-colors hover:bg-text-main/[0.02]"
                       style={{ animationDelay: staggerDelay(i, todayList.length, reducedMotion) }}
                     >
-                      <span className="text-text-muted">
+                      <InkChip ink={rowInk[item.type] ?? 'text-text-muted'}>
                         {listIcons[item.type] ?? fallbackIcon}
-                      </span>
+                      </InkChip>
                       <span className="min-w-0 flex-1 text-sm font-medium text-text-main">
                         {item.title}
                       </span>
                       {todayAction(item)}
-                    </Card>
+                    </div>
                   ))}
                 </div>
               ) : (
                 <Card>
                   <EmptyState
-                    icon={rowIcon('M4 12l5 5L20 6', 'h-8 w-8')}
+                    icon={rowIcon('M4.5 12.5l4.5 4.5L19.5 7', 'h-7 w-7')}
                     title="All caught up"
                     body="Nothing due today. Keep the streak going."
                   />
@@ -549,10 +710,10 @@ export function DashboardPage() {
             the sidebar.
           */}
           {!dashError && data ? (
-            <section className="mt-xl" aria-labelledby="modules-heading">
+            <section className="mt-2xl" aria-labelledby="modules-heading">
               <h2
                 id="modules-heading"
-                className="mb-md font-heading text-xl font-semibold text-text-main"
+                className="mb-md font-heading text-xl font-semibold tracking-[-0.015em] text-text-main"
               >
                 Your modules
               </h2>
@@ -560,14 +721,23 @@ export function DashboardPage() {
                 {MODULES.filter((m) => moduleEnabled[m.key]).map((m) => (
                   <Card
                     key={m.key}
-                    className="flex flex-col transition-shadow duration-standard ease-state hover:shadow-glass-raised"
+                    className="group relative flex flex-col overflow-hidden transition-[box-shadow,transform] duration-standard ease-state hover:-translate-y-0.5 hover:shadow-glass-raised"
                   >
-                    <span className={m.accent}>{m.icon}</span>
-                    <p className="mt-sm text-base font-semibold text-text-main">{m.title}</p>
-                    <p className="mt-xs flex-1 text-sm text-text-muted">{m.body}</p>
-                    <div className="mt-md">
-                      <Button variant="secondary" onClick={() => navigate(m.to)}>
+                    <div
+                      aria-hidden
+                      className={`pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-current opacity-[0.08] blur-2xl ${m.accent}`}
+                    />
+                    <InkChip ink={m.accent} size="h-12 w-12">
+                      {m.icon}
+                    </InkChip>
+                    <p className="mt-md text-base font-semibold tracking-[-0.01em] text-text-main">{m.title}</p>
+                    <p className="mt-xs flex-1 text-sm leading-6 text-text-muted">{m.body}</p>
+                    <div className="mt-lg">
+                      <Button variant="secondary" size="sm" onClick={() => navigate(m.to)}>
                         {m.action}
+                        <svg aria-hidden viewBox="0 0 24 24" className="h-3.5 w-3.5 transition-transform duration-standard group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
                       </Button>
                     </div>
                   </Card>

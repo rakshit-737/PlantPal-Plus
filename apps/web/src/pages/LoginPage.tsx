@@ -41,15 +41,16 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to your PlantPal+ account">
-      <Card>
-        <form onSubmit={onSubmit} className="flex flex-col gap-md" noValidate>
+    <AuthLayout title="Welcome back" subtitle="Sign in to pick up today's ritual where you left it.">
+      <Card className="p-lg sm:p-xl">
+        <form onSubmit={onSubmit} className="flex flex-col gap-lg" noValidate>
           {error ? <Alert tone="error">{error}</Alert> : null}
           <Input
             label="Email"
             name="email"
             type="email"
             autoComplete="email"
+            placeholder="you@example.com"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -64,14 +65,14 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             hint="Forgot your password? Password reset is coming; contact support meanwhile."
           />
-          <Button type="submit" loading={submitting}>
+          <Button type="submit" size="lg" loading={submitting} className="w-full">
             Sign in
           </Button>
         </form>
       </Card>
       <p className="mt-lg text-center text-sm text-text-muted">
         New to PlantPal+?{' '}
-        <Link to="/register" className="font-semibold text-primary hover:text-primary-hover">
+        <Link to="/register" className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline">
           Create an account
         </Link>
       </p>
