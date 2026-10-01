@@ -1,41 +1,39 @@
+import { motion } from 'motion/react'
 import { Suspense, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/AuthContext'
-import { Button, Spinner } from '../components/ui'
-import { useTheme } from '../hooks/useTheme'
-import { NAV_ITEMS } from '../navigation/navItems'
+import { Wordmark } from '../components/Brand'
+import { ThemeToggle } from '../components/ThemeToggle'
+import { Spinner } from '../components/ui'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+import { NAV_GROUPS, NAV_ITEMS } from '../navigation/navItems'
 import { useSettings } from '../settings/SettingsContext'
 
-/** The wordmark's sprout, drawn in the same stroke style as the nav icons. */
-function SproutMark() {
+/** The signed-in person's monogram: the first letter of their address. */
+function Avatar({ email }: { email: string }) {
+  const initial = (email.trim()[0] ?? '?').toUpperCase()
   return (
-    <svg
+    <span
       aria-hidden
-      viewBox="0 0 24 24"
-      className="h-6 w-6 text-primary"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="square"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary font-display text-[15px] font-semibold text-on-primary shadow-glow-primary"
     >
-      <path d="M12 21v-8" />
-      <path d="M12 13c0-3.5-2.5-6-6-6 0 3.5 2.5 6 6 6Z" />
-      <path d="M12 10c0-3 2-5.5 5.5-5.5 0 3-2 5.5-5.5 5.5" />
-    </svg>
+      {initial}
+    </span>
   )
 }
 
 /**
- * The authenticated shell: persistent left sidebar on desktop, bottom tab bar
- * on narrow viewports, per docs/design/04-navigation-flow.md §3. Both are
- * driven by the same NAV_ITEMS.
+ * The authenticated shell: a persistent glass sidebar on desktop, a top bar
+ * and a floating tab dock on narrow viewports, per
+ * docs/design/04-navigation-flow.md §3. Both navigations are driven by the
+ * same NAV_ITEMS, so gating a module hides it everywhere at once.
  */
 export function AppShell() {
   const { user, logout } = useAuth()
-  const { theme, toggle } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
+  const reduced = useReducedMotion()
   const mainRef = useRef<HTMLElement>(null)
   const firstRender = useRef(true)
 
@@ -48,7 +46,9 @@ export function AppShell() {
       return
     }
     window.scrollTo(0, 0)
-    mainRef.current?.focus()
+    // preventScroll: the sticky mobile top bar sits above <main>, so letting
+    // focus scroll it into view would tuck the page's first line under the bar.
+    mainRef.current?.focus({ preventScroll: true })
   }, [location.pathname])
 
   async function onLogout() {
@@ -71,10 +71,11 @@ export function AppShell() {
   )
 
   return (
-    <div className="flex min-h-full bg-background">
+    <div className="relative flex min-h-full bg-background">
       {/* Decorative, and behind everything: the shell's own layers are given an
           explicit z-index rather than relying on paint order. */}
       <div aria-hidden className="app-aurora pointer-events-none fixed inset-0 z-0" />
+      <div aria-hidden className="app-grain pointer-events-none fixed inset-0 z-0" />
 
       <a
         href="#main"
@@ -83,84 +84,149 @@ export function AppShell() {
         Skip to content
       </a>
 
-      <aside className="relative z-10 hidden w-64 shrink-0 flex-col border-r border-glass-border bg-glass p-md backdrop-blur-glass md:flex">
-        <div className="mb-sm flex items-center gap-sm px-sm">
-          <SproutMark />
-          <span className="font-heading text-xl font-extrabold tracking-tight text-text-main">
-            PlantPal+
-          </span>
-        </div>
-        <p className="mb-xl px-sm text-[11px] font-medium uppercase tracking-[0.14em] text-text-muted">
-          Daily care ledger
-        </p>
-        <nav className="flex flex-1 flex-col gap-xs" aria-label="Primary">
-          {visibleItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              // Active is lit rather than inverted: v2.0 stamped the current
-              // item as a solid ink block, which in a glass world reads as a
-              // hole punched through the pane. Light behind the glass instead.
-              className={({ isActive }) =>
-                `flex items-center gap-sm rounded-md px-md py-sm text-sm font-medium transition-[background-color,color,box-shadow] duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  isActive
-                    ? 'bg-primary/15 text-text-main shadow-glow-primary'
-                    : 'text-text-muted hover:bg-primary/10 hover:text-text-main'
-                }`
-              }
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
-          ))}
+      {/* ------------------------------------------------ desktop sidebar */}
+      <aside className="sticky top-0 z-20 hidden h-screen w-[268px] shrink-0 flex-col border-r border-glass-border bg-glass px-md pb-md pt-lg backdrop-blur-glass md:flex">
+        <NavLink to="/dashboard" className="mb-xl flex w-fit items-center rounded-md px-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <Wordmark size="sm" />
+        </NavLink>
+
+        <nav className="flex flex-1 flex-col gap-lg overflow-y-auto" aria-label="Primary">
+          {NAV_GROUPS.map((group) => {
+            const items = visibleItems.filter((item) => item.group === group.key)
+            if (items.length === 0) return null
+            return (
+              <div key={group.key} className="flex flex-col gap-[2px]">
+                <p aria-hidden className="eyebrow mb-xs px-sm !text-[10px]">
+                  {group.label}
+                </p>
+                {items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/'}
+                    className={({ isActive }) =>
+                      `group relative flex h-10 items-center gap-[12px] rounded-md px-sm text-[14px] font-medium transition-colors duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                        isActive ? 'text-text-main' : 'text-text-muted hover:text-text-main'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive ? (
+                          // One lit pill that glides between items, rather than
+                          // each item fading its own background in and out.
+                          <motion.span
+                            layoutId="sidebar-active"
+                            aria-hidden
+                            className="absolute inset-0 rounded-md border border-glass-border bg-surface-raised/80 shadow-2"
+                            transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }}
+                          />
+                        ) : (
+                          <span aria-hidden className="absolute inset-0 rounded-md bg-text-main/0 transition-colors duration-standard group-hover:bg-text-main/[0.04]" />
+                        )}
+                        <span className={`relative ${isActive ? 'text-primary' : ''}`}>{item.icon}</span>
+                        <span className="relative">{item.label}</span>
+                        {isActive ? (
+                          <span aria-hidden className="relative ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow-primary" />
+                        ) : null}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            )
+          })}
         </nav>
-        <div className="mt-lg flex flex-col gap-sm border-t border-glass-border pt-md">
-          <Button variant="ghost" onClick={toggle} className="justify-start">
-            {theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-          </Button>
-          {user ? (
-            <p className="truncate px-md text-xs text-text-muted" title={user.email}>
-              {user.email}
-            </p>
-          ) : null}
-          <Button variant="secondary" onClick={onLogout}>
+
+        <div className="mt-md rounded-lg border border-glass-border bg-surface/50 p-sm">
+          <div className="flex items-center gap-sm">
+            {user ? <Avatar email={user.email} /> : null}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-text-main" title={user?.email}>
+                {user?.email.split('@')[0] ?? 'Signed in'}
+              </p>
+              {user ? (
+                <p className="truncate text-xs text-text-muted" title={user.email}>
+                  {user.email}
+                </p>
+              ) : null}
+            </div>
+            <ThemeToggle className="h-9 w-9" />
+          </div>
+          <button
+            type="button"
+            onClick={() => void onLogout()}
+            className="mt-sm flex h-9 w-full items-center justify-center gap-sm rounded-md border border-border-control/70 text-[13px] font-medium text-text-muted transition-colors duration-standard ease-state hover:border-text-muted hover:bg-text-main/[0.04] hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 4.5h3.5a2 2 0 012 2v11a2 2 0 01-2 2H14M10 16l4-4-4-4M14 12H4.5" />
+            </svg>
             Sign out
-          </Button>
+          </button>
         </div>
       </aside>
 
-      <main
-        id="main"
-        ref={mainRef}
-        tabIndex={-1}
-        className="relative z-10 flex-1 overflow-y-auto p-lg pb-[calc(84px+env(safe-area-inset-bottom))] outline-none md:p-xl md:pb-xl"
-      >
-        {/*
-          The boundary sits inside <main>, not around the router, so a
-          code-split route loads without the shell unmounting and reappearing.
-          Focus has already moved here by then, so the spinner is what the user
-          is pointed at.
-        */}
-        <Suspense
-          fallback={
-            <div className="flex min-h-[40vh] items-center justify-center">
-              <Spinner size="lg" />
-            </div>
-          }
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        {/* -------------------------------------------- mobile top bar */}
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-glass-border bg-glass-strong px-md py-sm backdrop-blur-glass md:hidden">
+          <NavLink to="/dashboard" className="rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <Wordmark size="sm" />
+          </NavLink>
+          <div className="flex items-center gap-sm">
+            <ThemeToggle className="h-9 w-9" />
+            <button
+              type="button"
+              onClick={() => void onLogout()}
+              aria-label="Sign out"
+              className="grid h-9 w-9 place-items-center rounded-full border border-glass-border bg-glass text-text-muted shadow-1 transition-colors duration-standard hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 4.5h3.5a2 2 0 012 2v11a2 2 0 01-2 2H14M10 16l4-4-4-4M14 12H4.5" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <main
+          id="main"
+          ref={mainRef}
+          tabIndex={-1}
+          className="relative flex-1 px-md pb-[calc(112px+env(safe-area-inset-bottom))] pt-lg outline-none sm:px-lg md:px-xl md:pb-2xl md:pt-xl lg:px-2xl"
         >
-          <Outlet />
-        </Suspense>
-      </main>
+          {/*
+            The boundary sits inside <main>, not around the router, so a
+            code-split route loads without the shell unmounting and reappearing.
+            Focus has already moved here by then, so the spinner is what the user
+            is pointed at.
+          */}
+          <Suspense
+            fallback={
+              <div className="flex min-h-[40vh] items-center justify-center">
+                <Spinner size="lg" />
+              </div>
+            }
+          >
+            {/* Each route grows in on arrival — opacity and a few pixels of
+                rise, never a sideways slide. */}
+            <motion.div
+              key={location.pathname}
+              initial={reduced ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Outlet />
+            </motion.div>
+          </Suspense>
+        </main>
+      </div>
 
       {/*
-        Mobile: bottom tab bar mirrors the sidebar (same NAV_ITEMS). Kept as a
-        tab bar rather than becoming a floating dock — the dock's whole idea is
-        cursor-proximity magnification, which does not exist on touch, and it
-        would trade a full-width thumb target for a smaller centred one.
+        Mobile: a floating dock mirrors the sidebar (same NAV_ITEMS). Full-width
+        thumb targets, inset from the screen edge so it reads as an object
+        rather than a toolbar welded to the bottom.
       */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-glass-border bg-glass-strong pb-[env(safe-area-inset-bottom)] backdrop-blur-glass md:hidden"
+        className="fixed inset-x-sm bottom-[calc(10px+env(safe-area-inset-bottom))] z-40 flex overflow-x-auto rounded-xl border border-glass-border bg-glass-strong p-[6px] shadow-4 backdrop-blur-glass [scrollbar-width:none] md:hidden"
         aria-label="Primary"
       >
         {visibleItems.map((item) => (
@@ -169,13 +235,25 @@ export function AppShell() {
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-[2px] py-sm text-[10px] font-medium transition-colors duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+              `relative flex min-w-0 flex-auto flex-col items-center gap-[3px] rounded-lg px-[6px] py-[7px] text-[10px] font-medium transition-colors duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
                 isActive ? 'text-primary' : 'text-text-muted'
               }`
             }
           >
-            {item.icon}
-            {item.label}
+            {({ isActive }) => (
+              <>
+                {isActive ? (
+                  <motion.span
+                    layoutId="dock-active"
+                    aria-hidden
+                    className="absolute inset-0 rounded-lg bg-primary/10"
+                    transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }}
+                  />
+                ) : null}
+                <span className="relative">{item.icon}</span>
+                <span className="relative whitespace-nowrap">{item.label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
