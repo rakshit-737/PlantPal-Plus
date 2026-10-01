@@ -1,9 +1,10 @@
 /**
  * Design tokens — the React Native mirror of apps/web/src/index.css, per
- * docs/design/01-design-language.md. "Glasshouse" v3.0: the deep leaf green
- * behind glass rather than ink on paper — translucent surfaces, directional
- * glow and four steps of elevation carry hierarchy, while the ledger survives
- * underneath in the mono metrics and hairline rules.
+ * docs/design/01-design-language.md. "Conservatory" v4.0: ivory paper and deep
+ * emerald under morning glass in light; a botanical noir — near-black with a
+ * green undertone, luminous emerald, moonlit sky and champagne gold — in dark.
+ * Translucent surfaces and four steps of elevation carry hierarchy, while the
+ * ledger survives underneath in the mono metrics and hairline rules.
  *
  * Every web token has a mirror here under the same name in camelCase, so the
  * two clients read as one product. Values must stay in lock-step; changing one
@@ -55,60 +56,60 @@ export interface Palette {
 }
 
 export const light: Palette = {
-  background: '#fbfcfa',
-  backgroundAlt: '#f3f5f1',
-  // Off-white rather than pure white: #fffffd reads as paper.
-  surface: '#fffffd',
+  background: '#f6f4ee',
+  backgroundAlt: '#eeebe2',
+  // Warm paper rather than pure white: #fff reads as a screenshot.
+  surface: '#fffdf8',
   surfaceRaised: '#ffffff',
-  primary: '#17603a',
-  primaryHover: '#0f4a2b',
-  primaryGlow: '#34a867',
-  secondary: '#2f6484',
-  tertiary: '#8a5e0c',
-  // Darkened 4% from #d6391a, which fails AA against backgroundAlt. See the
-  // note in the web index.css.
-  accent: '#cd3719',
-  textMain: '#0c1410',
-  textMuted: '#55625a',
-  border: '#dde3dc',
-  borderControl: '#898f8b',
+  primary: '#0d5c3c',
+  primaryHover: '#094a30',
+  primaryGlow: '#2fbf7f',
+  secondary: '#1d5b82',
+  tertiary: '#7f5410',
+  // Burnt coral: clears 4.5:1 on every light ground. See the note in the web
+  // index.css.
+  accent: '#b8380f',
+  textMain: '#0e1813',
+  textMuted: '#536159',
+  border: '#e3dfd3',
+  borderControl: '#7d8279',
   onPrimary: '#ffffff',
-  glassBg: 'rgba(255, 255, 255, 0.62)',
-  glassBgStrong: 'rgba(255, 255, 255, 0.88)',
-  glassBorder: 'rgba(12, 20, 16, 0.08)',
-  glassHighlight: 'rgba(255, 255, 255, 0.9)',
+  glassBg: 'rgba(255, 253, 248, 0.66)',
+  glassBgStrong: 'rgba(255, 253, 248, 0.9)',
+  glassBorder: 'rgba(14, 24, 19, 0.08)',
+  glassHighlight: 'rgba(255, 255, 255, 0.95)',
   // Semantic aliases kept for existing screens: the palette carries status in
   // its category inks rather than a separate traffic-light set.
-  danger: '#cd3719',
-  warning: '#8a5e0c',
-  success: '#17603a',
+  danger: '#b8380f',
+  warning: '#7f5410',
+  success: '#0d5c3c',
 }
 
 export const dark: Palette = {
-  background: '#050807',
-  backgroundAlt: '#0a0f0c',
-  surface: '#0f1512',
-  surfaceRaised: '#151d19',
-  primary: '#46a96c',
-  primaryHover: '#5fbf80',
-  primaryGlow: '#6ee7a0',
-  secondary: '#6fa7c7',
-  tertiary: '#c99a3c',
-  accent: '#ff5a2b',
-  textMain: '#ecf0ec',
-  textMuted: '#8b968d',
-  border: '#232b26',
-  borderControl: '#646866',
-  // Inverts. White on this green measures 2.94:1 and fails AA; the near-black
-  // ground measures 6.85:1 and passes.
-  onPrimary: '#050807',
-  glassBg: 'rgba(20, 28, 24, 0.55)',
-  glassBgStrong: 'rgba(20, 28, 24, 0.8)',
+  background: '#060a08',
+  backgroundAlt: '#0a100d',
+  surface: '#0d1411',
+  surfaceRaised: '#131c18',
+  primary: '#4fd59a',
+  primaryHover: '#7be3b4',
+  primaryGlow: '#34e0a1',
+  secondary: '#7cc4ea',
+  tertiary: '#e6bd6a',
+  accent: '#ff7b5c',
+  textMain: '#edf4ef',
+  textMuted: '#8fa096',
+  border: '#1c2621',
+  borderControl: '#66746d',
+  // Inverts. White on this emerald measures 1.9:1 and fails AA; the near-black
+  // ground measures 10.7:1 and passes.
+  onPrimary: '#060a08',
+  glassBg: 'rgba(17, 26, 22, 0.58)',
+  glassBgStrong: 'rgba(17, 26, 22, 0.84)',
   glassBorder: 'rgba(255, 255, 255, 0.07)',
-  glassHighlight: 'rgba(255, 255, 255, 0.14)',
-  danger: '#ff5a2b',
-  warning: '#c99a3c',
-  success: '#46a96c',
+  glassHighlight: 'rgba(255, 255, 255, 0.1)',
+  danger: '#ff7b5c',
+  warning: '#e6bd6a',
+  success: '#4fd59a',
 }
 
 export function usePalette(): Palette {
