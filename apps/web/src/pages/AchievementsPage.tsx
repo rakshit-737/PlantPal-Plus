@@ -190,11 +190,12 @@ export function AchievementsPage() {
                     }`}
                   >
                     <p className="eyebrow">{STREAK_LABELS[s.streak_type] ?? s.streak_type}</p>
-                    <p className="font-mono text-3xl font-medium tracking-[-0.03em] text-text-main">
+                    <p className="flex flex-wrap items-baseline gap-x-sm font-mono text-3xl font-medium tracking-[-0.03em] text-text-main">
                       {s.current_length}
-                      <span className="text-sm font-normal tracking-normal text-text-muted">
-                        {' '}
-                        / longest {s.longest_length}
+                      {/* Its own unit, so a narrow tile wraps it whole rather
+                          than splitting "longest" from its number. */}
+                      <span className="whitespace-nowrap text-sm font-normal tracking-normal text-text-muted">
+                        longest {s.longest_length}
                       </span>
                     </p>
                     {/* BR-GAM-07: a freeze spares one missed day before the streak resets. */}
