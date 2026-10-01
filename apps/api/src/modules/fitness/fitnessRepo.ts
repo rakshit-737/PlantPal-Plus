@@ -169,7 +169,10 @@ export async function createWorkout(userId: string, data: CreateWorkoutData): Pr
           steps, note, local_date_str, client_idempotency_key)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        returning id, user_id, exercise_id, activity_type, duration_mins, perceived_intensity,
-                 met_value_at_log, body_mass_at_log_kg, calories_burned, total_volume_kg,
+                 met_value_at_log::float8    as met_value_at_log,
+                 body_mass_at_log_kg::float8 as body_mass_at_log_kg,
+                 calories_burned::float8     as calories_burned,
+                 total_volume_kg::float8     as total_volume_kg,
                  steps, note, logged_at_utc, local_date_str, client_idempotency_key`,
       [
         userId,
