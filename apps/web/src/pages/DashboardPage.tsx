@@ -56,6 +56,45 @@ const listIcons: Record<string, ReactNode> = {
   LOG_MEAL: rowIcon('M7 3v8M4 3v5a3 3 0 006 0V3M7 11v10M17 3v18M17 3c-2 2-3 4-3 7 0 2 1 3 3 3'),
   LOG_WORKOUT: rowIcon('M6 6l12 12M4 8l2-2M20 16l-2 2M8 20l-2-2M18 4l2 2'),
 }
+/**
+ * The three modules, as dashboard shortcuts.
+ *
+ * Declared once rather than written out three times in the markup, so the
+ * enabled-module filter below reads as a filter instead of three conditionals.
+ */
+const MODULES = [
+  {
+    key: 'plants',
+    to: '/plants',
+    title: 'Plant care',
+    body: 'Watering intervals that follow species, pot and season.',
+    action: 'Open plants',
+    accent: 'text-primary',
+    icon: rowIcon('M12 3c3.5 5 6 8 6 11.5a6 6 0 11-12 0C6 11 8.5 8 12 3z', 'h-6 w-6'),
+  },
+  {
+    key: 'fitness',
+    to: '/fitness',
+    title: 'Fitness',
+    body: 'Steps and workouts, with energy from MET values.',
+    action: 'Open fitness',
+    accent: 'text-secondary',
+    icon: rowIcon('M6 6l12 12M4 8l2-2M20 16l-2 2M8 20l-2-2M18 4l2 2', 'h-6 w-6'),
+  },
+  {
+    key: 'nutrition',
+    to: '/nutrition',
+    title: 'Nutrition',
+    body: 'Meals and water against a target that adds up.',
+    action: 'Open nutrition',
+    accent: 'text-tertiary',
+    icon: rowIcon(
+      'M7 3v8M4 3v5a3 3 0 006 0V3M7 11v10M17 3v18M17 3c-2 2-3 4-3 7 0 2 1 3 3 3',
+      'h-6 w-6',
+    ),
+  },
+] as const
+
 const fallbackIcon = rowIcon('M9 6l6 6-6 6')
 const bellIcon = rowIcon('M12 4a6 6 0 016 6v4l2 3H4l2-3v-4a6 6 0 016-6zM10 20a2 2 0 004 0')
 const flameIcon = rowIcon(
@@ -227,6 +266,11 @@ export function DashboardPage() {
   const plantCareOn = settings?.plant_care_enabled ?? true
   const fitnessOn = settings?.fitness_enabled ?? true
   const nutritionOn = settings?.nutrition_enabled ?? true
+  const moduleEnabled: Record<string, boolean> = {
+    plants: plantCareOn,
+    fitness: fitnessOn,
+    nutrition: nutritionOn,
+  }
 
   const todayList = (data?.today_list ?? []).filter((item) =>
     item.type === 'PLANT_WATER'
@@ -407,6 +451,9 @@ export function DashboardPage() {
                   value={data.fitness.steps.toLocaleString()}
                   sub={`Goal: ${data.fitness.goal.toLocaleString()}`}
                   accent="text-secondary"
+                  {...(data.fitness.goal > 0
+                    ? { meter: (data.fitness.steps / data.fitness.goal) * 100 }
+                    : {})}
                 />
               )}
               {nutritionOn && (
@@ -415,6 +462,9 @@ export function DashboardPage() {
                   value={String(Math.round(data.nutrition.calories_consumed))}
                   sub={`Target: ${data.nutrition.target}`}
                   accent="text-tertiary"
+                  {...(data.nutrition.target > 0
+                    ? { meter: (data.nutrition.calories_consumed / data.nutrition.target) * 100 }
+                    : {})}
                 />
               )}
             </div>
@@ -487,6 +537,42 @@ export function DashboardPage() {
                   />
                 </Card>
               )}
+            </section>
+          ) : null}
+
+          {/*
+            The modules, as somewhere to go next.
+            A new account's dashboard is four zeroes and an empty Today list,
+            and below that the page simply stopped — half a screen of nothing
+            under the only content. These are the three places the numbers come
+            from, so the answer to "now what" is on the page rather than only in
+            the sidebar.
+          */}
+          {!dashError && data ? (
+            <section className="mt-xl" aria-labelledby="modules-heading">
+              <h2
+                id="modules-heading"
+                className="mb-md font-heading text-xl font-semibold text-text-main"
+              >
+                Your modules
+              </h2>
+              <div className="grid grid-cols-1 gap-md sm:grid-cols-2 lg:grid-cols-3">
+                {MODULES.filter((m) => moduleEnabled[m.key]).map((m) => (
+                  <Card
+                    key={m.key}
+                    className="flex flex-col transition-shadow duration-standard ease-state hover:shadow-glass-raised"
+                  >
+                    <span className={m.accent}>{m.icon}</span>
+                    <p className="mt-sm text-base font-semibold text-text-main">{m.title}</p>
+                    <p className="mt-xs flex-1 text-sm text-text-muted">{m.body}</p>
+                    <div className="mt-md">
+                      <Button variant="secondary" onClick={() => navigate(m.to)}>
+                        {m.action}
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             </section>
           ) : null}
         </>

@@ -97,28 +97,33 @@ function RotatingNoun() {
     return () => window.clearInterval(id)
   }, [reduced])
 
-  if (reduced) return <span className="text-primary">plants, workouts and meals</span>
+  if (reduced) return <span className="text-primary">plants, workouts and meals.</span>
 
   return (
     <span className="relative inline-block align-bottom text-primary">
-      {/* The widest noun holds the line width open so the headline never
-          reflows mid-rotation. */}
+      {/*
+        The widest noun holds the line width open so the headline never reflows
+        mid-rotation — and the full stop rotates *with* the noun rather than
+        following the box. Left outside, it sat at the width of "workouts" while
+        "plants" was showing, which reads as a typo: `plants        .`
+      */}
       <span aria-hidden className="invisible">
-        workouts
+        workouts.
       </span>
       <motion.span
         key={index}
-        className="absolute inset-0"
+        className="absolute left-0 top-0 whitespace-nowrap"
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
       >
         {NOUNS[index]}
+        <span className="text-text-main">.</span>
       </motion.span>
       {/* Screen readers get the sentence whole rather than a word that keeps
           changing underneath them. */}
-      <span className="sr-only">plants, workouts and meals</span>
+      <span className="sr-only">plants, workouts and meals.</span>
     </span>
   )
 }
@@ -136,6 +141,84 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
+    </motion.div>
+  )
+}
+
+/* --------------------------------------------------------- the hero panel */
+
+/**
+ * A still of the product, beside the headline.
+ *
+ * The hero used to be one column of text on a 1440px page, which left the
+ * right half empty and made the whole thing read as unfinished. This fills it
+ * with the only thing a habit tracker can honestly show off: a day's worth of
+ * rows, in the app's own type and colour.
+ *
+ * It is a drawing, not a screenshot, and not live data — the figures are the
+ * ones the product's own worked examples use (the 5-day watering interval, a
+ * 10,000-step goal, a 2,000 kcal target), so nothing here claims more than the
+ * app does. Marked aria-hidden: it repeats what the copy beside it already
+ * says, and a screen reader should not have to sit through a decorative
+ * dashboard.
+ */
+function HeroPanel() {
+  const rows = [
+    { ink: 'text-primary', label: 'Monstera', detail: 'due today', value: '5d', meter: 100 },
+    { ink: 'text-secondary', label: 'Steps', detail: 'of 10,000', value: '7,412', meter: 74 },
+    { ink: 'text-tertiary', label: 'Calories', detail: 'of 2,000', value: '1,180', meter: 59 },
+  ]
+
+  return (
+    <motion.div
+      aria-hidden
+      className="relative"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {/* A second card behind the first, offset — depth without a drop shadow
+          heavy enough to muddy the light ground. */}
+      <div
+        className="absolute inset-0 -rotate-2 rounded-xl border border-glass-border bg-glass"
+        style={{ transform: 'rotate(-2deg) translate(10px, 10px)' }}
+      />
+      <div className="relative rounded-xl border border-glass-border bg-surface-raised p-lg shadow-3 backdrop-blur-glass">
+        <div className="flex items-baseline justify-between">
+          <p className="font-heading text-sm font-bold uppercase tracking-widest text-text-muted">
+            Today
+          </p>
+          <p className="font-mono text-sm text-text-muted">day 12</p>
+        </div>
+
+        <ul className="mt-lg flex flex-col gap-lg">
+          {rows.map((row) => (
+            // The row carries the module's colour so the meter below can take it
+            // from `currentColor` — the value and its bar are one unit, and
+            // stating the colour twice is how they drift apart.
+            <li key={row.label} className={row.ink}>
+              <div className="flex items-baseline justify-between gap-md">
+                <span className="text-sm font-semibold text-text-main">{row.label}</span>
+                <span className="font-mono text-lg font-semibold">{row.value}</span>
+              </div>
+              <div className="mt-xs flex items-center gap-md">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-background-alt">
+                  <div
+                    className="h-full rounded-full bg-current opacity-80"
+                    style={{ width: `${row.meter}%` }}
+                  />
+                </div>
+                <span className="w-20 text-right text-xs text-text-muted">{row.detail}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-lg flex items-center justify-between border-t border-glass-border pt-lg">
+          <span className="text-xs text-text-muted">One streak, three habits</span>
+          <span className="font-mono text-sm font-semibold text-primary">12 days</span>
+        </div>
+      </div>
     </motion.div>
   )
 }
@@ -190,14 +273,15 @@ export function LandingPage() {
 
         <main>
           {/* ------------------------------------------------------- hero */}
-          <section className="mx-auto max-w-6xl px-lg pb-2xl pt-xl md:pt-2xl">
+          <section className="mx-auto grid max-w-6xl items-center gap-2xl px-lg pb-2xl pt-xl md:pt-2xl lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-2xl">
+            <div>
             <motion.h1
               className="max-w-4xl font-heading text-display font-bold text-text-main"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
             >
-              One ledger for your <RotatingNoun />.
+              One ledger for your <RotatingNoun />
             </motion.h1>
 
             <p className="mt-lg max-w-xl text-lg leading-relaxed text-text-muted">
@@ -220,6 +304,13 @@ export function LandingPage() {
                 Sign in
               </Link>
             </div>
+            </div>
+
+            {/* Hidden below lg: at that width it would sit under the fold as a
+                second screen of decoration before the argument starts. */}
+            <div className="hidden lg:block">
+              <HeroPanel />
+            </div>
           </section>
 
           {/* ---------------------------------------------------- modules */}
@@ -239,7 +330,14 @@ export function LandingPage() {
                 Turn any module off and the rest carry on.
               </p>
 
-              <dl className="mt-2xl flex flex-col divide-y divide-glass-border">
+              {/*
+                A three-up grid rather than a stack of full-width rows. The
+                rows put one short sentence in a 1140px column and left the
+                right third of every one of them empty; three cards use the
+                width the page already has, and put the three modules beside
+                each other, which is the point the section is making.
+              */}
+              <dl className="mt-2xl grid gap-lg md:grid-cols-3">
                 {[
                   {
                     ink: 'text-primary',
@@ -263,15 +361,13 @@ export function LandingPage() {
                       'Calories reconciled against the Atwater factors, so what you log and what it sums to cannot disagree.',
                   },
                 ].map((m) => (
-                  <Reveal key={m.term}>
-                    <div className="grid gap-md py-lg md:grid-cols-[10rem_1fr] md:gap-xl">
-                      <div>
-                        <dt className={`font-mono text-2xl font-semibold ${m.ink}`}>{m.metric}</dt>
-                        <dd className="mt-xs text-sm font-medium text-text-main">{m.term}</dd>
-                      </div>
-                      <p className="max-w-xl text-base leading-relaxed text-text-muted">
-                        {m.detail}
-                      </p>
+                  <Reveal key={m.term} className="h-full">
+                    <div className="flex h-full flex-col rounded-xl border border-glass-border bg-surface/70 p-lg backdrop-blur-glass">
+                      <dt className={`font-mono text-3xl font-semibold ${m.ink}`}>{m.metric}</dt>
+                      <dd className="mt-sm text-sm font-semibold uppercase tracking-wide text-text-main">
+                        {m.term}
+                      </dd>
+                      <p className="mt-md text-base leading-relaxed text-text-muted">{m.detail}</p>
                     </div>
                   </Reveal>
                 ))}

@@ -32,9 +32,13 @@ maintained anywhere.
 
 The one thing the mount prefix costs is cookie scope. The browser matches a
 cookie's path against the URL it requested, not against the path Express sees
-once the prefix is stripped, so `REFRESH_COOKIE_PATH` widens from `/api/auth` to
-`/functions/v1/plantpal-api`. Left at the default, the cookie would be set and
-then never sent back, and every refresh would fail with nothing to show for it.
+once the prefix is stripped. Served directly that path is
+`/functions/v1/plantpal-api/api/auth/*`; behind a host that rewrites `/api/*`
+to this function it is `/api/auth/*`. The two share no prefix but the root, so
+`REFRESH_COOKIE_PATH` is `/` — any narrower value works for exactly one of the
+two and silently breaks refresh on the other. Path scoping was defence in depth
+here, never the control: httpOnly, Secure, SameSite and the CSRF origin gate
+are what actually hold.
 
 ## Why the built output is committed
 
@@ -93,8 +97,8 @@ there is nothing to set for a working deployment:
 | `DATABASE_URL` | `SUPABASE_DB_URL`, injected by the platform |
 | `JWT_ACCESS_SECRET` | derived: `HMAC-SHA256(SUPABASE_SERVICE_ROLE_KEY, "plantpal:jwt-access")` |
 | `AUDIT_PEPPER` | derived the same way, under a different label |
-| `CORS_ORIGINS` | the project origin |
-| `REFRESH_COOKIE_PATH` | `/functions/v1/plantpal-api` |
+| `CORS_ORIGINS` | the project origin, plus anything in `EXTRA_CORS_ORIGINS` |
+| `REFRESH_COOKIE_PATH` | `/` |
 
 Every one of these is overridden by setting the same-named secret on the
 function, and an explicit value always wins.
@@ -136,6 +140,34 @@ rather than depending on it already being awake.
 The tick secret is `HMAC-SHA256(SUPABASE_SERVICE_ROLE_KEY, "plantpal:internal-tick")`.
 It has to be authorised: an open endpoint that runs a batch of database writes
 is a denial-of-service lever pointed at a free tier.
+
+## Putting Vercel (or Netlify) in front
+
+[`vercel.json`](../vercel.json) deploys the web app to Vercel and rewrites
+`/api/*` to this API, so the browser sees one origin and the refresh cookie
+stays first-party — the same property the two-function arrangement buys, on a
+domain you control.
+
+Import the repository at [vercel.com/new](https://vercel.com/new); the checked-in
+config supplies the install command, the build command and the output
+directory, so there is nothing to fill in.
+
+**One setting on the API side.** The CSRF gate on the cookie session endpoints
+checks the request's `Origin` against the trusted list, so the new domain has
+to be on it. In the Supabase dashboard, under Edge Functions → `plantpal-api` →
+Secrets, set:
+
+```
+EXTRA_CORS_ORIGINS = https://<your-project>.vercel.app
+```
+
+Miss it and the failure is quiet in the worst way: sign-in works, and every
+session refresh fifteen minutes later returns 403. The project's own origin is
+always trusted, so this adds to the list rather than replacing it — a Vercel
+domain cannot switch the built-in site off by accident.
+
+Preview deployments get their own domain per commit. Add whichever ones you
+actually use, or test previews signed out.
 
 ## Known limitation of this host
 
