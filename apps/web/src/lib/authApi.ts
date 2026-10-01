@@ -24,6 +24,12 @@ export interface LoginResponse {
 export interface RegisterResponse {
   status: 'registered'
   message: string
+  /**
+   * Whether the account must confirm its email before it can be used. False
+   * while no mail provider is wired: the account is created ACTIVE, so the
+   * client can sign straight in. Absent on older API builds — treat as true.
+   */
+  verification_required?: boolean
 }
 
 export function login(email: string, password: string): Promise<LoginResponse> {
