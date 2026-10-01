@@ -31,6 +31,7 @@ import {
   type ModuleScope,
 } from '../engagement/engagementService.ts'
 import { logCareEvent } from '../plants/plantsRepo.ts'
+import { activityMet, resolveBodyMassKg } from '../fitness/energy.ts'
 import { createWorkout } from '../fitness/fitnessRepo.ts'
 import { logMeal, logWater } from '../nutrition/nutritionRepo.ts'
 import { findEntityIdByKey, markFailed, markProcessed, recordEvent } from './syncRepo.ts'
@@ -183,20 +184,25 @@ async function applyEvent(
         }
       })
       const totalVolume = totalVolumeKg(sets.map((s) => ({ reps: s.reps, weightKg: s.weight_kg })))
+      // Missing FR-FIT-05 inputs are filled exactly as the online path fills
+      // them (energy.ts), so a workout logged offline is not the one kind that
+      // goes without an estimate.
+      const met =
+        p.met_value_at_log ??
+        (p.duration_mins !== undefined ? activityMet(p.activity_type, p.perceived_intensity) : undefined)
+      const mass =
+        p.body_mass_at_log_kg ??
+        (p.duration_mins !== undefined && met !== undefined ? await resolveBodyMassKg(userId) : undefined)
       let calories: number | undefined
-      if (
-        p.met_value_at_log !== undefined &&
-        p.body_mass_at_log_kg !== undefined &&
-        p.duration_mins !== undefined
-      ) {
-        calories = workoutEnergyKcal(p.met_value_at_log, p.body_mass_at_log_kg, p.duration_mins)
+      if (met !== undefined && mass !== undefined && p.duration_mins !== undefined) {
+        calories = workoutEnergyKcal(met, mass, p.duration_mins)
       }
       const workout = await createWorkout(userId, {
         activity_type: p.activity_type,
         duration_mins: p.duration_mins,
         perceived_intensity: p.perceived_intensity,
-        met_value_at_log: p.met_value_at_log,
-        body_mass_at_log_kg: p.body_mass_at_log_kg,
+        met_value_at_log: met,
+        body_mass_at_log_kg: mass,
         calories_burned: calories,
         total_volume_kg: totalVolume,
         steps: p.steps,
