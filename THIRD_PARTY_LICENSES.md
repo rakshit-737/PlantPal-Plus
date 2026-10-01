@@ -12,7 +12,8 @@ adding a component and adding its row here are the same task.
 
 **None.** No third-party component source is present in this repository.
 
-The Glasshouse UI work (`docs/design/05-glasshouse-master-prompt.md`) draws on
+The web UI's restyles (v3.0 "Glasshouse" and v4.0 "Conservatory", recorded in
+[docs/design/01-design-language.md](docs/design/01-design-language.md)) drew on
 several component catalogues for ideas. So far every primitive has been written
 in-repo against the design tokens, so there is nothing to attribute. When that
 changes, each component gets a row here — source URL, licence, and the commit

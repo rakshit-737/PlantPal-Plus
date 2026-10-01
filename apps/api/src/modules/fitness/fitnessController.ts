@@ -3,7 +3,7 @@
  *
  * Derived figures (per-set volume, Epley e1RM, MET energy) are computed here from
  * @plantpal/shared rather than trusted from the client, so BR-FIT-14/15 and
- * FR-FIT-05 hold identically regardless of what a client sends (NFR-MAIN-03).
+ * FR-FIT-05 hold identically regardless of what a client sends (NFR-MAIN-04).
  */
 
 import type { NextFunction, Request, Response } from 'express'

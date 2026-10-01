@@ -6,6 +6,8 @@
 | Version | 1.0 |
 | Owner | Rakshit |
 
+> **These are the Phase 2 low-fidelity layouts**, kept as the design record. The screens as built — and where they deliberately departed from these sketches — are shown in the [screenshots](../assets/screenshots/) and described in [`01-design-language.md`](01-design-language.md), [`02-component-inventory.md`](02-component-inventory.md) and [`04-navigation-flow.md`](04-navigation-flow.md).
+
 ## 1. Onboarding
 **Purpose:** Collect baseline data for the modules within 90 seconds. Skippable.
 **Layout:** 

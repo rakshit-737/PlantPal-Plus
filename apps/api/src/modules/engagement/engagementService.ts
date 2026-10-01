@@ -4,7 +4,7 @@
  *
  * Design notes:
  * - The transition arithmetic lives in @plantpal/shared (advanceStreakOnLog):
- *   one implementation, three clients (NFR-MAIN-03). This module only moves
+ *   one implementation, three clients (NFR-MAIN-04). This module only moves
  *   state between PostgreSQL and that pure function.
  * - The OVERALL streak advances when every *enabled* module scope has counted
  *   today (BR-GAM-05/06). A module switched off in Settings stops being a

@@ -1,222 +1,234 @@
+<div align="center">
+
+<img src="docs/assets/logo.svg" width="88" height="88" alt="">
+
 # PlantPal+
 
-**One app for three daily habits.** Plant care, fitness and nutrition are all daily-cadence habits that share an identical loop — schedule, remind, log, streak, reflect. PlantPal+ builds that loop once and reuses it across all three, instead of asking you to run three separate apps with three logins and three notification streams.
+**Plant care, fitness and nutrition in one daily ritual, with one streak.**
+
+[![CI](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/ci.yml)
+[![Deploy web](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/deploy-web.yml/badge.svg?branch=main)](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/deploy-web.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-0d5c3c.svg)](LICENSE)
+[![Node.js 20.11+](https://img.shields.io/badge/node-%E2%89%A520.11-339933.svg?logo=node.js&logoColor=white)](package.json)
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)](tsconfig.base.json)
+
+[**Open the live app**](https://plant-pal-plus.vercel.app) · [Documentation](docs/README.md) · [API reference](docs/api-reference.md) · [Report a bug](https://github.com/rakshit-737/PlantPal-Plus/issues/new?template=bug_report.yml)
+
+</div>
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/dashboard-dark.webp">
+  <img src="docs/assets/screenshots/dashboard-light.webp" alt="The PlantPal+ dashboard: activity rings, a 13-day streak, two plants due for water, today's steps and calories against their goals, reminders and a to-do list.">
+</picture>
+
+## Why PlantPal+
+
+Watering plants, moving every day and eating well are all daily habits that run on the same loop: **schedule, remind, log, keep the streak, look back**. Most people juggle three apps for them, with three logins and three streams of notifications. PlantPal+ builds the loop once and runs all three habits through it: one dashboard, one reminder engine and one streak that counts a day when every habit you track is done.
+
+It is also a complete software-engineering project, built phase by phase from a 228-requirement specification. Code, tests and documents cite the identifiers of the requirements they implement, so a rule can be followed from the specification to the line that enforces it.
+
+## Features
 
 | | |
-|---|---|
-| **Plant Care** | Add plants by species; watering reminders that adapt to species, season, light, pot and environment; growth log with a photo timeline |
-| **Fitness** | Log workouts and steps, set goals, keep streaks, view progress charts |
-| **Calories** | Log meals with calories and macros, daily targets, water intake |
-| **Shared** | Unified daily dashboard, one reminder engine, streaks and achievements, accounts with cloud sync |
+| --- | --- |
+| **Plant care** | A catalogue of 94 species, Indian plants included. Watering intervals adapt to species, season, light, pot, soil, drainage and placement. Seven care actions, a full care history and a growth log with a photo timeline. |
+| **Fitness** | Workouts and steps, with a MET energy estimate for every timed workout, strength sets with their total volume, and a weekly summary. |
+| **Nutrition** | 180 foods with macros, plus your own custom foods. Meals by type, daily calorie and macro targets, and a hydration goal. |
+| **One streak** | A dashboard for the whole day, reminders with quiet hours, a streak for each habit and an overall one, freeze days and 16 achievements. |
+| **Web and mobile** | A responsive website with light and dark themes and three accessibility modes (reduced motion, larger text, high contrast), and an Expo app that keeps logging when you are offline. |
+| **Private by design** | First-party accounts with Argon2id passwords, rotating refresh tokens with reuse detection, and account deletion with a 30-day grace window followed by erasure. |
 
-> **Not medical advice.** PlantPal+ is a wellness tracker, not a medical device. Energy and body-composition figures are estimates carrying a stated error band.
+> [!NOTE]
+> PlantPal+ is a wellness tracker, not a medical device. Energy and body-composition figures are estimates.
 
----
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/landing-light.webp" alt="Landing page"><p align="center"><sub>Landing page</sub></p></td>
+    <td width="50%"><img src="docs/assets/screenshots/plants-light.webp" alt="Plants: six plants with watering status, intervals and the last watering"><p align="center"><sub>Plants and their watering schedules</sub></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/fitness-dark.webp" alt="Fitness: workouts, active minutes, calories, a weekly steps chart and the workout log, in the dark theme"><p align="center"><sub>Fitness, in the dark theme</sub></p></td>
+    <td width="50%"><img src="docs/assets/screenshots/nutrition-dark.webp" alt="Nutrition: calories and macros against their targets, hydration and the day's meals, in the dark theme"><p align="center"><sub>Nutrition, in the dark theme</sub></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/plant-detail-light.webp" alt="A plant's page: watering countdown, conditions, care actions, care history and growth log"><p align="center"><sub>A plant's care page</sub></p></td>
+    <td width="50%"><img src="docs/assets/screenshots/achievements-light.webp" alt="Achievements: streaks per habit, badge collection and points"><p align="center"><sub>Streaks and achievements</sub></p></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/assets/screenshots/phones.webp" width="820" alt="The website at phone width: the dashboard, the plants list in the dark theme, and nutrition">
+  <br>
+  <sub>The website at phone width, with its tab dock</sub>
+</p>
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| **Web** | React 18, Vite 6, TypeScript, Tailwind CSS 3, Motion, React Router 7 |
+| **Mobile** | React Native 0.86 with Expo SDK 57, Expo Push, SecureStore and a durable offline outbox |
+| **API** | Node.js, Express 4, Zod, Pino; also bundled for Deno on Supabase Edge Functions |
+| **Database** | PostgreSQL 16 on Supabase, versioned SQL migrations, `pg_cron` for scheduled work |
+| **Shared logic** | `@plantpal/shared`: pure TypeScript domain rules used by every app |
+| **Quality** | Vitest, Testing Library, Supertest, real PostgreSQL in CI, ESLint, strict TypeScript |
+| **Delivery** | GitHub Actions, Vercel, Supabase Edge Functions, GitHub Pages, EAS Build |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    web["Website<br/>React + Vite"] -- "/api/*, same origin" --> vercel["Vercel"]
+    vercel -- rewrite --> api["REST API<br/>Supabase Edge Function"]
+    phone["Mobile app<br/>Expo"] -- HTTPS --> api
+    api --> db[("PostgreSQL<br/>Supabase")]
+    cron["pg_cron<br/>every 5 minutes"] -- "/internal/tick" --> api
+    api -- reminders --> push["Expo Push"]
+```
+
+- **One origin for the website.** Vercel serves the site and forwards `/api/*` to the API, so the refresh-token cookie stays first-party and sessions survive a reload in every browser.
+- **One codebase, two hosts.** The same Express app runs as a Node process locally and, bundled into a single file, as a Supabase Edge Function in production.
+- **Scheduled work from the database.** `pg_cron` calls the API every five minutes to send due reminders and erase accounts whose deletion window has closed.
+- **Offline without merge conflicts.** Only append-only events (a watering, a workout, a meal, a glass of water) can be queued offline. Each carries a client-generated key and the server applies it exactly once, so there is nothing to merge.
+- **Every rule in one place.** Watering intervals, energy and nutrition maths and streak transitions live once in `@plantpal/shared`, and the API, the website and the mobile app all import them.
+
+The [system architecture](docs/architecture/01-system-architecture.md) has the C4 views, and the [architecture decision records](docs/README.md#architecture-decision-records) explain the larger choices.
+
+### Repository layout
+
+```text
+PlantPal-Plus/
+├── apps/
+│   ├── api/          REST API: Express on Node, or bundled for Supabase Edge Functions
+│   ├── web/          Website: React + Vite
+│   └── mobile/       Mobile app: React Native + Expo
+├── packages/
+│   └── shared/       Domain rules shared by all three apps
+├── deploy/           Edge bundle, scheduler SQL and the deployment guide
+├── docs/             Requirements, architecture, design, API reference and testing guide
+└── .github/          CI and deployment workflows, issue and pull-request templates
+```
+
+Dependencies point one way: each app depends on `packages/shared`, the apps never import one another, and the shared package has no runtime dependencies at all. Each workspace has its own README.
+
+## Getting started
+
+You need **Node.js 20.11 or newer** (22 recommended) and **PostgreSQL 15 or newer**, either local or a free [Supabase](https://supabase.com) project.
+
+```bash
+git clone https://github.com/rakshit-737/PlantPal-Plus.git
+cd PlantPal-Plus
+npm install                                  # every workspace, and builds packages/shared
+```
+
+**1. Start the API.** Set `DATABASE_URL` and `JWT_ACCESS_SECRET` (32+ characters) in `apps/api/.env`. The API applies the migrations and loads the catalogues on start.
+
+```bash
+cp apps/api/.env.example apps/api/.env
+npm run dev --workspace @plantpal/api        # http://localhost:4000
+```
+
+**2. Start the website.** The dev server forwards `/api` to the API, so no CORS setup is needed.
+
+```bash
+cp apps/web/.env.example apps/web/.env
+npm run dev --workspace @plantpal/web        # http://localhost:5173
+```
+
+**3. Run the mobile app (optional).** Scan the QR code with [Expo Go](https://expo.dev/go); a physical phone needs `EXPO_PUBLIC_API_URL` set to your computer's LAN address.
+
+```bash
+cd apps/mobile
+npx expo start
+```
+
+The [API](apps/api/README.md), [web](apps/web/README.md) and [mobile](apps/mobile/README.md) READMEs cover configuration in full.
+
+### Commands
+
+| Command | What it does |
+| --- | --- |
+| `npm test` | Runs every workspace's tests |
+| `npm run typecheck` | Strict TypeScript across every workspace |
+| `npm run lint` | ESLint across the monorepo, failing on any warning |
+| `npm run build` | Builds every workspace |
+| `npm run format` | Formats with Prettier |
+
+## Testing
+
+**466 tests** across the four workspaces run on every push and pull request, on Node 20.11 and 22, with a real PostgreSQL 16 for the integration suites.
+
+| Workspace | Tests | Focus |
+| --- | ---: | --- |
+| `packages/shared` | 53 | Domain algorithms, checked against the worked examples in the requirements |
+| `apps/api` | 239 | Controllers, services, configuration, sync and erasure, plus 18 tests against real PostgreSQL |
+| `apps/mobile` | 24 | The offline outbox: ordering, retries, idempotency |
+| `apps/web` | 150 | Pages and components, the API client, contrast and token parity, code splitting |
+
+Where the requirements publish a worked example, that example is the test: `7 × 0.80 × 1.10 × 0.80 × 1.00 = 4.928 → 5 days` for a watering interval, `1345 × 1.375 → 1849 kcal` for daily energy. The [testing guide](docs/testing.md) covers running the suites and how they are written.
+
+## Deployment
+
+| | Where |
+| --- | --- |
+| **Website** | [plant-pal-plus.vercel.app](https://plant-pal-plus.vercel.app) on Vercel, redeployed on every push to `main` |
+| **API** | Supabase Edge Function `plantpal-api`, with [`/healthz`](https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api/healthz) and `/readyz` probes |
+| **Database** | Supabase Postgres, with reminders and erasure driven by `pg_cron` |
+| **Mirror** | [rakshit-737.github.io/PlantPal-Plus](https://rakshit-737.github.io/PlantPal-Plus/) on GitHub Pages |
+| **Mobile** | Installable builds with [EAS](apps/mobile/eas.json) (an Android APK from the `preview` profile), pointed at the live API |
+
+Everything runs on free tiers. The [deployment guide](deploy/README.md) explains how each piece is built and configured; [`render.yaml`](render.yaml) can also run the API as a long-lived Node service.
+
+## Documentation
+
+| | |
+| --- | --- |
+| [Documentation index](docs/README.md) | Everything below, organised by project phase |
+| [Software Requirements Specification](docs/requirements/SRS.md) · [Reading guide](docs/requirements/README.md) | The complete Phase 1 specification and how to navigate it |
+| [System architecture](docs/architecture/01-system-architecture.md) · [Database schema](docs/architecture/02-database-schema.md) | C4 views, the deployed topology, 28 tables |
+| [API reference](docs/api-reference.md) · [OpenAPI 3.1](docs/architecture/openapi.yaml) | Every endpoint, its auth and its rules |
+| [Design language](docs/design/01-design-language.md) · [Component inventory](docs/design/02-component-inventory.md) | The "Conservatory" design system and its accessibility contract |
+| [Testing guide](docs/testing.md) · [Deployment guide](deploy/README.md) · [Changelog](CHANGELOG.md) | Running, shipping and the history of changes |
 
 ## Project status
 
-This is a full software-engineering project delivered phase by phase, with every artefact traceable to the requirement it satisfies.
-
 | Phase | Status |
-|---|---|
-| 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
-| 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
-| 3 — Implementation | ✅ Core complete — REST API (auth, account lifecycle, plants + growth log, fitness, nutrition + custom foods, dashboard, achievements, reminders + Expo Push, offline sync outbox, settings, engagement loop), web app (responsive, toasts, full error/retry states, accessible pickers), Expo mobile app with a durable offline outbox. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: binary photo upload (the growth log stores image links — see [Known gaps](#known-gaps)), email digest |
-| 4 — Testing | ✅ 464 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 237 API incl. 18 integration tests against real PostgreSQL (auth lifecycle and the first-day core flows; skipped without `TEST_DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 150 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
-| 5 — Documentation | ✅ Complete — install + deployment in this README, endpoint index in [docs/api-reference.md](docs/api-reference.md), OpenAPI 3.1 in [docs/architecture/](docs/architecture/) |
-| 6 — Deployment | ✅ Live — website on Vercel (**[plant-pal-plus.vercel.app](https://plant-pal-plus.vercel.app)**), API on Supabase Edge Functions, database on Supabase Postgres; GitHub Pages mirror; mobile via EAS |
+| --- | --- |
+| 1. Requirements | ✅ Baselined: [36 documents](docs/requirements/), from stakeholders to use cases |
+| 2. Design | ✅ Architecture, database schema, OpenAPI 3.1, sequence diagrams, ADRs and the design system |
+| 3. Implementation | ✅ API, website and mobile app for all three habits, including the offline outbox and push reminders |
+| 4. Testing | ✅ 466 automated tests, two adversarial audits whose critical and major findings are fixed |
+| 5. Documentation | ✅ Requirements to deployment, plus a README for every workspace |
+| 6. Deployment | ✅ Live on Vercel and Supabase, with CI on every change |
 
-### Phase 1 at a glance
+### Requirements at a glance
 
 | Artefact | Count |
-|---|---|
+| --- | --- |
 | Functional requirements | 228 |
 | Business rules | 307 |
 | Non-functional requirements | 111 across 13 quality attributes |
 | User stories with Gherkin criteria | 119 |
 | Use cases with full specifications | 89 |
-| Mermaid diagrams | 119 |
 
-Start at **[docs/requirements/SRS.md](docs/requirements/SRS.md)** for the Software Requirements Specification, or **[docs/requirements/README.md](docs/requirements/README.md)** for a guided reading path.
+The landing page quotes several of these figures, and a test fails if the two ever disagree.
 
----
+### Known limitations
 
-## Repository layout
+- **Photos are links, not uploads.** The growth log stores an image URL; there is no object storage yet.
+- **No email.** No mail provider is wired, so there is no password reset or email verification, and account-deletion notices are not sent. New accounts are active at sign-up; `REQUIRE_EMAIL_VERIFICATION` restores the confirmation window once mail exists.
+- **Personal records are not computed yet.** The table and the read endpoint exist, but nothing derives records from logged strength sets, so the fitness page's records panel stays empty.
+- **A failed push is not retried.** The in-app reminder list is the delivery baseline.
+- **The native app trails the website's design.** It shares the current palette, but its components still have the previous design's shapes.
 
-```
-packages/shared/     Domain logic shared by backend, web and mobile
-apps/api/            Express + TypeScript REST API
-apps/web/            React + Vite web application
-apps/mobile/         React Native (Expo) mobile application
-docs/requirements/   Phase 1 requirements package
-docs/architecture/   Phase 2 architecture (system design, DB schema, REST API spec, OpenAPI, ADRs)
-docs/design/         Phase 2 design (design language, components, wireframes, navigation)
-```
+## Contributing
 
-The shared package exists so a business rule lives in exactly one place. The watering algorithm, the Atwater energy identity and the Mifflin-St Jeor equation are each implemented once and consumed identically by the server, the website and the mobile app — the requirements demand bit-for-bit agreement between them.
+Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md) for setup, conventions and the pull-request checklist, and follow the [code of conduct](CODE_OF_CONDUCT.md). Report security issues privately, as described in the [security policy](SECURITY.md).
 
----
+## License
 
-## Installation
-
-Requires **Node.js 20.11+** and npm. One install at the repository root covers every workspace (API, website, mobile app, shared package):
-
-```bash
-git clone https://github.com/rakshit-737/PlantPal-Plus.git
-cd PlantPal-Plus
-npm install
-
-npm test            # run every workspace's tests (307; the 12 auth integration
-                    # tests skip themselves unless DATABASE_URL is set)
-npm run typecheck   # strict TypeScript across all packages
-```
-
-### 1. The API server (required by both clients)
-
-You will need a PostgreSQL database — a free [Neon](https://neon.tech) or [Supabase](https://supabase.com) instance is sufficient, or any local PostgreSQL 15+.
-
-```bash
-cp apps/api/.env.example apps/api/.env
-# fill in DATABASE_URL and JWT_ACCESS_SECRET (32+ chars), then:
-
-npm run migrate --workspace @plantpal/api   # apply schema migrations 001–007
-npm run seed --workspace @plantpal/api      # load species, exercise and achievement catalogues
-npm run dev --workspace @plantpal/api       # API on http://localhost:4000
-```
-
-The API refuses to start on missing or invalid configuration rather than failing later at the first request that needs it.
-
-### 2. The website (React + Vite)
-
-```bash
-cp apps/web/.env.example apps/web/.env   # set VITE_API_TARGET (default http://localhost:4000)
-npm run dev --workspace @plantpal/web    # Vite dev server on http://localhost:5173
-```
-
-The dev server proxies `/api` to the target, so no CORS setup is needed locally. For a production deployment:
-
-```bash
-npm run build --workspace @plantpal/web  # static bundle in apps/web/dist/
-```
-
-Serve `apps/web/dist/` from any static host (Vercel/Netlify free tiers work) with `/api/*` rewritten to the deployed API origin.
-
-### 3. The mobile application (React Native + Expo)
-
-The fastest way to run it on your own phone is [Expo Go](https://expo.dev/go) (free, App Store / Play Store):
-
-```bash
-cd apps/mobile
-npx expo start                            # prints a QR code
-```
-
-Scan the QR code with Expo Go (Android) or the Camera app (iOS) — the app loads over your LAN. Emulators work too: press `a` for the Android emulator or `i` for the iOS simulator.
-
-**Pointing the app at your API:** by default the Android emulator uses `http://10.0.2.2:4000` (the emulator's alias for your machine) and the iOS simulator uses `http://localhost:4000`. A physical phone needs your computer's LAN IP:
-
-```bash
-cp apps/mobile/.env.example apps/mobile/.env
-# EXPO_PUBLIC_API_URL=http://192.168.x.x:4000  (your machine's LAN address)
-```
-
-**Installable binaries** are built with [EAS](https://docs.expo.dev/build/introduction/) (free tier):
-
-```bash
-npm install -g eas-cli
-eas build --platform android --profile preview   # produces an installable .apk
-```
-
-Every push and pull request to `main` runs `npm run typecheck` and `npm test` — including an auth integration suite against a real PostgreSQL service container — on Node 20.11 and 22 via [GitHub Actions](.github/workflows/ci.yml).
-
----
-
-## Deployment
-
-Everything runs on permanently free tiers.
-
-| | Live at |
-|---|---|
-| **Website** | **https://plant-pal-plus.vercel.app** — Vercel, rewrites `/api/*` to the API |
-| **API** | https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api — Supabase Edge Function (`/healthz`, `/readyz`) |
-| Database | Supabase Postgres, same project as the API |
-| Mirror | https://rakshit-737.github.io/PlantPal-Plus/ — GitHub Pages, rebuilt on every push to `main` |
-
-How each piece is built, deployed and configured is in
-[deploy/README.md](deploy/README.md).
-
-**Website — Vercel.** The Vercel project builds from the repository root with
-the checked-in [`vercel.json`](vercel.json) and redeploys on every push to
-`main`. Its `/api/*` rewrite puts the page and the API on one origin, so the
-refresh cookie stays first-party and sign-in survives on every browser. The old
-`…/functions/v1/plantpal/` address redirects here: Supabase serves function
-responses as plain text, so it cannot host the page itself.
-
-**API — Supabase Edge Functions.** A one-line function loads the bundled API
-([`deploy/api/index.js`](deploy/api/index.js)) pinned to a commit. It configures
-itself from the platform (database URL, derived secrets); reminders and the
-account-erasure sweep are driven by `pg_cron` from inside the database
-([`deploy/schedule-tick.sql`](deploy/schedule-tick.sql)), and
-[keepalive.yml](.github/workflows/keepalive.yml) pings `/readyz` every six hours
-so a paused project shows up as a red run rather than as failed sign-ins.
-
-**GitHub Pages mirror.** [deploy-web.yml](.github/workflows/deploy-web.yml)
-publishes the same web app to Pages, calling the API cross-origin through the
-`PLANTPAL_API_URL` repository variable. Pages cannot rewrite `/api/*`, so there
-the refresh cookie is third-party, which Safari blocks — sessions may not
-survive a reload. Prefer the Vercel address.
-
-**Render (optional, self-hosted Node).** [render.yaml](render.yaml) is a Render
-Blueprint for running the same API as a long-lived Node process: dashboard → New
-→ Blueprint → select this repo. It needs `DATABASE_URL` — for this project, the
-Supabase **session pooler** connection string (port 5432) with the database
-password. Migrations and seeds run at boot. The free instance sleeps after 15
-idle minutes, which is why the live API is on the edge instead.
-
-**Mobile app — EAS build.** [apps/mobile/eas.json](apps/mobile/eas.json) is configured; building needs a free [Expo account](https://expo.dev):
-
-```bash
-npm install -g eas-cli
-eas login
-cd apps/mobile
-eas build --platform android --profile preview   # installable .apk, API URL baked in
-```
-
-The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL` as the live API above — edit `eas.json` to point a build at another deployment.
-
----
-
-## Technology
-
-TypeScript monorepo throughout. **Mobile:** React Native (Expo) + Expo Push. **Web:** React + Vite. **Backend:** Node.js + Express, REST. **Database:** PostgreSQL. **Scheduling:** node-cron. **CI/CD:** GitHub Actions. Everything is designed to run on permanently free tiers.
-
-**Object storage is not integrated.** Supabase Storage / Cloudinary are the intended providers for binary uploads, but nothing in the repo talks to either one — there is no bucket, no SDK dependency and no upload endpoint. Growth-log photos are stored as `http(s)` links to images the user already hosts (see [Known gaps](#known-gaps)).
-
----
-
-## Notable engineering decisions
-
-**Offline sync with no merge algorithm.** Only append-only log events may be queued offline — logging a watering, a workout, a meal. Each carries a client-generated UUID idempotency key and the server upserts by it, so a replay is safe. Because these events are append-only they are conflict-free by construction, which removes the need for CRDTs or last-write-wins resolution entirely. Everything else requires connectivity and says so plainly.
-
-**Tests assert against the specification, not the implementation.** The requirements publish worked examples — `7 × 0.80 × 1.10 × 0.80 × 1.00 = 4.928 → 5 days`, `BMR 1345 × 1.375 → 1849 kcal`, `100 kg × (1 + 5/30) = 116.7`. Those exact vectors are the test cases, so a behaviour change fails against the requirement rather than against a number the code chose for itself.
-
-**The free-tier reality is designed for, not wished away.** A sleeping instance means `node-cron` never fires and reminders silently die. That is recorded as the project's highest-impact risk with an explicit keep-alive mitigation and its residual risk stated honestly.
-
-**A failed request never masquerades as an empty one.** Every screen keeps its error state separate from its empty state: an unreachable server produces a retryable notice, not "No plants yet". The distinction matters most on a mobile connection, which is where the app is actually used.
-
----
-
-## Known gaps
-
-Stated plainly rather than left to be discovered:
-
-- **Photos are links, not uploads.** The growth log stores an image URL; there is no object-storage bucket, so a file picker would need a Supabase/Cloudinary/R2 account. The API validates that the link is `http(s)`.
-- **No email delivery.** `DELETION_SCHEDULED`, `DELETION_CANCELLED` and `DELETION_COMPLETED` (BR-ACC-20 cl.11) are specified but no mail provider is wired, so the erasure sweep runs without sending the final message.
-- **Erasure is rows only, not objects.** The FR-ACC-22 sweep erases every row in BR-ACC-20 Table H, but rule 4's object-storage queue has nothing to talk to — there is no bucket (see the photo gap above), so there are no stored objects to enqueue.
-- **No password reset or email verification delivery.** Both token tables exist; there is no mail provider wired, so the UI does not offer a flow it cannot complete. New accounts are therefore active at sign-up; set `REQUIRE_EMAIL_VERIFICATION=true` on the API once mail is wired to restore the 7-day confirmation window.
-- **Reminders have no retry after a failed push** — the in-app list is the delivery baseline.
-
----
-
-## Licence
-
-[MIT](LICENSE) © 2026 Rakshit
+[MIT](LICENSE) © 2026 Rakshit. Third-party notices are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

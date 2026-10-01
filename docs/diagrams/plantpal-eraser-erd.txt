@@ -1,5 +1,5 @@
 // PlantPal+ — database ER diagram for app.eraser.io (Diagram-as-code > Entity Relationship)
-// Generated from apps/api/src/db/migrations/001..007. 24 tables, 34 foreign keys.
+// Generated from apps/api/src/db/migrations/001..007. 28 tables, 34 foreign keys.
 // Subsystems: auth=blue, plant care=green, fitness=orange, nutrition=pink, engagement=purple, sync=teal
 
 users [icon: user, color: blue] {

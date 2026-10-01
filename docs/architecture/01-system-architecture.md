@@ -22,6 +22,8 @@ To enforce the "TypeScript everywhere" rule and share code seamlessly across web
 │   └── eslint-config/# Shared linting rules
 ```
 
+> **As built:** only `packages/shared` became a package. Each client keeps its own UI primitives (see `docs/design/02-component-inventory.md`), the base TypeScript config is `tsconfig.base.json` at the root, and linting is one root `eslint.config.mjs`. Deployment artefacts live in `deploy/`.
+
 ## 2. System Architecture (C4 Model)
 
 The architecture is documented following the C4 model (Context, Container, and Component levels) using Mermaid diagrams.
@@ -128,3 +130,26 @@ C4Component
 - Batches them and sends them to the **Expo Push Notification Service**.
 - Records delivery status back in the DB to prevent duplicates.
 - **Keep-Alive:** Because the server is hosted on a free tier (Render) which spins down, a ping service (e.g., cron-job.org) must hit the health endpoint every 14 minutes to ensure the reminder engine doesn't sleep.
+
+## 5. As Deployed (2026-10)
+
+The containers above were designed for a long-running Node process on Render. Production runs the same code on a different topology, recorded in [ADR 0004](adrs/0004-host-api-on-supabase-edge-and-web-on-vercel.md):
+
+```mermaid
+flowchart LR
+    browser["Browser"] -->|"HTTPS"| vercel["Vercel<br/>static web app"]
+    vercel -->|"/api/* rewrite<br/>(same origin)"| edge["Supabase Edge Function<br/>plantpal-api"]
+    phone["Expo app"] -->|"HTTPS"| edge
+    edge -->|"SQL"| db[("Supabase Postgres")]
+    cron["pg_cron, every 5 min"] -->|"POST /internal/tick<br/>(Vault secret)"| edge
+    db --- cron
+    edge -->|"push payloads"| expo["Expo Push Service"]
+```
+
+- **API:** the Express app is bundled for Deno (`apps/api/edge/`) and served by a Supabase Edge Function pinned to a commit. It derives its configuration from the platform.
+- **Reminder engine:** `node-cron` needs a process that outlives a request, which an edge function does not have. The reminder pass and the account-erasure sweep run on `POST /internal/tick`, called every five minutes by `pg_cron` inside the database — the scheduler can no longer fall asleep with the server, which retires the keep-alive risk in §4.
+- **Web:** Vercel serves the static build and rewrites `/api/*` to the edge function, so the refresh cookie stays first-party.
+- **Health:** `/healthz` (process) and `/readyz` (database) — a scheduled GitHub Actions job pings `/readyz` so a paused database is noticed before users notice it.
+
+Operational detail lives in [`deploy/README.md`](../../deploy/README.md).
+
