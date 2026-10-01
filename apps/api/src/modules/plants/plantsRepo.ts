@@ -265,11 +265,17 @@ export async function logCareEvent(
         indoorClimate: plant.indoor_climate as IndoorClimate | null,
       })
 
+      // $1 is typed explicitly. It used to be both concatenated into an
+      // interval string and assigned to an integer column, which leaves
+      // PostgreSQL inferring it as text from the concatenation and then
+      // refusing the integer assignment ("column effective_interval_days is of
+      // type integer but expression is of type text") — so every watering
+      // failed with a 500. make_interval keeps the arithmetic numeric.
       await client.query(
         `UPDATE plants
          SET last_watered_at=now(),
-             next_water_due_at=now() + ($1 || ' days')::interval,
-             effective_interval_days=$1,
+             next_water_due_at=now() + make_interval(days => $1::int),
+             effective_interval_days=$1::int,
              watering_factor_snapshot=$2,
              updated_at=now()
          WHERE id=$3`,

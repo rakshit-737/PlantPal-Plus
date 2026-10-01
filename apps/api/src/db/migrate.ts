@@ -41,11 +41,33 @@ const CREATE_TABLE_SQL = `
   )
 `
 
+/**
+ * Any fixed key works; what matters is that every runner uses the same one.
+ * The digits spell nothing — they only need to be unlikely to collide with
+ * another application's advisory locks on a shared database.
+ */
+const MIGRATION_LOCK_KEY = 7_340_029_031
+
 export async function runMigrations(): Promise<{ applied: number; skipped: number }> {
   const pool = getPool()
   const client = await pool.connect()
 
+  // Two runners can start at once — two API instances on a deploy, or two
+  // integration suites against a fresh test database. Without coordination
+  // both read the ledger, both see a migration as pending, both apply it, and
+  // the loser fails halfway with "relation already exists". So the whole run
+  // holds a session advisory lock, and the ledger is read only once it is
+  // held: a runner that waited finds everything applied and skips it all.
+  //
+  // Session scope, not transaction scope, because the migration files carry
+  // their own BEGIN/COMMIT, and a COMMIT inside a file would release a
+  // transaction-scoped lock mid-run. That is also why migrations need a direct
+  // or session-mode connection (Supabase's port 5432), never a
+  // transaction-mode pooler — as they always have.
+  let releaseError: Error | undefined
   try {
+    await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_KEY])
+
     await client.query(CREATE_TABLE_SQL)
 
     const { rows: appliedRows } = await client.query<{ version: number }>(
@@ -90,7 +112,14 @@ export async function runMigrations(): Promise<{ applied: number; skipped: numbe
     logger.info({ applied: appliedNow, skipped }, 'migrations complete')
     return { applied: appliedNow, skipped }
   } finally {
-    client.release()
+    try {
+      await client.query('select pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY])
+    } catch (err) {
+      // A connection that cannot say "unlock" may still hold the lock; closing
+      // it (release with an error) ends the session, which frees the lock.
+      releaseError = err instanceof Error ? err : new Error(String(err))
+    }
+    client.release(releaseError)
   }
 }
 

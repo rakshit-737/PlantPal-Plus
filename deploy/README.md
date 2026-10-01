@@ -1,93 +1,90 @@
-# Deployment — Supabase Edge Functions
+# Deployment
 
-The live deployment of PlantPal+. Two functions in the Supabase project that
-already hosts the database:
+The live deployment of PlantPal+:
 
-| Function | Serves | URL |
+| Piece | Where | Source |
 |---|---|---|
-| `plantpal` | the web app | `https://<ref>.supabase.co/functions/v1/plantpal/` |
-| `plantpal-api` | the REST API | `https://<ref>.supabase.co/functions/v1/plantpal-api/` |
+| Website | **https://plant-pal-plus.vercel.app** (Vercel) | `apps/web`, built with [`vercel.json`](../vercel.json) |
+| API | https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api (Supabase Edge Function `plantpal-api`) | `apps/api`, bundled into [`api/index.js`](api/index.js) |
+| Database | Supabase Postgres, project `mmqqijfgtcjviogqporc` | `apps/api/src/db` |
+| Mirror | https://rakshit-737.github.io/PlantPal-Plus/ (GitHub Pages) | [`deploy-web.yml`](../.github/workflows/deploy-web.yml) |
+| Old web URL | https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal → 308 to the website | [`web/server.ts`](web/server.ts) |
 
-`<ref>` is the Supabase project reference, `mmqqijfgtcjviogqporc` for the
-deployment this repository is configured against.
-
-This sits alongside — not instead of — the deployment paths in the root README.
 [`render.yaml`](../render.yaml) still deploys the same API as a long-lived Node
-process, and [`deploy-web.yml`](../.github/workflows/deploy-web.yml) still
-publishes the same web app to GitHub Pages. Nothing here forks the application:
-both functions run the code in `apps/`, built by `deploy/build.mjs`.
+process for anyone who prefers one. Nothing here forks the application: every
+host runs the code in `apps/`.
 
-## Why both halves are one origin
+## The website — Vercel
 
-The refresh token is an httpOnly cookie. A page served from one origin talking
-to an API on another sends that cookie as a third-party cookie — which Safari
-blocks outright and Chrome is phasing out, so sign-in silently stops working for
-a growing share of users. That is the flaw the root README notes in the GitHub
-Pages path.
+The Vercel project builds from the repository root using the checked-in
+[`vercel.json`](../vercel.json) (install, build and output directory are all in
+the file) and redeploys on every push to `main`.
 
-Two functions in one project share an origin: `…supabase.co/functions/v1/plantpal`
-and `…supabase.co/functions/v1/plantpal-api` differ only by path. The cookie is
-first-party, CORS never enters into it, and no rewrite rule has to be
-maintained anywhere.
+**Why the page and the API share an origin.** The refresh token is an httpOnly
+cookie. A page on one origin talking to an API on another sends that cookie as
+a third-party cookie, which Safari blocks outright and Chrome is phasing out —
+sign-in would silently stop surviving a reload. Vercel rewrites `/api/*` to the
+API function, so the browser only ever talks to `plant-pal-plus.vercel.app` and
+the cookie is first-party.
 
-The one thing the mount prefix costs is cookie scope. The browser matches a
-cookie's path against the URL it requested, not against the path Express sees
-once the prefix is stripped. Served directly that path is
-`/functions/v1/plantpal-api/api/auth/*`; behind a host that rewrites `/api/*`
-to this function it is `/api/auth/*`. The two share no prefix but the root, so
-`REFRESH_COOKIE_PATH` is `/` — any narrower value works for exactly one of the
-two and silently breaks refresh on the other. Path scoping was defence in depth
-here, never the control: httpOnly, Secure, SameSite and the CSRF origin gate
-are what actually hold.
+**Why not Supabase itself.** The page was first served by an edge function next
+to the API, which gave the same single origin for free. But Supabase rewrites
+`text/html` responses from `*.supabase.co` to `text/plain` — a guard against
+functions being used as web hosts — so browsers showed the page's source
+instead of the app. The `plantpal` function now only redirects old links,
+deep links included, to Vercel.
 
-## Why the built output is committed
+**One setting on the API side.** The CSRF gate on the cookie endpoints checks
+the request's `Origin` against the trusted list, so the website's origin has to
+be on it. It is set as a secret on the `plantpal-api` function:
 
-`deploy/api/index.js` and `deploy/web/` are build products, and committing build
-products is normally wrong. They are here because the deployment channel
-requires a public URL for them:
-
-- The API is ~100 kB bundled. The deployed function is a one-line loader that
-  imports it from this repository over jsDelivr, pinned to a commit. Supabase
-  packages a function's remote imports into the deployed artefact at deploy
-  time, so the CDN is a build-time dependency, not a runtime one.
-- The web bundle is ~500 kB across ten hashed files, fetched by the static
-  server function on first request per instance and held in memory.
-
-Both are pinned to an exact commit, so a deployed function's bytes are fixed
-for as long as it is deployed: pushing to the branch cannot change what is
-already running. Redeploying is what picks up a new build.
-
-`deploy/api/index.js` is generated. Review `apps/api/edge/index.ts` instead —
-that is the source, and it is 180 lines.
-
-## Deploying
-
-```bash
-node deploy/build.mjs      # → deploy/api/index.js, deploy/web/
-git add deploy && git commit && git push
+```
+EXTRA_CORS_ORIGINS = https://plant-pal-plus.vercel.app,https://rakshit-737.github.io
 ```
 
-Then deploy both functions at the commit you just pushed, substituting it for
-`__COMMIT__`:
+Miss it and the failure is quiet in the worst way: sign-in works, and every
+session refresh fifteen minutes later returns 403. The project's own origin is
+always trusted, so this adds to the list rather than replacing it. Vercel
+preview deployments get their own domain per commit; add the ones you use, or
+test previews signed out.
 
-- **`plantpal-api`** — a single line:
-  ```ts
-  import 'https://cdn.jsdelivr.net/gh/rakshit-737/PlantPal-Plus@__COMMIT__/deploy/api/index.js'
-  ```
-- **`plantpal`** — [`deploy/web/server.ts`](web/server.ts), with the same
-  substitution.
+## The API — Supabase Edge Functions
 
-Both are deployed with JWT verification **off**. That is not a relaxation: these
-functions are a public website and a public REST API, and Supabase's own
-`verify_jwt` gate would demand a Supabase-issued token that no visitor has. The
-API authenticates every request itself, exactly as it does on Render — bearer
-access tokens, refresh-token rotation with reuse detection, and per-IP rate
-limits.
+The deployed `plantpal-api` function is a single line that imports the bundled
+API from this repository over jsDelivr, pinned to a commit:
+
+```ts
+import 'https://cdn.jsdelivr.net/gh/rakshit-737/PlantPal-Plus@<commit>/deploy/api/index.js'
+```
+
+Supabase packages a function's remote imports at deploy time, so the CDN is a
+build-time dependency, not a runtime one, and a deployed function's bytes are
+fixed for as long as it is deployed: pushing to the branch cannot change what is
+running. Redeploying is what picks up a new build.
+
+`deploy/api/index.js` is a build product, committed because the deployment
+channel needs a public URL for it. Review [`apps/api/edge/index.ts`](../apps/api/edge/index.ts)
+instead — that is the source.
+
+### Deploying a new API build
+
+```bash
+node deploy/build.mjs            # → deploy/api/index.js
+git add deploy/api/index.js && git commit && git push
+```
+
+Then redeploy `plantpal-api` with the one-line loader above at the commit you
+just pushed, with JWT verification **off**. That is not a relaxation: this is a
+public REST API, and Supabase's own `verify_jwt` gate would demand a
+Supabase-issued token no visitor has. The API authenticates every request
+itself — bearer access tokens, refresh-token rotation with reuse detection, and
+per-IP rate limits.
 
 jsDelivr serves a new commit's files within a minute or two of the push. A
-deploy that 404s on the bundle was made before the CDN caught up; redeploy.
+deploy that fails to fetch the bundle was made before the CDN caught up;
+redeploy.
 
-## Configuration
+### Configuration
 
 The function reads its configuration from what the edge runtime injects, so
 there is nothing to set for a working deployment:
@@ -99,6 +96,7 @@ there is nothing to set for a working deployment:
 | `AUDIT_PEPPER` | derived the same way, under a different label |
 | `CORS_ORIGINS` | the project origin, plus anything in `EXTRA_CORS_ORIGINS` |
 | `REFRESH_COOKIE_PATH` | `/` |
+| `REQUIRE_EMAIL_VERIFICATION` | `false` — no mail provider is wired, so accounts are active at sign-up |
 
 Every one of these is overridden by setting the same-named secret on the
 function, and an explicit value always wins.
@@ -115,70 +113,68 @@ tombstones written before it no longer correlate with ones written after. Set
 `JWT_ACCESS_SECRET` and `AUDIT_PEPPER` explicitly on the function if you need
 them to outlive the key.
 
+**Cookie scope.** The browser matches a cookie's path against the URL it
+requested, not the path Express sees once the mount prefix is stripped. Behind
+Vercel that path is `/api/auth/*`; called directly it is
+`/functions/v1/plantpal-api/api/auth/*`. The two share no prefix but the root,
+so `REFRESH_COOKIE_PATH` is `/`. Path scoping was defence in depth here, never
+the control: httpOnly, Secure, SameSite and the CSRF origin gate are what hold.
+
+### Health
+
+| Endpoint | Answers |
+|---|---|
+| `GET /healthz` | `{"status":"ok"}` whenever the function runs — no dependencies |
+| `GET /readyz` | `{"status":"ready","database":"up"}` after a real query, `503` when the database is unreachable (cached for 30 s) |
+
+[`keepalive.yml`](../.github/workflows/keepalive.yml) pings `/readyz` every six
+hours. A free Supabase project is paused after a week without activity — this
+one was, once, and every sign-in failed until it was restored by hand — and a
+red run of that workflow is the early warning.
+
 ## Scheduled work
 
 `node-cron` needs a process that outlives a request, and an edge function does
 not have one. The reminder pass and the FR-ACC-22 erasure sweep are exposed at
-`POST /internal/tick` instead, authorised by a derived bearer secret, and driven
-by `pg_cron` from inside the database:
+`POST /internal/tick` instead, authorised by a bearer secret, and driven by
+`pg_cron` from inside the database every five minutes.
 
-```sql
-select cron.schedule('plantpal-tick', '*/5 * * * *', $$
-  select net.http_post(
-    url    := 'https://<ref>.supabase.co/functions/v1/plantpal-api/internal/tick',
-    headers:= jsonb_build_object('Authorization', 'Bearer ' || '<tick-secret>')
-  );
-$$);
-```
+[`schedule-tick.sql`](schedule-tick.sql) sets that up — run it once in the SQL
+editor. It generates the secret inside the database and stores it in Vault; the
+cron job reads it from Vault at run time and the function reads the same entry,
+so the secret is never printed or copied anywhere. The script is safe to re-run.
 
-This is strictly better than the arrangement RSK-01 describes. There, the cron
-tick lives inside a free instance that sleeps after fifteen idle minutes, and an
-external pinger has to keep it awake or reminders silently stop. Here the
-scheduler is the database, which does not sleep, and it wakes the function
-rather than depending on it already being awake.
+This is sturdier than a Node process with an in-process cron: a free instance
+that sleeps takes its cron with it, while here the scheduler is the database,
+which does not sleep, and it wakes the function rather than depending on it
+already being awake.
 
-The tick secret is `HMAC-SHA256(SUPABASE_SERVICE_ROLE_KEY, "plantpal:internal-tick")`.
-It has to be authorised: an open endpoint that runs a batch of database writes
-is a denial-of-service lever pointed at a free tier.
+## The GitHub Pages mirror
 
-## Putting Vercel (or Netlify) in front
+[`deploy-web.yml`](../.github/workflows/deploy-web.yml) builds the web app for
+`/<repo>/` on every push to `main` and points it at the API through the
+`PLANTPAL_API_URL` repository variable (the API URL above). The build refuses
+to ship if that variable is unset or the URL does not answer `/healthz`.
 
-[`vercel.json`](../vercel.json) deploys the web app to Vercel and rewrites
-`/api/*` to this API, so the browser sees one origin and the refresh cookie
-stays first-party — the same property the two-function arrangement buys, on a
-domain you control.
+Pages cannot rewrite `/api/*`, so the mirror calls the API cross-origin and its
+refresh cookie is third-party: Safari blocks it, and sessions there may not
+survive a reload. Use the Vercel address for real use.
 
-Import the repository at [vercel.com/new](https://vercel.com/new); the checked-in
-config supplies the install command, the build command and the output
-directory, so there is nothing to fill in.
+## Render (optional)
 
-**One setting on the API side.** The CSRF gate on the cookie session endpoints
-checks the request's `Origin` against the trusted list, so the new domain has
-to be on it. In the Supabase dashboard, under Edge Functions → `plantpal-api` →
-Secrets, set:
+[`render.yaml`](../render.yaml) runs the same API as a Node service. Point its
+`DATABASE_URL` at this project's database using the Supabase **session pooler**
+connection string (Dashboard → Connect → Session pooler, port 5432) with the
+database password. Migrations need a session-mode or direct connection: they
+hold an advisory lock for the whole run and the files carry their own
+transactions, neither of which survives a transaction-mode pooler.
 
-```
-EXTRA_CORS_ORIGINS = https://<your-project>.vercel.app
-```
-
-Miss it and the failure is quiet in the worst way: sign-in works, and every
-session refresh fifteen minutes later returns 403. The project's own origin is
-always trusted, so this adds to the list rather than replacing it — a Vercel
-domain cannot switch the built-in site off by accident.
-
-Preview deployments get their own domain per commit. Add whichever ones you
-actually use, or test previews signed out.
-
-## Known limitation of this host
+## Known limitation of the edge host
 
 **Argon2 is unavailable.** `@node-rs/argon2` ships a native binding the edge
 runtime cannot load, so password hashing falls back to bcrypt at cost 12 — the
-fallback NFR-SEC-03 documents, and the reason it was implemented rather than
-merely described.
-
-The consequence is worth stating plainly: an account whose password was hashed
-by a Node deployment (Argon2) cannot sign in against this one, because there is
-no Argon2 backend here to verify it with. `verifyPassword` logs that case rather
-than failing quietly. Accounts created here use bcrypt, which verifies on both
-hosts, so this deployment's own accounts are unaffected — and so is a later move
-to Render.
+fallback NFR-SEC-03 documents. An account whose password was hashed by a Node
+deployment (Argon2) cannot sign in against the edge API, because there is no
+Argon2 backend there to verify it with; `verifyPassword` logs that case rather
+than failing quietly. Accounts created on the edge use bcrypt, which verifies on
+both hosts, so moving to Render later is unaffected.

@@ -14,6 +14,7 @@
  * layer speaks the column names; the controller publishes both.
  */
 
+import { env } from '../../config/env.ts'
 import { getPool, transaction } from '../../db/pool.ts'
 
 /**
@@ -175,15 +176,18 @@ export async function cancelDeletion(userId: string): Promise<CancelDeletionOutc
     if (!current) return { kind: 'missing' }
     if (current.status !== STATUS_PENDING_DELETION) return { kind: 'not_pending', state: current }
 
+    // With verification switched off (no mail provider), there is no pending
+    // state to return to: an unverified account is simply ACTIVE, exactly as
+    // registration would have created it.
     const { rows: [restored] } = await client.query<AccountStateRow>(
       `update users
-       set status = case when email_verified_at is null then 'PENDING_VERIFICATION' else 'ACTIVE' end,
+       set status = case when email_verified_at is null and $2 then 'PENDING_VERIFICATION' else 'ACTIVE' end,
            deletion_requested_at = null,
            purge_after = null,
            updated_at = now()
        where id = $1 and status = 'PENDING_DELETION'
        returning ${ACCOUNT_STATE_COLUMNS}`,
-      [userId],
+      [userId, env().REQUIRE_EMAIL_VERIFICATION],
     )
     return { kind: 'cancelled', state: restored! }
   })

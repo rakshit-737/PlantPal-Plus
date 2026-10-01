@@ -22,9 +22,9 @@ This is a full software-engineering project delivered phase by phase, with every
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
 | 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
 | 3 — Implementation | ✅ Core complete — REST API (auth, account lifecycle, plants + growth log, fitness, nutrition + custom foods, dashboard, achievements, reminders + Expo Push, offline sync outbox, settings, engagement loop), web app (responsive, toasts, full error/retry states, accessible pickers), Expo mobile app with a durable offline outbox. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: binary photo upload (the growth log stores image links — see [Known gaps](#known-gaps)), email digest |
-| 4 — Testing | ✅ 307 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 158 API incl. a 12-test auth integration suite against real PostgreSQL (skipped without a `DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 72 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
+| 4 — Testing | ✅ 462 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 235 API incl. 18 integration tests against real PostgreSQL (auth lifecycle and the first-day core flows; skipped without `TEST_DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 150 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
 | 5 — Documentation | ✅ Complete — install + deployment in this README, endpoint index in [docs/api-reference.md](docs/api-reference.md), OpenAPI 3.1 in [docs/architecture/](docs/architecture/) |
-| 6 — Deployment | 🟡 In progress — website live on GitHub Pages ([demo](https://rakshit-737.github.io/PlantPal-Plus/)); API one-click via render.yaml; mobile via EAS |
+| 6 — Deployment | ✅ Live — website on Vercel (**[plant-pal-plus.vercel.app](https://plant-pal-plus.vercel.app)**), API on Supabase Edge Functions, database on Supabase Postgres; GitHub Pages mirror; mobile via EAS |
 
 ### Phase 1 at a glance
 
@@ -134,28 +134,44 @@ Every push and pull request to `main` runs `npm run typecheck` and `npm test` �
 
 Everything runs on permanently free tiers.
 
-**Live now — Supabase Edge Functions.** The web app and the API run as two
-functions in the same Supabase project that hosts the database, sharing an
-origin so the refresh cookie stays first-party:
-
-| | |
+| | Live at |
 |---|---|
-| Web app | https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal/ |
-| API | https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api/ |
+| **Website** | **https://plant-pal-plus.vercel.app** — Vercel, rewrites `/api/*` to the API |
+| **API** | https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api — Supabase Edge Function (`/healthz`, `/readyz`) |
+| Database | Supabase Postgres, same project as the API |
+| Mirror | https://rakshit-737.github.io/PlantPal-Plus/ — GitHub Pages, rebuilt on every push to `main` |
 
-See [deploy/README.md](deploy/README.md) for how that is built and deployed,
-what it configures itself, and the one thing this host cannot do (no Argon2
-binding, so the documented bcrypt fallback engages).
+How each piece is built, deployed and configured — and the one thing the edge
+host cannot do (no Argon2 binding, so the documented bcrypt fallback engages) —
+is in [deploy/README.md](deploy/README.md).
 
-**Vercel** is a one-click alternative for the web app: [`vercel.json`](vercel.json)
-rewrites `/api/*` to the API above, so a Vercel domain gets the same
-single-origin behaviour. Import the repo at vercel.com/new and add your domain
-to the API's `EXTRA_CORS_ORIGINS` secret — both steps are in
-[deploy/README.md](deploy/README.md#putting-vercel-or-netlify-in-front).
+**Website — Vercel.** The Vercel project builds from the repository root with
+the checked-in [`vercel.json`](vercel.json) and redeploys on every push to
+`main`. Its `/api/*` rewrite puts the page and the API on one origin, so the
+refresh cookie stays first-party and sign-in survives on every browser. The old
+`…/functions/v1/plantpal/` address redirects here: Supabase serves function
+responses as plain text, so it cannot host the page itself.
 
-**Website — deployed automatically.** Every push to `main` publishes the web app to GitHub Pages at **https://rakshit-737.github.io/PlantPal-Plus/** via [deploy-web.yml](.github/workflows/deploy-web.yml). The site needs a running API to sign in: set the `PLANTPAL_API_URL` repository variable (Settings → Secrets and variables → Actions → Variables) to the API origin once it is deployed, and keep that origin in the API's `CORS_ORIGINS`. Note: on GitHub Pages the refresh cookie is third-party (cross-origin API), which Safari blocks — use a host with `/api` rewrites (Vercel/Netlify) for a production deployment; Pages is the zero-signup demo path. A checked-in [vercel.json](vercel.json) provides that production path — deploying this repo to Vercel rewrites `/api/*` to the API origin, so the refresh cookie stays first-party.
+**API — Supabase Edge Functions.** A one-line function loads the bundled API
+([`deploy/api/index.js`](deploy/api/index.js)) pinned to a commit. It configures
+itself from the platform (database URL, derived secrets); reminders and the
+account-erasure sweep are driven by `pg_cron` from inside the database
+([`deploy/schedule-tick.sql`](deploy/schedule-tick.sql)), and
+[keepalive.yml](.github/workflows/keepalive.yml) pings `/readyz` every six hours
+so a paused project shows up as a red run rather than as failed sign-ins.
 
-**API — one-time Render setup.** [render.yaml](render.yaml) is a Render Blueprint: dashboard → New → Blueprint → select this repo. Render creates the service, generates `JWT_ACCESS_SECRET`, and asks once for `DATABASE_URL` (your Neon connection string). Migrations **and seeds run at boot**, so every subsequent push to `main` deploys hands-off. Free-tier reality (RSK-01): the instance sleeps after 15 idle minutes and the reminder cron dies with it — point a free pinger (UptimeRobot) at `/healthz` every 10 minutes. [keepalive.yml](.github/workflows/keepalive.yml) covers this from GitHub Actions, pinging `/healthz` on a schedule once the `PLANTPAL_API_URL` repository variable is set.
+**GitHub Pages mirror.** [deploy-web.yml](.github/workflows/deploy-web.yml)
+publishes the same web app to Pages, calling the API cross-origin through the
+`PLANTPAL_API_URL` repository variable. Pages cannot rewrite `/api/*`, so there
+the refresh cookie is third-party, which Safari blocks — sessions may not
+survive a reload. Prefer the Vercel address.
+
+**Render (optional, self-hosted Node).** [render.yaml](render.yaml) is a Render
+Blueprint for running the same API as a long-lived Node process: dashboard → New
+→ Blueprint → select this repo. It needs `DATABASE_URL` — for this project, the
+Supabase **session pooler** connection string (port 5432) with the database
+password. Migrations and seeds run at boot. The free instance sleeps after 15
+idle minutes, which is why the live API is on the edge instead.
 
 **Mobile app — EAS build.** [apps/mobile/eas.json](apps/mobile/eas.json) is configured; building needs a free [Expo account](https://expo.dev):
 
@@ -166,7 +182,7 @@ cd apps/mobile
 eas build --platform android --profile preview   # installable .apk, API URL baked in
 ```
 
-The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL=https://plantpal-plus-api.onrender.com` — edit `eas.json` if your Render service has a different name.
+The `preview`/`production` profiles bake `EXPO_PUBLIC_API_URL` as the live API above — edit `eas.json` to point a build at another deployment.
 
 ---
 
@@ -197,7 +213,7 @@ Stated plainly rather than left to be discovered:
 - **Photos are links, not uploads.** The growth log stores an image URL; there is no object-storage bucket, so a file picker would need a Supabase/Cloudinary/R2 account. The API validates that the link is `http(s)`.
 - **No email delivery.** `DELETION_SCHEDULED`, `DELETION_CANCELLED` and `DELETION_COMPLETED` (BR-ACC-20 cl.11) are specified but no mail provider is wired, so the erasure sweep runs without sending the final message.
 - **Erasure is rows only, not objects.** The FR-ACC-22 sweep erases every row in BR-ACC-20 Table H, but rule 4's object-storage queue has nothing to talk to — there is no bucket (see the photo gap above), so there are no stored objects to enqueue.
-- **No password reset or email verification delivery.** Both token tables exist; there is no mail provider wired, so the UI does not offer a flow it cannot complete.
+- **No password reset or email verification delivery.** Both token tables exist; there is no mail provider wired, so the UI does not offer a flow it cannot complete. New accounts are therefore active at sign-up; set `REQUIRE_EMAIL_VERIFICATION=true` on the API once mail is wired to restore the 7-day confirmation window.
 - **Reminders have no retry after a failed push** — the in-app list is the delivery baseline.
 
 ---

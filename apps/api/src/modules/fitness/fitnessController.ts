@@ -29,6 +29,7 @@ import {
   getPersonalRecords,
   type CreateWorkoutData,
 } from './fitnessRepo.ts'
+import { activityMet, resolveBodyMassKg } from './energy.ts'
 
 export { authenticate }
 
@@ -61,6 +62,9 @@ export async function getWorkoutHandler(req: Request, res: Response, next: NextF
 const VALID_ACTIVITY_TYPES = new Set([
   'WALK', 'RUN', 'CYCLE', 'SWIM', 'STRENGTH', 'YOGA', 'HIIT', 'SPORT', 'OTHER',
 ])
+
+/** Mirrors workouts.perceived_intensity's CHECK constraint (003-fitness-schema.sql). */
+const VALID_INTENSITIES = new Set(['LOW', 'MODERATE', 'VIGOROUS'])
 
 interface RawSet {
   set_index?: number
@@ -98,6 +102,33 @@ export async function logWorkout(req: Request, res: Response, next: NextFunction
       ])
     }
 
+    // Validated here rather than left to the table's CHECK constraints, which
+    // turn a client mistake into a 500 and an alarming log line instead of the
+    // 422 the client can act on.
+    if (
+      body.perceived_intensity !== undefined &&
+      body.perceived_intensity !== null &&
+      !VALID_INTENSITIES.has(body.perceived_intensity as string)
+    ) {
+      throw badRequest('perceived_intensity must be LOW, MODERATE or VIGOROUS.', [
+        { field: 'perceived_intensity', issue: 'invalid' },
+      ])
+    }
+    if (
+      body.steps !== undefined &&
+      body.steps !== null &&
+      (typeof body.steps !== 'number' || !Number.isInteger(body.steps) || body.steps < 0 || body.steps > 200_000)
+    ) {
+      throw badRequest('steps must be a whole number between 0 and 200000.', [
+        { field: 'steps', issue: 'out_of_range' },
+      ])
+    }
+    if (body.note !== undefined && body.note !== null && (typeof body.note !== 'string' || body.note.length > 500)) {
+      throw badRequest('note must be text of at most 500 characters.', [
+        { field: 'note', issue: 'too_long' },
+      ])
+    }
+
     // Derive per-set volume and Epley e1RM (BR-FIT-14, BR-FIT-15) server-side.
     const rawSets = Array.isArray(body.sets) ? (body.sets as RawSet[]) : []
     const sets: NonNullable<CreateWorkoutData['sets']> = rawSets.map((s, i) => {
@@ -119,17 +150,29 @@ export async function logWorkout(req: Request, res: Response, next: NextFunction
       sets.map((s) => ({ reps: s.reps, weightKg: s.weight_kg })),
     )
 
-    // MET energy estimate (FR-FIT-05) when the frozen inputs are all present.
-    const metValue = body.met_value_at_log as number | undefined
-    const bodyMassKg = body.body_mass_at_log_kg as number | undefined
+    // MET energy estimate (FR-FIT-05). Inputs the client sent are range-checked
+    // here (the shared formula throws on an out-of-range value, which would
+    // otherwise surface as a 500); inputs it left out are filled from the
+    // catalogue and the BR-FIT-05 mass chain, so every timed workout gets an
+    // estimate and the inputs used are frozen onto the row.
+    const sentMet = body.met_value_at_log as number | undefined | null
+    if (sentMet !== undefined && sentMet !== null && (typeof sentMet !== 'number' || !(sentMet >= 1 && sentMet <= 23))) {
+      throw badRequest('met_value_at_log must be a number between 1 and 23.', [
+        { field: 'met_value_at_log', issue: 'out_of_range' },
+      ])
+    }
+    const sentMass = body.body_mass_at_log_kg as number | undefined | null
+    if (sentMass !== undefined && sentMass !== null && (typeof sentMass !== 'number' || !(sentMass >= 20 && sentMass <= 635))) {
+      throw badRequest('body_mass_at_log_kg must be a number between 20 and 635.', [
+        { field: 'body_mass_at_log_kg', issue: 'out_of_range' },
+      ])
+    }
+    const timed = typeof durationMins === 'number' && durationMins > 0
+    const metValue =
+      sentMet ?? (timed ? activityMet(body.activity_type as string, body.perceived_intensity as string | undefined) : undefined)
+    const bodyMassKg = sentMass ?? (timed && metValue !== undefined ? await resolveBodyMassKg(userId(req)) : undefined)
     let caloriesBurned = body.calories_burned as number | undefined
-    if (
-      caloriesBurned === undefined &&
-      typeof metValue === 'number' &&
-      typeof bodyMassKg === 'number' &&
-      typeof durationMins === 'number' &&
-      durationMins > 0
-    ) {
+    if (caloriesBurned === undefined && metValue !== undefined && bodyMassKg !== undefined && timed) {
       caloriesBurned = workoutEnergyKcal(metValue, bodyMassKg, durationMins)
     }
 

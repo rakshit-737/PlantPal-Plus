@@ -6,9 +6,10 @@
  * - The transition arithmetic lives in @plantpal/shared (advanceStreakOnLog):
  *   one implementation, three clients (NFR-MAIN-03). This module only moves
  *   state between PostgreSQL and that pure function.
- * - The OVERALL streak advances when all three module scopes have counted
- *   today. v1.0 treats every module as enabled; the BR-GAM-05/06 per-module
- *   enablement predicate joins when user settings ship.
+ * - The OVERALL streak advances when every *enabled* module scope has counted
+ *   today (BR-GAM-05/06). A module switched off in Settings stops being a
+ *   condition: otherwise someone who only tracks plants could never grow the
+ *   one streak the product is built around.
  * - Engagement is deliberately non-fatal: a failure here must never fail the
  *   log write it decorates. Callers use recordDailyLogSafe.
  */
@@ -243,8 +244,31 @@ export async function recordDailyLog(
          for update`,
         [userId],
       )
+      // Only the modules the person has switched on are conditions of the
+      // day. No settings row (never written) means everything is on.
+      const { rows: [enabled] } = await client.query<{
+        plant_care_enabled: boolean
+        fitness_enabled: boolean
+        nutrition_enabled: boolean
+      }>(
+        `select plant_care_enabled, fitness_enabled, nutrition_enabled
+         from user_settings where user_id = $1`,
+        [userId],
+      )
+      const required: ModuleScope[] = (
+        [
+          ['PLANT_CARE', enabled?.plant_care_enabled ?? true],
+          ['FITNESS', enabled?.fitness_enabled ?? true],
+          ['NUTRITION', enabled?.nutrition_enabled ?? true],
+        ] as const
+      )
+        .filter(([, on]) => on)
+        .map(([scope]) => scope)
+      const countedToday = new Set(
+        rows.filter((r) => r.last_counted_date === localDateStr).map((r) => r.streak_type),
+      )
       const allMetToday =
-        rows.length === 3 && rows.every((r) => r.last_counted_date === localDateStr)
+        required.length > 0 && required.every((scope) => countedToday.has(scope))
       if (allMetToday) {
         await advanceScope(client, userId, 'OVERALL', localDateStr)
       }

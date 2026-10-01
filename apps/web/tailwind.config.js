@@ -1,6 +1,7 @@
 /**
- * Tailwind tokens per docs/design/01-design-language.md, revised by the 2026-08
- * "Glasshouse" v3.0 direction.
+ * Tailwind tokens per docs/design/01-design-language.md, revised by the 2026-10
+ * "Conservatory" v4.0 direction (index.css carries the palette and its
+ * rationale; this file maps it onto utilities).
  *
  * Colours are wired to CSS custom properties (declared in index.css) so a single
  * `data-theme` switch flips the whole palette between light and dark without
@@ -69,13 +70,14 @@ export default {
       },
       borderRadius: {
         // Inputs, badges, table cells — anything holding a metric.
-        sm: '6px',
+        sm: '8px',
         // Buttons, list rows, toasts.
-        md: '10px',
+        md: '12px',
         // Cards, panels, tiles.
-        lg: '16px',
+        lg: '18px',
         // Modals, hero panels, the sidebar.
-        xl: '22px',
+        xl: '24px',
+        '2xl': '28px',
         full: '9999px',
       },
       backdropBlur: {
@@ -96,14 +98,19 @@ export default {
         'glass-raised': 'inset 0 1px 0 0 var(--glass-highlight), var(--shadow-3)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['"Bricolage Grotesque"', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        sans: ['Geist', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        // Working headings — section titles, card titles, dialog titles.
+        heading: ['Geist', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Display serif for page titles and the marketing surfaces: the one
+        // voice in the product that is allowed to be expressive.
+        display: ['Fraunces', 'ui-serif', 'Georgia', '"Times New Roman"', 'serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       fontSize: {
-        // Display step for the landing and auth surfaces. Large type needs
+        // Display steps for the landing and auth surfaces. Large type needs
         // tighter tracking or it reads as loose at these sizes.
-        display: ['clamp(2.5rem, 1.6rem + 4.5vw, 4rem)', { lineHeight: '1.05', letterSpacing: '-0.03em' }],
+        display: ['clamp(2.75rem, 1.4rem + 5.4vw, 5.25rem)', { lineHeight: '1.02', letterSpacing: '-0.035em' }],
+        'display-sm': ['clamp(2rem, 1.3rem + 2.6vw, 3rem)', { lineHeight: '1.08', letterSpacing: '-0.025em' }],
       },
       spacing: {
         // 8pt grid aliases from the design language doc.
@@ -128,8 +135,8 @@ export default {
         // Growth, not slide: the reveal for lists, tiles and panels. No
         // horizontal translation, per the motion contract.
         'grow-in': {
-          from: { opacity: '0', transform: 'scale(0.97)' },
-          to: { opacity: '1', transform: 'scale(1)' },
+          from: { opacity: '0', transform: 'translateY(6px) scale(0.985)' },
+          to: { opacity: '1', transform: 'none' },
         },
         // The reduce-motion fallback for anything using grow-in — a
         // cross-fade, never a jump-cut that loses state.

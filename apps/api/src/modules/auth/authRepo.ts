@@ -24,6 +24,12 @@ export interface CreateUserInput {
   email: string
   passwordHash: string
   confirmedAge: boolean
+  /**
+   * The account's starting state. PENDING_VERIFICATION when email verification
+   * is enforced (the column default); ACTIVE when it is not, because there is
+   * then nothing that could ever move the account out of the pending state.
+   */
+  status?: 'ACTIVE' | 'PENDING_VERIFICATION'
 }
 
 export interface CreatedUser {
@@ -35,11 +41,16 @@ export interface CreatedUser {
 export async function createUser(params: CreateUserInput): Promise<CreatedUser> {
   return await transaction(async (client) => {
     const { rows: [user] } = await client.query<CreatedUser>(
-      `insert into users (email, email_normalised, password_hash, minimum_age_confirmed)
-       values ($1, lower(trim($1)), $2, $3)
+      `insert into users (email, email_normalised, password_hash, minimum_age_confirmed, status)
+       values ($1, lower(trim($1)), $2, $3, $4)
        on conflict (email_normalised) do nothing
        returning id, email, status`,
-      [params.email, params.passwordHash, params.confirmedAge],
+      [
+        params.email,
+        params.passwordHash,
+        params.confirmedAge,
+        params.status ?? 'PENDING_VERIFICATION',
+      ],
     )
 
     if (!user) {

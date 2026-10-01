@@ -474,6 +474,7 @@ export function SettingsPage() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-xl">
         <PageHeader
+          eyebrow="Your account"
           title="Settings"
           subtitle="Account and preferences."
           /*
@@ -487,9 +488,12 @@ export function SettingsPage() {
           action={
             <Link
               to="/onboarding"
-              className="rounded-sm text-sm text-text-muted underline-offset-4 hover:text-text-main hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex h-9 items-center gap-xs rounded-full border border-border-control/70 px-md text-[13px] font-medium text-text-muted transition-colors duration-standard ease-state hover:border-text-muted hover:bg-text-main/[0.04] hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Set up preferences
+              <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                <path d="M3.5 8h9M9 4.5L12.5 8 9 11.5" />
+              </svg>
             </Link>
           }
         />

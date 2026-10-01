@@ -53,6 +53,22 @@ const schema = z.object({
    * never sent back, and every refresh fails with no visible cause.
    */
   REFRESH_COOKIE_PATH: z.string().startsWith('/').default('/api/auth'),
+
+  /*
+   * FR-ACC-03/04 — whether an unverified account is refused once its 168-hour
+   * grace window has elapsed.
+   *
+   * Verification only works if something can deliver the link, and no mail
+   * provider is wired yet. Enforcing it anyway meant every account was signed
+   * out for good on its eighth day, with no email ever sent and no way back in
+   * — which is exactly what happened to the live deployment's accounts. So it
+   * stays off until a provider exists; while off, new accounts are created
+   * ACTIVE and the grace check is skipped. Set to "true" once mail is wired.
+   */
+  REQUIRE_EMAIL_VERIFICATION: z
+    .enum(['true', 'false', '1', '0'])
+    .default('false')
+    .transform((value) => value === 'true' || value === '1'),
 })
 
 export type Env = z.infer<typeof schema>

@@ -189,9 +189,17 @@ export async function register(req: Request, res: Response, next: NextFunction) 
     }
 
     const passwordHash = await hashPassword(password!)
+    // With no mail provider wired, nothing could ever verify the address, so
+    // the account starts ACTIVE instead of waiting on an email that never comes.
+    const verificationRequired = env().REQUIRE_EMAIL_VERIFICATION
 
     try {
-      await createUser({ email: email!, passwordHash, confirmedAge: confirmedAge! })
+      await createUser({
+        email: email!,
+        passwordHash,
+        confirmedAge: confirmedAge!,
+        status: verificationRequired ? 'PENDING_VERIFICATION' : 'ACTIVE',
+      })
     } catch (err: unknown) {
       if (err && typeof err === 'object' && '__appError' in (err as Record<string, unknown>)) {
         // Address already registered — do NOT disclose when the call is unauthenticated
@@ -216,9 +224,14 @@ export async function register(req: Request, res: Response, next: NextFunction) 
     // common floor exactly as login does.
     await enforceTimingFloor(startedAt)
 
+    // Identical for a new and an already-registered address (BR-ACC-10): the
+    // body depends only on configuration, never on whether the insert landed.
     res.status(202).json({
       status: 'registered',
-      message: 'Check your email for a confirmation link.',
+      verification_required: verificationRequired,
+      message: verificationRequired
+        ? 'Check your email for a confirmation link.'
+        : 'Your account is ready. Sign in to continue.',
     })
   } catch (err) {
     next(err)
@@ -320,7 +333,9 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       await recordLoginAttempt(normalised, prefix, 'NO_ACCOUNT')
       throw new AppError('INVALID_CREDENTIALS', 'That email or password is not right.')
     }
-    if (user.status === 'PENDING_VERIFICATION') {
+    // Only enforced when verification can actually be completed: refusing an
+    // unverified account when no link was ever sent locks its owner out for good.
+    if (user.status === 'PENDING_VERIFICATION' && env().REQUIRE_EMAIL_VERIFICATION) {
       const graceMs = 168 * 60 * 60 * 1000 // 7 days
       if (user.created_at.getTime() + graceMs < now.getTime()) {
         await recordLoginAttempt(normalised, prefix, 'UNVERIFIED')

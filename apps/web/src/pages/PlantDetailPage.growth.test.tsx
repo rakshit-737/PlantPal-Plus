@@ -18,6 +18,7 @@ const addGrowthEntry = vi.fn()
 const deleteGrowthEntry = vi.fn()
 const deletePlant = vi.fn()
 const logCare = vi.fn()
+const searchSpecies = vi.fn(async () => [])
 
 vi.mock('../lib/plantsApi', () => ({
   getPlant,
@@ -27,6 +28,7 @@ vi.mock('../lib/plantsApi', () => ({
   deleteGrowthEntry,
   deletePlant,
   logCare,
+  searchSpecies,
 }))
 
 const { PlantDetailPage } = await import('./PlantDetailPage')

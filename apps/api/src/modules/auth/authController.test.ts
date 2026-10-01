@@ -12,7 +12,7 @@
 
 import express from 'express'
 import request from 'supertest'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The controller signs access tokens through the validated configuration, which
 // is loaded once and cached. Install a known configuration before any module
@@ -47,6 +47,16 @@ const { errorHandler } = await import('../../http/errorHandler.ts')
 const { requestId } = await import('../../http/requestId.ts')
 const authRoutes = (await import('./authRoutes.ts')).default
 const { enforceTimingFloor, LOGIN_TIMING_FLOOR_MS } = await import('./authController.ts')
+const { env, setEnvForTesting } = await import('../../config/env.ts')
+
+/** Run the rest of a test with email verification enforced (a mail provider wired). */
+function requireEmailVerification(): void {
+  setEnvForTesting({ ...env(), REQUIRE_EMAIL_VERIFICATION: true })
+}
+
+afterEach(() => {
+  setEnvForTesting(undefined)
+})
 
 const app = express()
 app.use(requestId)
@@ -199,6 +209,7 @@ describe('login — account states (FR-ACC-02 clause 5)', () => {
   })
 
   it('refuses an unverified account once its 168-hour grace has elapsed', async () => {
+    requireEmailVerification()
     vi.mocked(repo.findUserForAuth).mockResolvedValue({
       ...ACTIVE_USER,
       status: 'PENDING_VERIFICATION',
@@ -212,6 +223,26 @@ describe('login — account states (FR-ACC-02 clause 5)', () => {
 
     expect(res.status).toBe(403)
     expect(res.body.error.code).toBe('EMAIL_NOT_VERIFIED')
+  })
+
+  it('signs in an unverified account past its grace when verification is off', async () => {
+    // The live failure this guards: with no mail provider, no account could
+    // ever be verified, so enforcing the grace signed every user out for good
+    // on day eight.
+    vi.mocked(repo.findUserForAuth).mockResolvedValue({
+      ...ACTIVE_USER,
+      status: 'PENDING_VERIFICATION',
+      email_verified_at: null,
+      created_at: new Date(Date.now() - 200 * 60 * 60 * 1000),
+    } as never)
+    vi.mocked(repo.createSession).mockResolvedValue(SESSION as never)
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: ACTIVE_USER.email, password: 'a-long-enough-password' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.access_token).toEqual(expect.any(String))
   })
 
   it('allows an unverified account still inside its grace window', async () => {
@@ -268,5 +299,67 @@ describe('login — lock-out (BR-ACC-09)', () => {
       .send({ email: ACTIVE_USER.email, password: 'a-long-enough-password' })
 
     expect(res.status).toBe(200)
+  })
+})
+
+describe('register — email verification switch', () => {
+  const body = {
+    email: 'new.person@example.com',
+    password: 'a-long-enough-password',
+    confirmed_age: true,
+  }
+
+  it('creates an ACTIVE account and says so when verification is off', async () => {
+    vi.mocked(repo.createUser).mockResolvedValue({
+      id: ACTIVE_USER.id,
+      email: body.email,
+      status: 'ACTIVE',
+    })
+
+    const res = await request(app).post('/api/auth/register').send(body)
+
+    expect(res.status).toBe(202)
+    expect(res.body.verification_required).toBe(false)
+    expect(res.body.message).toMatch(/sign in/i)
+    expect(vi.mocked(repo.createUser).mock.calls[0]![0]).toMatchObject({ status: 'ACTIVE' })
+  })
+
+  it('creates a pending account and points at the inbox when verification is on', async () => {
+    requireEmailVerification()
+    vi.mocked(repo.createUser).mockResolvedValue({
+      id: ACTIVE_USER.id,
+      email: body.email,
+      status: 'PENDING_VERIFICATION',
+    })
+
+    const res = await request(app).post('/api/auth/register').send(body)
+
+    expect(res.status).toBe(202)
+    expect(res.body.verification_required).toBe(true)
+    expect(res.body.message).toMatch(/check your email/i)
+    expect(vi.mocked(repo.createUser).mock.calls[0]![0]).toMatchObject({
+      status: 'PENDING_VERIFICATION',
+    })
+  })
+
+  it('answers a duplicate address exactly as it answers a new one (BR-ACC-10)', async () => {
+    vi.mocked(repo.createUser).mockResolvedValueOnce({
+      id: ACTIVE_USER.id,
+      email: body.email,
+      status: 'ACTIVE',
+    })
+    const fresh = await request(app).post('/api/auth/register').send(body)
+
+    vi.mocked(repo.createUser).mockRejectedValueOnce(
+      Object.assign(new Error('That email address is already registered.'), {
+        code: 'CONFLICT',
+        status: 409,
+        __appError: true,
+      }),
+    )
+    const duplicate = await request(app).post('/api/auth/register').send(body)
+
+    expect(duplicate.status).toBe(fresh.status)
+    expect(duplicate.body).toEqual(fresh.body)
   })
 })

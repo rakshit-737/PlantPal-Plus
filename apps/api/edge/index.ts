@@ -29,20 +29,27 @@
  *  3. **Secrets are derived, not configured.** See `derivedSecret`.
  */
 
-import { createHmac } from 'node:crypto'
+import { Buffer } from 'node:buffer'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import process from 'node:process'
 
 import express from 'express'
 
 import { createApp } from '../src/app.ts'
 import { configureEnv } from '../src/config/env.ts'
-import { initPool } from '../src/db/pool.ts'
+import { getPool, initPool } from '../src/db/pool.ts'
 import { logger } from '../src/logging.ts'
 import { runPurgePass } from '../src/modules/account/purgeService.ts'
 import { runReminderPass } from '../src/modules/reminders/reminderService.ts'
 
 /** Deno's global, declared rather than imported so `tsc` never needs its types. */
 declare const Deno: { env: { get(key: string): string | undefined } }
+
+/**
+ * Supabase's edge-runtime global. `waitUntil` keeps the worker alive for work
+ * that outlives the response; absent off-platform, hence optional.
+ */
+declare const EdgeRuntime: { waitUntil?(promise: Promise<unknown>): void } | undefined
 
 /** The function slug, which is also the path prefix the runtime routes under. */
 const SLUG = Deno.env.get('SUPABASE_FUNCTION_SLUG') ?? 'plantpal-api'
@@ -161,12 +168,57 @@ initPool(env.DATABASE_URL, 3, { rejectUnauthorized: false })
 /**
  * FR-ACC-22 and the reminder pass, on a pull rather than a push.
  *
- * Authorised by a derived bearer secret: pg_cron holds the same value and sends
- * it, so the endpoint is reachable by the database and by nobody else. It has
- * to be authorised — an open endpoint that runs a batch of database writes is
- * a denial-of-service lever pointed at a free tier.
+ * Authorised by a bearer secret pg_cron sends, so the endpoint is reachable by
+ * the database and by nobody else. It has to be authorised — an open endpoint
+ * that runs a batch of database writes is a denial-of-service lever pointed at
+ * a free tier.
+ *
+ * Where the secret comes from, in order:
+ *
+ *  1. `TICK_SECRET` set on the function — an explicit value always wins.
+ *  2. Supabase Vault, under `plantpal_tick_secret`. This is the normal case:
+ *     the secret is generated inside the database by the scheduling migration
+ *     (deploy/schedule-tick.sql), the cron job reads it from the same place
+ *     at run time, and it never exists anywhere else — not in a dashboard, not
+ *     in a workflow file, not in anyone's clipboard.
+ *  3. The derived value, for a project whose Vault has no such secret.
+ *
+ * The Vault lookup is cached, but a miss is only cached for a minute, so the
+ * job can be scheduled after this instance started without a redeploy.
  */
-const TICK_SECRET = fromEdge('TICK_SECRET', derivedSecret('internal-tick'))
+const EXPLICIT_TICK_SECRET = Deno.env.get('TICK_SECRET') || undefined
+const DERIVED_TICK_SECRET = derivedSecret('internal-tick')
+let vaultTickSecret: { value: string | null; at: number } | undefined
+
+async function tickSecret(): Promise<string> {
+  if (EXPLICIT_TICK_SECRET) return EXPLICIT_TICK_SECRET
+  const fresh =
+    vaultTickSecret && (vaultTickSecret.value !== null || Date.now() - vaultTickSecret.at < 60_000)
+  if (!fresh) {
+    try {
+      const { rows } = await getPool().query<{ secret: string }>(
+        `select decrypted_secret as secret
+           from vault.decrypted_secrets
+          where name = 'plantpal_tick_secret'
+          limit 1`,
+      )
+      vaultTickSecret = { value: rows[0]?.secret ?? null, at: Date.now() }
+    } catch (err) {
+      // Not cached: a transient database error must not pin this instance to
+      // the fallback for its whole lifetime.
+      logger.warn({ err }, 'internal tick: Vault lookup failed, using the derived secret')
+      return DERIVED_TICK_SECRET
+    }
+  }
+  return vaultTickSecret?.value ?? DERIVED_TICK_SECRET
+}
+
+/** Constant-time comparison, so the check cannot be timed one byte at a time. */
+function sameSecret(presented: string, expected: string): boolean {
+  const a = Buffer.from(presented)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
 
 const app = createApp({
   corsOrigins: env.CORS_ORIGINS,
@@ -183,15 +235,22 @@ const app = createApp({
  */
 const host = express()
 
-host.post(`/${SLUG}/internal/tick`, (req, res) => {
-  if (req.get('authorization') !== `Bearer ${TICK_SECRET}`) {
+host.post(`/${SLUG}/internal/tick`, async (req, res) => {
+  const presented = (req.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
+  let authorised = false
+  try {
+    authorised = presented.length > 0 && sameSecret(presented, await tickSecret())
+  } catch {
+    authorised = false
+  }
+  if (!authorised) {
     res.status(401).json({ error: { code: 'AUTHENTICATION_REQUIRED' } })
     return
   }
   // Both passes are idempotent and re-derive their work from durable state, so
   // an overlapping tick costs duplicated effort and never a duplicated effect.
-  void Promise.allSettled([runReminderPass(), runPurgePass()])
-    .then(([reminders, purge]) => {
+  const work = Promise.allSettled([runReminderPass(), runPurgePass()]).then(
+    ([reminders, purge]) => {
       logger.info(
         {
           reminders: reminders.status === 'fulfilled' ? reminders.value : 'failed',
@@ -199,7 +258,12 @@ host.post(`/${SLUG}/internal/tick`, (req, res) => {
         },
         'internal tick complete',
       )
-    })
+    },
+  )
+  // The batch outlives the response. Without waitUntil the platform is free to
+  // reclaim the worker the moment the 202 is written, cutting the pass off
+  // part-way — harmless (it is idempotent) but it would never finish.
+  if (typeof EdgeRuntime !== 'undefined') EdgeRuntime?.waitUntil?.(work)
   // Answered immediately: pg_cron is a scheduler, not a consumer of results,
   // and holding its worker open for the length of a batch is how a cron job
   // starts overlapping itself.

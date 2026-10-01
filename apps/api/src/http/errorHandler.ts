@@ -40,6 +40,60 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(new AppError('NOT_FOUND', `No route matches ${req.method} ${req.path}`))
 }
 
+/**
+ * PostgreSQL errors that mean "the request carried a value the schema refuses",
+ * keyed by SQLSTATE, with the detail `issue` each one maps to.
+ *
+ * The table definitions are the last line of validation: CHECK constraints,
+ * NOT NULL, foreign keys, and the uuid type itself. When a handler has not
+ * pre-validated a field, a bad value reaches the database and comes back as
+ * one of these. Treating that as a 500 told the client "our fault, retry"
+ * about a request that will fail identically forever, and paged the logs with
+ * a stack trace for what is a typo in a payload or a malformed id in a URL.
+ */
+const PG_CLIENT_INPUT: Record<string, { code: ErrorCode; issue: string }> = {
+  '22P02': { code: 'VALIDATION_FAILED', issue: 'invalid_format' }, // e.g. "undefined" as a uuid
+  '22001': { code: 'VALIDATION_FAILED', issue: 'too_long' },
+  '22003': { code: 'VALIDATION_FAILED', issue: 'out_of_range' },
+  '22007': { code: 'VALIDATION_FAILED', issue: 'invalid_format' },
+  '22008': { code: 'VALIDATION_FAILED', issue: 'out_of_range' },
+  '23502': { code: 'VALIDATION_FAILED', issue: 'required' },
+  '23503': { code: 'VALIDATION_FAILED', issue: 'unknown_reference' },
+  '23514': { code: 'VALIDATION_FAILED', issue: 'invalid' },
+  '23505': { code: 'CONFLICT', issue: 'duplicate' },
+}
+
+interface PgErrorShape {
+  code: string
+  severity?: string
+  table?: string
+  column?: string
+  constraint?: string
+}
+
+function isPgError(err: unknown): err is Error & PgErrorShape {
+  if (!(err instanceof Error)) return false
+  const e = err as Error & Partial<PgErrorShape>
+  return typeof e.code === 'string' && /^[0-9A-Z]{5}$/.test(e.code) && typeof e.severity === 'string'
+}
+
+/**
+ * The field a constraint guards. Constraint names here follow PostgreSQL's
+ * default `<table>_<column>_check` / `_fkey` / `_key` pattern, so stripping the
+ * table and the suffix recovers the column — which is the only part of the
+ * error safe and useful to hand a client.
+ */
+function fieldFromPgError(err: PgErrorShape): string {
+  if (err.column) return err.column
+  if (err.constraint) {
+    let name = err.constraint
+    if (err.table && name.startsWith(`${err.table}_`)) name = name.slice(err.table.length + 1)
+    name = name.replace(/_(check|fkey|key|not_null)$/, '')
+    if (/^[a-z_]+$/.test(name)) return name
+  }
+  return '(request)'
+}
+
 /** Duck-typed application error thrown by layers that avoid importing AppError. */
 function isMarkedAppError(err: unknown): err is Error & { code: ErrorCode } {
   if (!(err instanceof Error)) return false
@@ -63,6 +117,22 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   } else if (err instanceof SyntaxError && 'body' in err) {
     // express.json() surfaces malformed JSON as a SyntaxError carrying `body`.
     appError = new AppError('MALFORMED_REQUEST', 'The request body is not valid JSON.')
+  } else if (isPgError(err) && PG_CLIENT_INPUT[err.code]) {
+    const mapped = PG_CLIENT_INPUT[err.code]!
+    const field = fieldFromPgError(err)
+    appError = new AppError(
+      mapped.code,
+      mapped.code === 'CONFLICT'
+        ? 'That already exists.'
+        : field === '(request)'
+          ? 'The request contains a value in the wrong format.'
+          : `The value for ${field} is not allowed.`,
+      {
+        details: [{ field, issue: mapped.issue }],
+        // Kept for the log line only — the client never sees context.
+        context: { sqlstate: err.code, constraint: err.constraint ?? null },
+      },
+    )
   } else if (isMarkedAppError(err)) {
     // Repository layers throw duck-typed application errors (`__appError`)
     // rather than importing the HTTP error class; honour them so a domain
