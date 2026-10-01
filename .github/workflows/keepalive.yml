@@ -1,23 +1,27 @@
 name: Keep API awake
 
-# RSK-01: the free Render instance sleeps after 15 minutes idle and the
-# node-cron reminder engine dies with it. Pinging /healthz keeps the instance
-# — and therefore the reminder cron — alive.
+# The live API runs on Supabase Edge Functions (deploy/README.md), which never
+# sleeps — but a free Supabase project is paused after a week without
+# activity, and a paused project takes the database (and so every sign-in) down
+# with it until someone restores it by hand. That happened to this deployment.
 #
-# Every 5 minutes because GitHub's schedule is best-effort: ticks are often
-# delayed 5–30 minutes under load, so a 10-minute cron can miss the 15-minute
-# sleep window. Residual risk remains (delays, and GitHub disables schedules
-# after 60 days without repo activity) — an external pinger such as
-# UptimeRobot is the sturdier option once the API matters; this workflow is
-# the zero-signup baseline.
+# The pg_cron tick (deploy/schedule-tick.sql) already reaches the API every
+# five minutes from inside the database. This is the outside-in second line:
+# /readyz runs a real query, so a ping proves the API *and* the database are
+# up, and a red run here is the first sign that the project has gone to sleep.
+# Every six hours is plenty for the weekly pause window and costs nothing.
 #
-# No-op until the PLANTPAL_API_URL repository variable is set (Settings →
-# Secrets and variables → Actions → Variables), e.g.
-# https://plantpal-plus-api.onrender.com
+# GitHub disables scheduled workflows after 60 days without repository
+# activity; an external pinger such as UptimeRobot is sturdier if that
+# matters.
+#
+# Uses the PLANTPAL_API_URL repository variable (Settings → Secrets and
+# variables → Actions → Variables), the same one the Pages build uses:
+# https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -25,12 +29,18 @@ permissions: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
-      - name: Ping /healthz
+      - name: Ping /readyz
+        env:
+          PLANTPAL_API_URL: ${{ vars.PLANTPAL_API_URL }}
         run: |
-          if [ -n "${{ vars.PLANTPAL_API_URL }}" ]; then
-            curl -fsS --max-time 30 "${{ vars.PLANTPAL_API_URL }}/healthz"
-          else
+          if [ -z "$PLANTPAL_API_URL" ]; then
             echo "PLANTPAL_API_URL unset — skipping"
+            exit 0
           fi
+          url=$PLANTPAL_API_URL
+          while [[ $url == */ ]]; do url=${url%/}; done
+          # Retries cover a cold start; a project that is actually paused
+          # fails all of them, and the red run is the alert.
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 3 --retry-delay 10 --retry-all-errors "$url/readyz"
