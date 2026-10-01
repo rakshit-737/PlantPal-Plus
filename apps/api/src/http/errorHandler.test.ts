@@ -96,3 +96,55 @@ describe('health endpoint — FR-SYS-25', () => {
     expect(typeof res.body.uptime_s).toBe('number')
   })
 })
+
+describe('error envelope — database input errors', () => {
+  /** Mimics node-postgres's DatabaseError: an Error carrying SQLSTATE and severity. */
+  function pgError(fields: Record<string, string>): Error {
+    return Object.assign(new Error(`pg: ${fields['code']} raw message with SQL`), {
+      severity: 'ERROR',
+      ...fields,
+    })
+  }
+
+  const db = express()
+  db.use(requestId)
+  db.get('/check', () => {
+    throw pgError({ code: '23514', table: 'plants', constraint: 'plants_soil_type_check' })
+  })
+  db.get('/uuid', () => {
+    throw pgError({ code: '22P02' })
+  })
+  db.get('/unique', () => {
+    throw pgError({ code: '23505', table: 'users', constraint: 'users_email_normalised_key' })
+  })
+  db.get('/other', () => {
+    throw pgError({ code: '40P01' })
+  })
+  db.use(errorHandler)
+
+  it('turns a CHECK violation into a 422 naming the field, not a 500', async () => {
+    const res = await request(db).get('/check')
+    expect(res.status).toBe(422)
+    expect(res.body.error.code).toBe('VALIDATION_FAILED')
+    expect(res.body.error.details).toEqual([{ field: 'soil_type', issue: 'invalid' }])
+    expect(JSON.stringify(res.body)).not.toContain('raw message')
+  })
+
+  it('turns a malformed id (e.g. "undefined" as a uuid) into a 422', async () => {
+    const res = await request(db).get('/uuid')
+    expect(res.status).toBe(422)
+    expect(res.body.error.details).toEqual([{ field: '(request)', issue: 'invalid_format' }])
+  })
+
+  it('turns a unique violation into a 409', async () => {
+    const res = await request(db).get('/unique')
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('CONFLICT')
+  })
+
+  it('leaves a genuinely unexpected database error as an opaque 500', async () => {
+    const res = await request(db).get('/other')
+    expect(res.status).toBe(500)
+    expect(res.body.error.code).toBe('INTERNAL_ERROR')
+  })
+})
