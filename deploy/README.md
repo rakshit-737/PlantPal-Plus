@@ -169,12 +169,16 @@ database password. Migrations need a session-mode or direct connection: they
 hold an advisory lock for the whole run and the files carry their own
 transactions, neither of which survives a transaction-mode pooler.
 
-## Known limitation of the edge host
+## Password hashing on the edge
 
-**Argon2 is unavailable.** `@node-rs/argon2` ships a native binding the edge
-runtime cannot load, so password hashing falls back to bcrypt at cost 12 — the
-fallback NFR-SEC-03 documents. An account whose password was hashed by a Node
-deployment (Argon2) cannot sign in against the edge API, because there is no
-Argon2 backend there to verify it with; `verifyPassword` logs that case rather
-than failing quietly. Accounts created on the edge use bcrypt, which verifies on
-both hosts, so moving to Render later is unaffected.
+`@node-rs/argon2` ships a native binding the edge runtime cannot load, so the
+edge uses a WebAssembly build of Argon2id (`hash-wasm`) with the same
+NFR-SEC-03 parameters and the same standard encoding. Hashes written by either
+build verify on the other, so accounts created on a Node host (Render, local
+development) sign in on the edge and vice versa. bcrypt at cost 12, the
+fallback NFR-SEC-03 documents, remains only for a runtime with no WebAssembly,
+and existing bcrypt hashes keep verifying everywhere.
+
+This matters more than it looks: before the WebAssembly build, an Argon2 hash
+was simply unverifiable on the edge, and the only thing its owner saw was
+"wrong password".
