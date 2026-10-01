@@ -22,7 +22,7 @@ This is a full software-engineering project delivered phase by phase, with every
 | 1 — Requirement analysis | ✅ Complete — 36 documents in [docs/requirements/](docs/requirements/) |
 | 2 — Design | ✅ Complete — architecture, OpenAPI 3.1, sequence diagrams and ADRs in [docs/architecture/](docs/architecture/), design package in [docs/design/](docs/design/) |
 | 3 — Implementation | ✅ Core complete — REST API (auth, account lifecycle, plants + growth log, fitness, nutrition + custom foods, dashboard, achievements, reminders + Expo Push, offline sync outbox, settings, engagement loop), web app (responsive, toasts, full error/retry states, accessible pickers), Expo mobile app with a durable offline outbox. Seeded Indian catalogue: 94 plant species, 180 foods, browsable + searchable. Open: binary photo upload (the growth log stores image links — see [Known gaps](#known-gaps)), email digest |
-| 4 — Testing | ✅ 462 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 235 API incl. 18 integration tests against real PostgreSQL (auth lifecycle and the first-day core flows; skipped without `TEST_DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 150 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
+| 4 — Testing | ✅ 464 tests across all four workspaces — 53 shared (algorithm vectors from the requirements), 237 API incl. 18 integration tests against real PostgreSQL (auth lifecycle and the first-day core flows; skipped without `TEST_DATABASE_URL`, run in CI via a service container), 24 mobile offline-outbox, 150 web component/behaviour tests under jsdom. Two adversarial multi-agent audits found and closed 6 critical and 4 major defects |
 | 5 — Documentation | ✅ Complete — install + deployment in this README, endpoint index in [docs/api-reference.md](docs/api-reference.md), OpenAPI 3.1 in [docs/architecture/](docs/architecture/) |
 | 6 — Deployment | ✅ Live — website on Vercel (**[plant-pal-plus.vercel.app](https://plant-pal-plus.vercel.app)**), API on Supabase Edge Functions, database on Supabase Postgres; GitHub Pages mirror; mobile via EAS |
 
@@ -141,9 +141,8 @@ Everything runs on permanently free tiers.
 | Database | Supabase Postgres, same project as the API |
 | Mirror | https://rakshit-737.github.io/PlantPal-Plus/ — GitHub Pages, rebuilt on every push to `main` |
 
-How each piece is built, deployed and configured — and the one thing the edge
-host cannot do (no Argon2 binding, so the documented bcrypt fallback engages) —
-is in [deploy/README.md](deploy/README.md).
+How each piece is built, deployed and configured is in
+[deploy/README.md](deploy/README.md).
 
 **Website — Vercel.** The Vercel project builds from the repository root with
 the checked-in [`vercel.json`](vercel.json) and redeploys on every push to

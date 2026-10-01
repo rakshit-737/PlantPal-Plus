@@ -14,9 +14,17 @@
  *
  * Both formats are verifiable, so an account created under one backend keeps
  * working if the host later changes.
+ *
+ * Argon2 comes in two builds. The native one (`@node-rs/argon2`) is preferred
+ * wherever it loads; where it cannot — the Supabase Edge runtime has no native
+ * modules — a WebAssembly build (`hash-wasm`) computes the same Argon2id with
+ * the same parameters and the same standard encoding. Without it, an account
+ * created on a Node host could not sign in on the edge at all: the hash would
+ * be unverifiable, and the only error the person sees is "wrong password".
  */
 
 import bcrypt from 'bcryptjs'
+import { argon2Verify, argon2id } from 'hash-wasm'
 
 import { logger } from '../../logging.ts'
 
@@ -56,9 +64,9 @@ async function getArgon2(): Promise<Argon2Module | null> {
     logger.info({ backend: 'argon2id', params: ARGON2_PARAMS }, 'password hashing backend selected')
   } catch {
     argon2 = null
-    logger.warn(
-      { backend: 'bcrypt', cost: BCRYPT_COST },
-      'Argon2 unavailable, using the documented bcrypt fallback of NFR-SEC-03',
+    logger.info(
+      { backend: 'argon2id-wasm', params: ARGON2_PARAMS },
+      'native Argon2 unavailable, using the WebAssembly build',
     )
   }
   return argon2
@@ -79,6 +87,26 @@ export function assertPasswordPolicy(password: string): void {
   }
 }
 
+/** Argon2id in WebAssembly, encoded exactly as the native build encodes it. */
+export async function hashArgon2Portable(password: string): Promise<string> {
+  const salt = new Uint8Array(ARGON2_PARAMS.saltLength)
+  crypto.getRandomValues(salt)
+  return argon2id({
+    password,
+    salt,
+    parallelism: ARGON2_PARAMS.parallelism,
+    iterations: ARGON2_PARAMS.timeCost,
+    memorySize: ARGON2_PARAMS.memoryCost,
+    hashLength: ARGON2_PARAMS.outputLen,
+    outputType: 'encoded',
+  })
+}
+
+/** Verify any standard-encoded Argon2 hash in WebAssembly. */
+export async function verifyArgon2Portable(storedHash: string, password: string): Promise<boolean> {
+  return argon2Verify({ password, hash: storedHash })
+}
+
 export async function hashPassword(password: string): Promise<string> {
   assertPasswordPolicy(password)
   const a2 = await getArgon2()
@@ -91,7 +119,13 @@ export async function hashPassword(password: string): Promise<string> {
       saltLength: ARGON2_PARAMS.saltLength,
     })
   }
-  return bcrypt.hash(password, BCRYPT_COST)
+  try {
+    return await hashArgon2Portable(password)
+  } catch (err) {
+    // Only a runtime without WebAssembly lands here.
+    logger.warn({ err }, 'portable Argon2 unavailable, using the bcrypt fallback of NFR-SEC-03')
+    return bcrypt.hash(password, BCRYPT_COST)
+  }
 }
 
 /**
@@ -106,11 +140,8 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   try {
     if (storedHash.startsWith('$argon2')) {
       const a2 = await getArgon2()
-      if (!a2) {
-        logger.error('an Argon2 hash was stored but no Argon2 backend is available')
-        return false
-      }
-      return await a2.verify(storedHash, password)
+      if (a2) return await a2.verify(storedHash, password)
+      return await verifyArgon2Portable(storedHash, password)
     }
     if (storedHash.startsWith('$2')) {
       return await bcrypt.compare(password, storedHash)
