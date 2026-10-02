@@ -1,6 +1,6 @@
 name: Deploy web to GitHub Pages
 
-# Publishes apps/web to GitHub Pages on every push to main.
+# Publishes 03_implementation/web to GitHub Pages on every push to main.
 #
 # The site is served at https://<owner>.github.io/<repo>/, so the build sets
 # VITE_BASE to the repo subpath (derived from the repository name, never
@@ -28,6 +28,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 03_implementation is the npm workspace root; every run step works there.
+    defaults:
+      run:
+        working-directory: 03_implementation
     steps:
       - uses: actions/checkout@v5
 
@@ -35,6 +39,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: 03_implementation/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -101,11 +106,11 @@ jobs:
       # SPA fallback: Pages serves 404.html for unknown paths; a copy of
       # index.html lets BrowserRouter handle deep links like /plants.
       - name: SPA fallback
-        run: cp apps/web/dist/index.html apps/web/dist/404.html
+        run: cp web/dist/index.html web/dist/404.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/web/dist
+          path: 03_implementation/web/dist
 
   deploy:
     needs: build

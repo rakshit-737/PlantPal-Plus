@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/rakshit-737/PlantPal-Plus/blob/main/SECURITY.md
+    url: https://github.com/rakshit-737/PlantPal-Plus/blob/main/.github/SECURITY.md
     about: Please report security problems privately, as described in the security policy.
   - name: Documentation
-    url: https://github.com/rakshit-737/PlantPal-Plus/tree/main/docs#readme
+    url: https://github.com/rakshit-737/PlantPal-Plus/tree/main/05_documentation#readme
     about: Requirements, architecture, API reference, testing and deployment guides.

@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report a problem. Please leave out passwords, tokens and other personal data.
-        Security vulnerabilities must be reported privately — see [SECURITY.md](https://github.com/rakshit-737/PlantPal-Plus/blob/main/SECURITY.md).
+        Security vulnerabilities must be reported privately — see [SECURITY.md](https://github.com/rakshit-737/PlantPal-Plus/blob/main/.github/SECURITY.md).
 
   - type: dropdown
     id: surface

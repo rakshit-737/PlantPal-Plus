@@ -27,11 +27,14 @@
 package-lock.json -diff linguist-generated=true
 
 # The edge API bundle is an esbuild build product, committed only because the
-# deployed function loads it from this repository (deploy/README.md). Collapse
-# it in pull-request diffs and keep it out of the language statistics; review
-# apps/api instead.
-deploy/api/index.js linguist-generated=true
+# deployed function loads it from this repository (06_deployment/README.md).
+# Collapse it in pull-request diffs and keep it out of the language statistics;
+# review 03_implementation/api instead.
+06_deployment/api/index.js linguist-generated=true
 
-# Documentation drives the language stats for this project; that is accurate,
-# but mark the requirements package as documentation rather than source.
-docs/** linguist-documentation=true
+# The phase folders that hold documents rather than source: mark them as
+# documentation so the language statistics describe the code.
+01_requirements/** linguist-documentation=true
+02_design/** linguist-documentation=true
+04_testing/** linguist-documentation=true
+05_documentation/** linguist-documentation=true

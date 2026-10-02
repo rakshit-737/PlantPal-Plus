@@ -1,0 +1,45 @@
+# Render Blueprint — deploys the PlantPal+ API on the free tier.
+#
+# One-time setup: https://dashboard.render.com → New → Blueprint → point it at
+# this repository and set the Blueprint path to 06_deployment/render.yaml (this
+# file is not at the repository root). Render reads it, creates the service,
+# generates the JWT secret, and prompts once for DATABASE_URL (paste the
+# Supabase session-pooler connection string). Every push to main then deploys
+# automatically; migrations and seeds run at boot, so a deploy is fully
+# hands-off.
+#
+# RSK-01: the free instance sleeps after 15 minutes idle and node-cron dies
+# with it. Point an external pinger (e.g. UptimeRobot, free) at /healthz every
+# 10 minutes to keep the reminder engine ticking.
+
+services:
+  - type: web
+    name: plantpal-plus-api
+    runtime: node
+    plan: free
+    # The npm workspace root: commands below run from this folder.
+    rootDir: 03_implementation
+    # --include=dev: NODE_ENV=production makes npm ci skip devDependencies,
+    # but the build needs typescript and the @types/* packages. Runtime is
+    # unaffected — startCommand only runs the compiled dist/.
+    buildCommand: npm ci --include=dev && npm run build --workspace @plantpal/shared && npm run build --workspace @plantpal/api
+    startCommand: node api/dist/server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Supabase connection string — set in the dashboard, never committed.
+      # Use the SESSION POOLER string (aws-1-<region>.pooler.supabase.com:5432):
+      # Render's free tier is IPv4-only and the direct db.<ref>.supabase.co
+      # host resolves to IPv6. Must include ?sslmode=require.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      # The web app's origins: GitHub Pages plus local dev.
+      # Every new web origin (e.g. a Vercel domain) must be appended here or
+      # credentialed browser requests to the API will be rejected by CORS.
+      - key: CORS_ORIGINS
+        value: https://rakshit-737.github.io,http://localhost:5173

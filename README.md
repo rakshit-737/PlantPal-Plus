@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" width="88" height="88" alt="">
+<img src="05_documentation/assets/logo.svg" width="88" height="88" alt="">
 
 # PlantPal+
 
@@ -9,18 +9,18 @@
 [![CI](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/ci.yml)
 [![Deploy web](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/deploy-web.yml/badge.svg?branch=main)](https://github.com/rakshit-737/PlantPal-Plus/actions/workflows/deploy-web.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0d5c3c.svg)](LICENSE)
-[![Node.js 20.11+](https://img.shields.io/badge/node-%E2%89%A520.11-339933.svg?logo=node.js&logoColor=white)](package.json)
-[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)](tsconfig.base.json)
+[![Node.js 20.11+](https://img.shields.io/badge/node-%E2%89%A520.11-339933.svg?logo=node.js&logoColor=white)](03_implementation/package.json)
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)](03_implementation/tsconfig.base.json)
 
-[**Open the live app**](https://plant-pal-plus.vercel.app) · [Documentation](docs/README.md) · [API reference](docs/api-reference.md) · [Report a bug](https://github.com/rakshit-737/PlantPal-Plus/issues/new?template=bug_report.yml)
+[**Open the live app**](https://plant-pal-plus.vercel.app) · [Documentation](05_documentation/README.md) · [API reference](05_documentation/api-reference.md) · [Report a bug](https://github.com/rakshit-737/PlantPal-Plus/issues/new?template=bug_report.yml)
 
 </div>
 
 <br>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/dashboard-dark.webp">
-  <img src="docs/assets/screenshots/dashboard-light.webp" alt="The PlantPal+ dashboard: activity rings, a 13-day streak, two plants due for water, today's steps and calories against their goals, reminders and a to-do list.">
+  <source media="(prefers-color-scheme: dark)" srcset="05_documentation/assets/screenshots/dashboard-dark.webp">
+  <img src="05_documentation/assets/screenshots/dashboard-light.webp" alt="The PlantPal+ dashboard: activity rings, a 13-day streak, two plants due for water, today's steps and calories against their goals, reminders and a to-do list.">
 </picture>
 
 ## Why PlantPal+
@@ -47,21 +47,21 @@ It is also a complete software-engineering project, built phase by phase from a 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/assets/screenshots/landing-light.webp" alt="Landing page"><p align="center"><sub>Landing page</sub></p></td>
-    <td width="50%"><img src="docs/assets/screenshots/plants-light.webp" alt="Plants: six plants with watering status, intervals and the last watering"><p align="center"><sub>Plants and their watering schedules</sub></p></td>
+    <td width="50%"><img src="05_documentation/assets/screenshots/landing-light.webp" alt="Landing page"><p align="center"><sub>Landing page</sub></p></td>
+    <td width="50%"><img src="05_documentation/assets/screenshots/plants-light.webp" alt="Plants: six plants with watering status, intervals and the last watering"><p align="center"><sub>Plants and their watering schedules</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/assets/screenshots/fitness-dark.webp" alt="Fitness: workouts, active minutes, calories, a weekly steps chart and the workout log, in the dark theme"><p align="center"><sub>Fitness, in the dark theme</sub></p></td>
-    <td width="50%"><img src="docs/assets/screenshots/nutrition-dark.webp" alt="Nutrition: calories and macros against their targets, hydration and the day's meals, in the dark theme"><p align="center"><sub>Nutrition, in the dark theme</sub></p></td>
+    <td width="50%"><img src="05_documentation/assets/screenshots/fitness-dark.webp" alt="Fitness: workouts, active minutes, calories, a weekly steps chart and the workout log, in the dark theme"><p align="center"><sub>Fitness, in the dark theme</sub></p></td>
+    <td width="50%"><img src="05_documentation/assets/screenshots/nutrition-dark.webp" alt="Nutrition: calories and macros against their targets, hydration and the day's meals, in the dark theme"><p align="center"><sub>Nutrition, in the dark theme</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/assets/screenshots/plant-detail-light.webp" alt="A plant's page: watering countdown, conditions, care actions, care history and growth log"><p align="center"><sub>A plant's care page</sub></p></td>
-    <td width="50%"><img src="docs/assets/screenshots/achievements-light.webp" alt="Achievements: streaks per habit, badge collection and points"><p align="center"><sub>Streaks and achievements</sub></p></td>
+    <td width="50%"><img src="05_documentation/assets/screenshots/plant-detail-light.webp" alt="A plant's page: watering countdown, conditions, care actions, care history and growth log"><p align="center"><sub>A plant's care page</sub></p></td>
+    <td width="50%"><img src="05_documentation/assets/screenshots/achievements-light.webp" alt="Achievements: streaks per habit, badge collection and points"><p align="center"><sub>Streaks and achievements</sub></p></td>
   </tr>
 </table>
 
 <p align="center">
-  <img src="docs/assets/screenshots/phones.webp" width="820" alt="The website at phone width: the dashboard, the plants list in the dark theme, and nutrition">
+  <img src="05_documentation/assets/screenshots/phones.webp" width="820" alt="The website at phone width: the dashboard, the plants list in the dark theme, and nutrition">
   <br>
   <sub>The website at phone width, with its tab dock</sub>
 </p>
@@ -96,59 +96,67 @@ flowchart LR
 - **Offline without merge conflicts.** Only append-only events (a watering, a workout, a meal, a glass of water) can be queued offline. Each carries a client-generated key and the server applies it exactly once, so there is nothing to merge.
 - **Every rule in one place.** Watering intervals, energy and nutrition maths and streak transitions live once in `@plantpal/shared`, and the API, the website and the mobile app all import them.
 
-The [system architecture](docs/architecture/01-system-architecture.md) has the C4 views, and the [architecture decision records](docs/README.md#architecture-decision-records) explain the larger choices.
+The [system architecture](02_design/architecture/01-system-architecture.md) has the C4 views, and the [architecture decision records](05_documentation/README.md#architecture-decision-records) explain the larger choices.
 
 ### Repository layout
 
+The top-level folders follow the six phases of the project, in order:
+
 ```text
 PlantPal-Plus/
-├── apps/
-│   ├── api/          REST API: Express on Node, or bundled for Supabase Edge Functions
-│   ├── web/          Website: React + Vite
-│   └── mobile/       Mobile app: React Native + Expo
-├── packages/
-│   └── shared/       Domain rules shared by all three apps
-├── deploy/           Edge bundle, scheduler SQL and the deployment guide
-├── docs/             Requirements, architecture, design, API reference and testing guide
-└── .github/          CI and deployment workflows, issue and pull-request templates
+├── 01_requirements/       Phase 1: the SRS, module specifications, user stories and use cases
+├── 02_design/             Phase 2: architecture, ADRs, OpenAPI, UI design and ER diagrams
+├── 03_implementation/     Phase 3: the code, an npm workspace
+│   ├── api/               REST API: Express on Node, or bundled for Supabase Edge Functions
+│   ├── web/               Website: React + Vite
+│   ├── mobile/            Mobile app: React Native + Expo
+│   └── shared/            Domain rules shared by all three apps
+├── 04_testing/            Phase 4: the testing guide (tests live next to the code they test)
+├── 05_documentation/      Phase 5: documentation index, API reference, changelog, screenshots
+├── 06_deployment/         Phase 6: API bundle, scheduler SQL, Render blueprint, deployment guide
+└── .github/               CI and deployment workflows, templates, contributing and security policies
 ```
 
-Dependencies point one way: each app depends on `packages/shared`, the apps never import one another, and the shared package has no runtime dependencies at all. Each workspace has its own README.
+Each numbered folder has a README that explains what is in it. Inside `03_implementation`, dependencies point one way: each app depends on `shared`, the apps never import one another, and `shared` has no runtime dependencies at all.
 
 ## Getting started
 
 You need **Node.js 20.11 or newer** (22 recommended) and **PostgreSQL 15 or newer**, either local or a free [Supabase](https://supabase.com) project.
 
+All the code lives in `03_implementation`, which is the npm workspace root, so every command below runs from there.
+
 ```bash
 git clone https://github.com/rakshit-737/PlantPal-Plus.git
-cd PlantPal-Plus
-npm install                                  # every workspace, and builds packages/shared
+cd PlantPal-Plus/03_implementation
+npm install                                  # every workspace, and builds shared/
 ```
 
-**1. Start the API.** Set `DATABASE_URL` and `JWT_ACCESS_SECRET` (32+ characters) in `apps/api/.env`. The API applies the migrations and loads the catalogues on start.
+**1. Start the API.** Set `DATABASE_URL` and `JWT_ACCESS_SECRET` (32+ characters) in `api/.env`. The API applies the migrations and loads the catalogues on start.
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+cp api/.env.example api/.env
 npm run dev --workspace @plantpal/api        # http://localhost:4000
 ```
 
 **2. Start the website.** The dev server forwards `/api` to the API, so no CORS setup is needed.
 
 ```bash
-cp apps/web/.env.example apps/web/.env
+cp web/.env.example web/.env
 npm run dev --workspace @plantpal/web        # http://localhost:5173
 ```
 
 **3. Run the mobile app (optional).** Scan the QR code with [Expo Go](https://expo.dev/go); a physical phone needs `EXPO_PUBLIC_API_URL` set to your computer's LAN address.
 
 ```bash
-cd apps/mobile
+cd mobile
 npx expo start
 ```
 
-The [API](apps/api/README.md), [web](apps/web/README.md) and [mobile](apps/mobile/README.md) READMEs cover configuration in full.
+The [API](03_implementation/api/README.md), [web](03_implementation/web/README.md) and [mobile](03_implementation/mobile/README.md) READMEs cover configuration in full.
 
 ### Commands
+
+Run these from `03_implementation`:
 
 | Command | What it does |
 | --- | --- |
@@ -164,12 +172,12 @@ The [API](apps/api/README.md), [web](apps/web/README.md) and [mobile](apps/mobil
 
 | Workspace | Tests | Focus |
 | --- | ---: | --- |
-| `packages/shared` | 53 | Domain algorithms, checked against the worked examples in the requirements |
-| `apps/api` | 239 | Controllers, services, configuration, sync and erasure, plus 18 tests against real PostgreSQL |
-| `apps/mobile` | 24 | The offline outbox: ordering, retries, idempotency |
-| `apps/web` | 150 | Pages and components, the API client, contrast and token parity, code splitting |
+| `03_implementation/shared` | 53 | Domain algorithms, checked against the worked examples in the requirements |
+| `03_implementation/api` | 239 | Controllers, services, configuration, sync and erasure, plus 18 tests against real PostgreSQL |
+| `03_implementation/mobile` | 24 | The offline outbox: ordering, retries, idempotency |
+| `03_implementation/web` | 150 | Pages and components, the API client, contrast and token parity, code splitting |
 
-Where the requirements publish a worked example, that example is the test: `7 × 0.80 × 1.10 × 0.80 × 1.00 = 4.928 → 5 days` for a watering interval, `1345 × 1.375 → 1849 kcal` for daily energy. The [testing guide](docs/testing.md) covers running the suites and how they are written.
+Where the requirements publish a worked example, that example is the test: `7 × 0.80 × 1.10 × 0.80 × 1.00 = 4.928 → 5 days` for a watering interval, `1345 × 1.375 → 1849 kcal` for daily energy. The [testing guide](04_testing/README.md) covers running the suites and how they are written.
 
 ## Deployment
 
@@ -179,26 +187,26 @@ Where the requirements publish a worked example, that example is the test: `7 ×
 | **API** | Supabase Edge Function `plantpal-api`, with [`/healthz`](https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api/healthz) and `/readyz` probes |
 | **Database** | Supabase Postgres, with reminders and erasure driven by `pg_cron` |
 | **Mirror** | [rakshit-737.github.io/PlantPal-Plus](https://rakshit-737.github.io/PlantPal-Plus/) on GitHub Pages |
-| **Mobile** | Installable builds with [EAS](apps/mobile/eas.json) (an Android APK from the `preview` profile), pointed at the live API |
+| **Mobile** | Installable builds with [EAS](03_implementation/mobile/eas.json) (an Android APK from the `preview` profile), pointed at the live API |
 
-Everything runs on free tiers. The [deployment guide](deploy/README.md) explains how each piece is built and configured; [`render.yaml`](render.yaml) can also run the API as a long-lived Node service.
+Everything runs on free tiers. The [deployment guide](06_deployment/README.md) explains how each piece is built and configured; [`render.yaml`](06_deployment/render.yaml) can also run the API as a long-lived Node service.
 
 ## Documentation
 
 | | |
 | --- | --- |
-| [Documentation index](docs/README.md) | Everything below, organised by project phase |
-| [Software Requirements Specification](docs/requirements/SRS.md) · [Reading guide](docs/requirements/README.md) | The complete Phase 1 specification and how to navigate it |
-| [System architecture](docs/architecture/01-system-architecture.md) · [Database schema](docs/architecture/02-database-schema.md) | C4 views, the deployed topology, 28 tables |
-| [API reference](docs/api-reference.md) · [OpenAPI 3.1](docs/architecture/openapi.yaml) | Every endpoint, its auth and its rules |
-| [Design language](docs/design/01-design-language.md) · [Component inventory](docs/design/02-component-inventory.md) | The "Conservatory" design system and its accessibility contract |
-| [Testing guide](docs/testing.md) · [Deployment guide](deploy/README.md) · [Changelog](CHANGELOG.md) | Running, shipping and the history of changes |
+| [Documentation index](05_documentation/README.md) | Everything below, organised by project phase |
+| [Software Requirements Specification](01_requirements/SRS.md) · [Reading guide](01_requirements/README.md) | The complete Phase 1 specification and how to navigate it |
+| [System architecture](02_design/architecture/01-system-architecture.md) · [Database schema](02_design/architecture/02-database-schema.md) | C4 views, the deployed topology, 28 tables |
+| [API reference](05_documentation/api-reference.md) · [OpenAPI 3.1](02_design/architecture/openapi.yaml) | Every endpoint, its auth and its rules |
+| [Design language](02_design/ui_design/01-design-language.md) · [Component inventory](02_design/ui_design/02-component-inventory.md) | The "Conservatory" design system and its accessibility contract |
+| [Testing guide](04_testing/README.md) · [Deployment guide](06_deployment/README.md) · [Changelog](05_documentation/CHANGELOG.md) | Running, shipping and the history of changes |
 
 ## Project status
 
 | Phase | Status |
 | --- | --- |
-| 1. Requirements | ✅ Baselined: [36 documents](docs/requirements/), from stakeholders to use cases |
+| 1. Requirements | ✅ Baselined: [36 documents](01_requirements/), from stakeholders to use cases |
 | 2. Design | ✅ Architecture, database schema, OpenAPI 3.1, sequence diagrams, ADRs and the design system |
 | 3. Implementation | ✅ API, website and mobile app for all three habits, including the offline outbox and push reminders |
 | 4. Testing | ✅ 466 automated tests, two adversarial audits whose critical and major findings are fixed |
@@ -227,8 +235,8 @@ The landing page quotes several of these figures, and a test fails if the two ev
 
 ## Contributing
 
-Contributions are welcome. Read the [contributing guide](CONTRIBUTING.md) for setup, conventions and the pull-request checklist, and follow the [code of conduct](CODE_OF_CONDUCT.md). Report security issues privately, as described in the [security policy](SECURITY.md).
+Contributions are welcome. Read the [contributing guide](.github/CONTRIBUTING.md) for setup, conventions and the pull-request checklist, and follow the [code of conduct](.github/CODE_OF_CONDUCT.md). Report security issues privately, as described in the [security policy](.github/SECURITY.md).
 
 ## License
 
-[MIT](LICENSE) © 2026 Rakshit. Third-party notices are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+[MIT](LICENSE) © 2026 Rakshit. Third-party notices are in [THIRD_PARTY_LICENSES.md](05_documentation/THIRD_PARTY_LICENSES.md).
