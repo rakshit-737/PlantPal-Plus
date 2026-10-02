@@ -35,17 +35,16 @@ function ThirstMeter({
   if (!due || !(intervalDays > 0)) return null
   const daysLeft = (new Date(due).getTime() - Date.now()) / 86400000
   const pct = Math.max(4, Math.min(100, (1 - daysLeft / intervalDays) * 100))
-  const blocks = Math.round((pct / 100) * 10)
-  const color =
+  const fill =
     tone === 'danger'
-      ? 'text-accent'
+      ? 'from-accent/70 to-accent'
       : tone === 'warning'
-        ? 'text-tertiary'
-        : 'text-primary'
+        ? 'from-tertiary/70 to-tertiary'
+        : 'from-primary/60 to-primary'
   return (
-    <span aria-hidden className={`font-mono text-[10px] ${color}`}>
-      {'█'.repeat(blocks)}{'░'.repeat(10 - blocks)}
-    </span>
+    <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-text-muted/[0.12]">
+      <div className={`h-full rounded-full bg-gradient-to-r ${fill}`} style={{ width: `${pct}%` }} />
+    </div>
   )
 }
 
@@ -550,51 +549,16 @@ export function PlantsPage() {
     await refresh(`Updated ${values.nickname}`)
   }
 
-  // Summary stats
-  const totalPlants = plants.length
-  const duePlants = plants.filter(p => {
-    const wl = wateringLabel(p.next_water_due_at)
-    return wl.tone === 'warning' || wl.tone === 'danger'
-  }).length
-  const thrivingPlants = plants.filter(p => p.status === 'THRIVING').length
-
   return (
-    <div className="mx-auto max-w-6xl space-y-xl">
-      {/* EDITORIAL HEADER */}
-      <header>
-        <p className="font-mono text-xs font-semibold tracking-widest text-text-muted uppercase">
-          PLANT CARE · GARDEN LEDGER
-        </p>
-        <div className="mt-xs flex items-end justify-between gap-md">
-          <h1 className="font-display text-4xl sm:text-5xl font-medium leading-tight tracking-tight text-text-main">
-            My Plants
-          </h1>
-          <Button onClick={() => setAddOpen(true)}>Add plant</Button>
-        </div>
-      </header>
-
-      {/* INSTRUMENT STATS BAR */}
-      {!loading && !loadError && totalPlants > 0 && (
-        <div className="border border-glass-border bg-surface/20 rounded-lg">
-          <div className="grid grid-cols-3 divide-x divide-glass-border">
-            <div className="p-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Total</p>
-              <p className="mt-xs font-mono text-3xl font-medium tracking-tight text-text-main">{totalPlants}</p>
-              <p className="font-mono text-xs text-text-muted">plants tracked</p>
-            </div>
-            <div className="p-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Need Water</p>
-              <p className={`mt-xs font-mono text-3xl font-medium tracking-tight ${duePlants > 0 ? 'text-accent' : 'text-text-main'}`}>{duePlants}</p>
-              <p className="font-mono text-xs text-text-muted">due or overdue</p>
-            </div>
-            <div className="p-md">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Thriving</p>
-              <p className="mt-xs font-mono text-3xl font-medium tracking-tight text-primary">{thrivingPlants}</p>
-              <p className="font-mono text-xs text-text-muted">healthy plants</p>
-            </div>
-          </div>
-        </div>
-      )}
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-xl">
+        <PageHeader
+          eyebrow="Your garden"
+          title="My Plants"
+          subtitle="Watering reminders and care history."
+          action={<Button onClick={() => setAddOpen(true)}>Add plant</Button>}
+        />
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-xl"><Spinner size="lg" /></div>
@@ -605,18 +569,17 @@ export function PlantsPage() {
           onRetry={() => void load()}
         />
       ) : plants.length === 0 ? (
-        <div className="border border-glass-border bg-surface/20 rounded-lg p-lg">
+        <Card>
           <EmptyState
             icon={sproutIcon}
             title="No plants yet"
             body="Add your first plant to start tracking watering reminders."
             action={<Button onClick={() => setAddOpen(true)}>Add plant</Button>}
           />
-        </div>
+        </Card>
       ) : (
         <>
-          {/* FILTERS ROW */}
-          <div className="flex flex-col gap-sm sm:flex-row sm:items-start">
+          <div className="mb-lg flex flex-col gap-sm sm:flex-row sm:items-start">
             <div className="min-w-0 flex-1">
               <Input
                 label="Search"
@@ -639,21 +602,13 @@ export function PlantsPage() {
           </div>
 
           {isFiltered ? (
-            <p className="font-mono text-xs text-text-muted">
+            <p className="mb-md font-mono text-xs text-text-muted">
               {filtered.length} of {plants.length} plants
             </p>
           ) : null}
 
-          {/* PLANT SECTION HEADER */}
-          <div className="flex items-center justify-between">
-            <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">
-              GARDEN ROSTER
-            </h2>
-            <span className="font-mono text-xs text-text-muted">{filtered.length} plants</span>
-          </div>
-
           {filtered.length === 0 ? (
-            <div className="border border-glass-border bg-surface/20 rounded-lg p-lg">
+            <Card>
               <EmptyState
                 title="No plants match"
                 body="Nothing matches the current search and status filter."
@@ -669,47 +624,42 @@ export function PlantsPage() {
                   </Button>
                 }
               />
-            </div>
+            </Card>
           ) : (
-            <div className="border border-glass-border rounded-lg overflow-hidden divide-y divide-glass-border">
+            <div className="grid grid-cols-1 gap-md sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p) => {
                 const wl = wateringLabel(p.next_water_due_at)
                 const busy = wateringIds.has(p.id)
-                const species = p.species_id ? speciesById.get(p.species_id) : undefined
                 return (
-                  <div
+                  <Card
                     key={p.id}
-                    className="group relative flex flex-col sm:flex-row sm:items-center gap-md p-md bg-surface/20 transition-colors hover:bg-surface/40"
+                    className="group relative flex flex-col gap-md overflow-hidden transition-[transform,box-shadow] duration-standard ease-state hover:-translate-y-0.5 hover:shadow-glass-raised"
                   >
-                    {/* Avatar + Name */}
-                    <div className="flex items-center gap-md min-w-0 flex-1">
+                    <div className="flex items-start gap-md">
                       <PlantAvatar name={p.nickname} />
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/plants/${p.id}`}
-                          className="block truncate font-semibold text-base text-text-main tracking-[-0.01em] hover:text-primary focus:outline-none focus-visible:underline after:absolute after:inset-0 after:content-['']"
+                          className="block truncate text-[15px] font-semibold tracking-[-0.01em] text-text-main after:absolute after:inset-0 after:content-[''] hover:text-primary focus:outline-none focus-visible:underline"
                         >
                           {p.nickname}
                         </Link>
-                        <p className="truncate font-mono text-xs text-text-muted">
-                          {species?.common_name ?? 'Custom species'}
-                          {species?.scientific_name ? ` · ${species.scientific_name}` : ''}
+                        <p className="truncate text-xs text-text-muted">
+                          {[
+                            p.species_id ? speciesById.get(p.species_id)?.common_name : undefined,
+                            p.room ?? (p.species_id ? undefined : 'No room set'),
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </p>
                       </div>
+                      <Badge tone={statusTone[p.status] ?? 'default'}>{p.status.replace('_', ' ')}</Badge>
                     </div>
-
-                    {/* Instrument readout */}
-                    <div className="flex flex-col gap-xs sm:w-48">
+                    <div className="flex flex-col gap-sm">
                       <div className="flex items-center justify-between gap-sm">
-                        <span className={`font-mono text-xs font-medium ${
-                          wl.tone === 'danger' ? 'text-accent' :
-                          wl.tone === 'warning' ? 'text-tertiary' :
-                          'text-text-muted'
-                        }`}>
-                          {wl.text}
-                        </span>
-                        <span className="font-mono text-[10px] text-text-muted">
-                          ~{p.effective_interval_days ?? p.base_interval_days}d
+                        <Badge tone={wl.tone}>{wl.text}</Badge>
+                        <span className="font-mono text-xs text-text-muted">
+                          every ~{p.effective_interval_days ?? p.base_interval_days}d
                         </span>
                       </div>
                       <ThirstMeter
@@ -717,24 +667,18 @@ export function PlantsPage() {
                         intervalDays={p.effective_interval_days ?? p.base_interval_days}
                         tone={wl.tone}
                       />
-                      <p className="font-mono text-[10px] text-text-muted">
+                      <p className="font-mono text-xs text-text-muted">
                         {p.last_watered_at
                           ? `last watered ${new Date(p.last_watered_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
-                          : 'water once to start schedule'}
+                          : 'water once to start its schedule'}
                       </p>
                     </div>
-
-                    {/* Status badge */}
-                    <div className="hidden sm:block">
-                      <Badge tone={statusTone[p.status] ?? 'default'}>{p.status.replace('_', ' ')}</Badge>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="relative z-10 flex gap-sm shrink-0">
+                    <div className="relative z-10 mt-auto flex gap-sm">
                       <Button
                         variant="secondary"
                         loading={busy}
                         onClick={() => void handleWater(p)}
+                        className="flex-1"
                       >
                         {busy ? null : dropIcon}
                         Water
@@ -750,7 +694,7 @@ export function PlantsPage() {
                         Edit
                       </Button>
                     </div>
-                  </div>
+                  </Card>
                 )
               })}
             </div>

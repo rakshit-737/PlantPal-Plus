@@ -108,7 +108,7 @@ export const NAV_ITEMS: NavItem[] = [
 
 /** Sidebar captions, in display order. */
 export const NAV_GROUPS: { key: NavItem['group']; label: string }[] = [
-  { key: 'today', label: 'TODAY' },
-  { key: 'habits', label: 'TRACK' },
-  { key: 'you', label: 'PERSONAL' },
+  { key: 'today', label: 'Today' },
+  { key: 'habits', label: 'Habits' },
+  { key: 'you', label: 'You' },
 ]

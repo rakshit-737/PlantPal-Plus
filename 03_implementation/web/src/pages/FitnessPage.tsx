@@ -9,8 +9,10 @@ import {
   ErrorState,
   Input,
   Modal,
+  PageHeader,
   Select,
   Spinner,
+  StatCard,
   useToast,
 } from '../components/ui'
 import { usePageTitle } from '../hooks/usePageTitle'
@@ -115,6 +117,7 @@ const dumbbellIcon = (
   </svg>
 )
 
+const sectionHeading = 'mb-sm font-heading text-xl font-semibold text-text-main'
 const setInputClass =
   'w-full min-w-0 rounded-sm border border-border bg-surface px-sm py-sm font-mono text-sm text-text-main placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary'
 
@@ -343,7 +346,7 @@ export function FitnessPage() {
       const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
       return {
         date: iso,
-        label: new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(d).toUpperCase(),
+        label: new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(d),
         steps: byDate.get(iso) ?? 0,
       }
     })
@@ -351,32 +354,22 @@ export function FitnessPage() {
   const maxWeekSteps = Math.max(...weekDays.map((d) => d.steps), 1)
 
   return (
-    <div className="mx-auto max-w-6xl space-y-xl">
-      {/* EDITORIAL HEADER */}
-      <header>
-        <p className="font-mono text-xs font-semibold tracking-widest text-text-muted uppercase">
-          MOVEMENT · WEEKLY LOG
-        </p>
-        <div className="mt-xs flex items-end justify-between gap-md">
-          <h1 className="font-display text-4xl sm:text-5xl font-medium leading-tight tracking-tight text-text-main">
-            Fitness
-          </h1>
-          <Button onClick={() => setLogOpen(true)}>Log workout</Button>
-        </div>
-      </header>
+    <div className="mx-auto max-w-6xl">
+      <div className="mb-xl">
+        <PageHeader
+          eyebrow="Movement"
+          title="Fitness"
+          subtitle="Workouts, steps and weekly progress."
+          action={<Button onClick={() => setLogOpen(true)}>Log workout</Button>}
+        />
+      </div>
 
-      {/* WEEKLY SUMMARY */}
-      <section>
-        <div className="flex items-center justify-between mb-sm">
-          <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">
-            THIS WEEK
-          </h2>
-        </div>
-
+      {/* Weekly summary — loads independently of the workout list. */}
+      <div className="mb-xl">
         {summaryLoading ? (
-          <div className="border border-glass-border bg-surface/20 rounded-lg flex justify-center py-lg">
+          <Card className="flex justify-center py-lg">
             <Spinner />
-          </div>
+          </Card>
         ) : summaryError ? (
           <ErrorState
             title="Couldn't load the weekly summary"
@@ -384,40 +377,32 @@ export function FitnessPage() {
             onRetry={loadSummary}
           />
         ) : summary ? (
-          <div className="space-y-md">
-            {/* Instrument stats bar */}
-            <div className="border border-glass-border bg-surface/20 rounded-lg">
-              <div className="grid grid-cols-3 divide-x divide-glass-border">
-                <div className="p-md">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Sessions</p>
-                  <p className="mt-xs font-mono text-3xl font-medium tracking-tight text-text-main">
-                    {summary.total_workouts}
-                  </p>
-                  <p className="font-mono text-xs text-text-muted">this week</p>
-                </div>
-                <div className="p-md">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Active Mins</p>
-                  <p className="mt-xs font-mono text-3xl font-medium tracking-tight text-secondary">
-                    {summary.total_duration_mins}
-                  </p>
-                  <p className="font-mono text-xs text-text-muted">minutes logged</p>
-                </div>
-                <div className="p-md">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Kcal Est.</p>
-                  <p className="mt-xs font-mono text-3xl font-medium tracking-tight text-tertiary">
-                    {Math.round(summary.total_calories).toLocaleString()}
-                  </p>
-                  <p className="font-mono text-xs text-text-muted">estimated burned</p>
-                </div>
-              </div>
+          <div className="flex flex-col gap-md">
+            <div className="grid grid-cols-1 gap-md sm:grid-cols-3">
+              <StatCard
+                label="Workouts"
+                value={String(summary.total_workouts)}
+                sub="sessions this week"
+                accent="text-primary"
+              />
+              <StatCard
+                label="Minutes"
+                value={String(summary.total_duration_mins)}
+                sub="active minutes"
+                accent="text-secondary"
+              />
+              <StatCard
+                label="Calories"
+                value={String(Math.round(summary.total_calories))}
+                sub="kcal estimated"
+                accent="text-tertiary"
+              />
             </div>
-
-            {/* Step chart — text bar style */}
-            <div className="border border-glass-border bg-surface/20 rounded-lg p-lg">
-              <div className="flex items-baseline justify-between gap-sm mb-lg">
+            <Card className="relative overflow-hidden">
+              <div className="mb-lg flex items-baseline justify-between gap-sm">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted">Steps this week</p>
-                  <p className="mt-xs font-mono text-xs text-text-muted">
+                  <p className="eyebrow">Steps this week</p>
+                  <p className="mt-[2px] text-xs text-text-muted">
                     {weekDays.filter((d) => d.steps > 0).length} active day
                     {weekDays.filter((d) => d.steps > 0).length === 1 ? '' : 's'}
                   </p>
@@ -426,55 +411,46 @@ export function FitnessPage() {
                   {summary.total_steps.toLocaleString()}
                 </p>
               </div>
-
-              {/* Bar chart */}
-              <div className="flex h-[120px] items-end gap-sm">
+              {/* The whole week, zero days included: a chart of only the days
+                  with data reads as two fat bars rather than a week. */}
+              <div className="flex h-[148px] items-end gap-sm">
                 {weekDays.map((d) => {
                   const isToday = d.date === todayIso
-                  const h = d.steps > 0 ? Math.max(6, Math.round((d.steps / maxWeekSteps) * 88)) : 3
+                  const h = d.steps > 0 ? Math.max(6, Math.round((d.steps / maxWeekSteps) * 112)) : 4
                   return (
-                    <div key={d.date} className="flex flex-1 flex-col items-center gap-xs">
+                    <div key={d.date} className="flex flex-1 flex-col items-center gap-sm">
                       <span className="sr-only">{`${d.date}: ${d.steps.toLocaleString()} steps`}</span>
                       <span aria-hidden className={`font-mono text-[10px] ${d.steps > 0 ? 'text-text-muted' : 'text-transparent'}`}>
-                        {d.steps >= 1000 ? `${(d.steps / 1000).toFixed(1)}k` : d.steps || '—'}
+                        {d.steps >= 1000 ? `${(d.steps / 1000).toFixed(1)}k` : d.steps}
                       </span>
                       <div
                         aria-hidden
                         title={`${d.steps.toLocaleString()} steps`}
-                        className={`w-full max-w-[36px] rounded-t-[2px] transition-[height] duration-300 ${
+                        className={`w-full max-w-[44px] rounded-t-[10px] rounded-b-[4px] transition-[height] duration-reveal ease-entrance ${
                           d.steps > 0
                             ? isToday
-                              ? 'bg-secondary'
-                              : 'bg-secondary/40'
-                            : 'bg-text-muted/[0.10]'
+                              ? 'bg-gradient-to-t from-secondary/50 to-secondary shadow-[0_8px_24px_-8px_var(--color-secondary)]'
+                              : 'bg-gradient-to-t from-secondary/25 to-secondary/70'
+                            : 'bg-text-muted/[0.12]'
                         }`}
                         style={{ height: `${h}px` }}
                       />
-                      <span aria-hidden className={`font-mono text-[10px] font-medium ${isToday ? 'text-secondary' : 'text-text-muted'}`}>
+                      <span aria-hidden className={`text-[11px] font-medium ${isToday ? 'text-secondary' : 'text-text-muted'}`}>
                         {d.label}
                       </span>
                     </div>
                   )
                 })}
               </div>
-            </div>
+            </Card>
           </div>
         ) : null}
-      </section>
+      </div>
 
-      {/* WORKOUT LOG + PERSONAL RECORDS */}
       <div className="grid items-start gap-md lg:grid-cols-3">
         {/* Workout log */}
-        <section className="lg:col-span-2 space-y-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">
-              WORKOUT LOG
-            </h2>
-            {workouts.length > 0 && (
-              <span className="font-mono text-xs text-text-muted">{workouts.length} sessions</span>
-            )}
-          </div>
-
+        <section className="lg:col-span-2">
+          <h2 className={sectionHeading}>Workout log</h2>
           {workoutsLoading ? (
             <div className="flex justify-center py-xl">
               <Spinner size="lg" />
@@ -486,16 +462,16 @@ export function FitnessPage() {
               onRetry={loadWorkouts}
             />
           ) : workouts.length === 0 ? (
-            <div className="border border-glass-border bg-surface/20 rounded-lg p-lg">
+            <Card>
               <EmptyState
                 icon={dumbbellIcon}
                 title="No workouts yet"
                 body="Log your first workout to start tracking progress."
                 action={<Button onClick={() => setLogOpen(true)}>Log workout</Button>}
               />
-            </div>
+            </Card>
           ) : (
-            <div className="border border-glass-border rounded-lg overflow-hidden divide-y divide-glass-border">
+            <div className="flex flex-col gap-sm">
               {[...workouts].sort(byDayDesc).map((w) => {
                 const details = [
                   w.duration_mins ? `${w.duration_mins} min` : null,
@@ -506,9 +482,9 @@ export function FitnessPage() {
                     : null,
                 ].filter(Boolean)
                 return (
-                  <div key={w.id} className="flex items-start justify-between gap-md p-md bg-surface/20 hover:bg-surface/40 transition-colors">
+                  <Card key={w.id} className="flex items-start justify-between gap-md">
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm text-text-main tracking-[-0.01em]">
+                      <p className="font-medium text-text-main">
                         {ACTIVITY_LABELS[w.activity_type] ?? w.activity_type}
                       </p>
                       {details.length > 0 ? (
@@ -531,7 +507,7 @@ export function FitnessPage() {
                     <time dateTime={w.local_date_str} className="shrink-0 font-mono text-xs text-text-muted">
                       {fmtDay(w.local_date_str)}
                     </time>
-                  </div>
+                  </Card>
                 )
               })}
             </div>
@@ -539,17 +515,12 @@ export function FitnessPage() {
         </section>
 
         {/* Personal records */}
-        <section className="space-y-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">
-              PERSONAL RECORDS
-            </h2>
-          </div>
-
+        <section>
+          <h2 className={sectionHeading}>Personal records</h2>
           {recordsLoading ? (
-            <div className="border border-glass-border bg-surface/20 rounded-lg flex justify-center py-lg">
+            <Card className="flex justify-center py-lg">
               <Spinner />
-            </div>
+            </Card>
           ) : recordsError ? (
             <ErrorState
               title="Couldn't load personal records"
@@ -557,25 +528,23 @@ export function FitnessPage() {
               onRetry={loadRecords}
             />
           ) : (
-            <div className="border border-glass-border rounded-lg overflow-hidden">
+            <Card>
               {records.length === 0 ? (
-                <div className="p-md">
-                  <p className="font-mono text-xs text-text-muted">
-                    No records yet — they appear when you log strength sets.
-                  </p>
-                </div>
+                <p className="text-sm text-text-muted">
+                  No records yet — they appear when you log strength sets.
+                </p>
               ) : (
-                <ul className="divide-y divide-glass-border">
+                <ul className="flex flex-col">
                   {records.map((r) => (
                     <li
                       key={r.id}
-                      className="flex items-baseline justify-between gap-sm p-md bg-surface/20"
+                      className="flex items-baseline justify-between gap-sm border-b border-border py-sm first:pt-0 last:border-b-0 last:pb-0"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-text-main">
                           {r.exercise_name}
                         </p>
-                        <p className="font-mono text-[10px] text-text-muted uppercase tracking-wider">
+                        <p className="text-xs text-text-muted">
                           {RECORD_TYPE_LABELS[r.record_type] ?? r.record_type}
                         </p>
                       </div>
@@ -591,7 +560,7 @@ export function FitnessPage() {
                   ))}
                 </ul>
               )}
-            </div>
+            </Card>
           )}
         </section>
       </div>
@@ -711,7 +680,7 @@ export function FitnessPage() {
                   Add set
                 </Button>
               </div>
-              <p className="font-mono text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 Volume and estimated 1RM are computed on save.
               </p>
             </div>

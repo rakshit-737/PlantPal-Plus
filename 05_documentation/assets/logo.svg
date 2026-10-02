@@ -1,6 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="96" height="96" role="img" aria-labelledby="title">
   <title id="title">PlantPal+</title>
-  <rect width="64" height="64" rx="17" fill="#0d5c3c"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a7f54"/>
+      <stop offset="0.55" stop-color="#0d5c3c"/>
+      <stop offset="1" stop-color="#063522"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="17" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="17" fill="url(#sheen)"/>
   <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="16.25" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5"/>
   <path d="M32 50V31.5" stroke="#eaf8f0" stroke-width="3.4" stroke-linecap="round"/>
   <path d="M32 34c0-8.4-5.8-14.2-14.2-14.2 0 8.4 5.8 14.2 14.2 14.2Z" fill="#eaf8f0"/>

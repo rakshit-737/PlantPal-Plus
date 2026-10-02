@@ -12,7 +12,7 @@ export function PlantAvatar({ name, size = 'md' }: { name: string; size?: 'md' |
   return (
     <span
       aria-hidden
-      className={`relative grid shrink-0 place-items-center overflow-hidden bg-primary font-display font-semibold text-on-primary shadow-glow-primary ${box}`}
+      className={`relative grid shrink-0 place-items-center overflow-hidden bg-gradient-to-br from-primary/90 to-primary-hover font-display font-semibold text-on-primary shadow-glow-primary ${box}`}
     >
       <svg viewBox="0 0 24 24" className={`absolute -bottom-1 -right-1 text-on-primary/25 ${leaf}`} fill="currentColor">
         <path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z" />

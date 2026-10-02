@@ -24,7 +24,6 @@ import { BrandMark, Wordmark } from '@/components/Brand'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { usePageTitle } from '../hooks/usePageTitle'
-import vineCorner from '@/assets/vine-corner.png'
 
 /* --------------------------------------------------------------- the facts */
 
@@ -162,6 +161,7 @@ function HeroVisual() {
       transition={{ duration: 0.8, delay: 0.15, ease: EASE }}
     >
       {/* Halo behind the card. */}
+      <div className="absolute -inset-10 rounded-[48px] bg-[radial-gradient(closest-side,var(--aurora-1),transparent)] blur-2xl" />
 
       <div className="edge-gradient pane relative rounded-2xl p-lg shadow-4">
         <div className="flex items-center justify-between">
@@ -272,7 +272,7 @@ function SectionHeading({ eyebrow, title, body, id, center = false }: { eyebrow:
   return (
     <div className={`reveal ${center ? 'mx-auto text-center' : ''} max-w-2xl`}>
       <p className={`eyebrow ${center ? 'justify-center' : ''} flex items-center gap-sm`}>
-        <span aria-hidden className="h-px w-6 bg-primary" />
+        <span aria-hidden className="h-px w-6 bg-gradient-to-r from-transparent to-primary" />
         {eyebrow}
       </p>
       <h2 id={id} className="mt-md font-display text-display-sm font-medium text-text-main">
@@ -296,7 +296,7 @@ function Figure({ value, label, tone = 'text-text-main' }: { value: string; labe
 /** A bento tile. */
 function Tile({ className = '', children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={`reveal group relative border-b border-r border-glass-border p-lg transition-colors duration-standard ease-state hover:bg-text-main/[0.025] md:p-xl ${className}`}>
+    <div className={`reveal pane group relative overflow-hidden rounded-xl p-lg transition-[transform,box-shadow] duration-standard ease-state hover:-translate-y-1 hover:shadow-3 md:p-xl ${className}`}>
       {children}
     </div>
   )
@@ -305,7 +305,10 @@ function Tile({ className = '', children }: { className?: string; children: Reac
 function TileHead({ ink, glyph, title, body }: { ink: string; glyph: string; title: string; body: string }) {
   return (
     <>
-      <span className={`grid h-6 w-6 place-items-center ${ink}`}>{icon(glyph)}</span>
+      <span className={`relative grid h-11 w-11 place-items-center rounded-[14px] ${ink}`}>
+        <span className="absolute inset-0 rounded-[14px] bg-current opacity-[0.12]" />
+        <span className="relative">{icon(glyph)}</span>
+      </span>
       <h3 className="mt-lg font-heading text-lg font-semibold tracking-[-0.015em] text-text-main">{title}</h3>
       <p className="mt-sm max-w-md text-[15px] leading-relaxed text-text-muted">{body}</p>
     </>
@@ -457,7 +460,7 @@ export function LandingPage() {
               body="One system with three contextual lockups, not three apps wearing the same logo. Turn any module off and the rest carry on."
             />
 
-            <div className="mt-2xl grid border-l border-t border-glass-border md:grid-cols-6">
+            <div className="mt-2xl grid gap-lg md:grid-cols-6">
               <Tile className="md:col-span-4">
                 <TileHead
                   ink="text-primary"
@@ -499,7 +502,7 @@ export function LandingPage() {
                 />
                 <div aria-hidden className="mt-xl flex h-16 items-end gap-[6px]">
                   {[38, 62, 45, 80, 56, 92, 70].map((h, i) => (
-                    <div key={i} className="flex-1 rounded-t-md bg-secondary/70" style={{ height: `${h}%` }} />
+                    <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-secondary/30 to-secondary/90" style={{ height: `${h}%` }} />
                   ))}
                 </div>
               </Tile>
@@ -629,45 +632,25 @@ export function LandingPage() {
 
           {/* --------------------------------------------------------- cta */}
           <section className="mx-auto max-w-6xl px-lg py-[88px]">
-            <div className="reveal relative overflow-hidden rounded-3xl bg-gradient-to-b from-primary/[0.07] via-surface/30 to-transparent px-lg py-2xl text-center md:px-2xl md:py-[72px]">
-              {/* Corner Vines */}
-              <img
-                src={vineCorner}
-                alt=""
-                aria-hidden="true"
-                className="pointer-events-none absolute top-0 left-0 w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain opacity-90 z-10 select-none"
-              />
-              <img
-                src={vineCorner}
-                alt=""
-                aria-hidden="true"
-                className="pointer-events-none absolute top-0 right-0 w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain opacity-90 z-10 select-none scale-x-[-1]"
-              />
-              <img
-                src={vineCorner}
-                alt=""
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 left-0 w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain opacity-90 z-10 select-none scale-y-[-1]"
-              />
-              <img
-                src={vineCorner}
-                alt=""
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 right-0 w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain opacity-90 z-10 select-none scale-x-[-1] scale-y-[-1]"
-              />
-
+            <div className="reveal relative overflow-hidden rounded-2xl border border-glass-border bg-[linear-gradient(135deg,#0d5c3c_0%,#0a4a30_45%,#123d52_100%)] px-lg py-2xl text-center shadow-4 md:px-2xl md:py-[72px]">
               <div aria-hidden className="app-grain pointer-events-none absolute inset-0" />
-              <div className="relative z-20">
+              <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#34e0a1]/25 blur-3xl" />
+              <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-[#e6bd6a]/25 blur-3xl" />
+              <div className="relative">
                 <BrandMark className="mx-auto h-14 w-14" />
-                <h2 className="mx-auto mt-lg max-w-2xl font-display text-display-sm font-medium text-text-main">
+                <h2 className="mx-auto mt-lg max-w-2xl font-display text-display-sm font-medium text-[#f3f8f4]">
                   Begin today&apos;s entry.
                 </h2>
-                <p className="mx-auto mt-md max-w-lg text-[17px] text-text-muted">
+                <p className="mx-auto mt-md max-w-lg text-[17px] text-[#cfe3d8]">
                   Free, and there is nothing to configure before the first log.
                 </p>
-                <div className="mt-xl flex justify-center">
-                  <CtaLink to="/register">Create your account</CtaLink>
-                </div>
+                <Link
+                  to="/register"
+                  className="group mt-xl inline-flex h-12 items-center gap-sm rounded-[14px] bg-[#f6f4ee] px-6 text-[15px] font-semibold text-[#0d5c3c] shadow-3 transition-[transform,box-shadow] duration-standard ease-state hover:-translate-y-px hover:shadow-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f6f4ee] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d5c3c]"
+                >
+                  Create your account
+                  <span className="transition-transform duration-standard group-hover:translate-x-0.5">{icon(GLYPH.arrow, 'h-4 w-4')}</span>
+                </Link>
               </div>
             </div>
           </section>

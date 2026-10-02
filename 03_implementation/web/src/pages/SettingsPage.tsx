@@ -6,9 +6,11 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
   ErrorState,
   Input,
   Modal,
+  PageHeader,
   Select,
   Spinner,
   useToast,
@@ -125,19 +127,15 @@ function Toggle({
   )
 }
 
-/** A settings section with the instrument-panel style: 1px border, no Card elevation, eyebrow label. */
+/** A settings card with the standard eyebrow heading. */
 function Section({ eyebrow, children }: { eyebrow: string; children: ReactNode }) {
   return (
-    <div className="border border-glass-border rounded-lg overflow-hidden">
-      <div className="border-b border-glass-border bg-surface/30 px-md py-sm">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-          {eyebrow}
-        </p>
-      </div>
-      <div className="bg-surface/20 p-md">
-        {children}
-      </div>
-    </div>
+    <Card>
+      <p className="mb-md text-[11px] font-medium uppercase tracking-[0.08em] text-text-muted">
+        {eyebrow}
+      </p>
+      {children}
+    </Card>
   )
 }
 
@@ -473,35 +471,33 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-xl">
-      {/* EDITORIAL HEADER */}
-      <header>
-        <p className="font-mono text-xs font-semibold tracking-widest text-text-muted uppercase">
-          ACCOUNT · PREFERENCES
-        </p>
-        <div className="mt-xs flex items-end justify-between gap-md">
-          <h1 className="font-display text-4xl sm:text-5xl font-medium leading-tight tracking-tight text-text-main">
-            Settings
-          </h1>
-          {/*
+    <div className="mx-auto max-w-2xl">
+      <div className="mb-xl">
+        <PageHeader
+          eyebrow="Your account"
+          title="Settings"
+          subtitle="Account and preferences."
+          /*
             The only way into /onboarding. Nothing redirects there: no endpoint
             exposes profiles.onboarding_completed_at, so the app cannot tell a
             new account from a returning one and an auto-launch would drop
             long-standing users back into setup (see OnboardingPage's header).
             Until that flag is served, the guided pass is something the user
             chooses — hence a link, and a quiet one.
-          */}
-          <Link
-            to="/onboarding"
-            className="inline-flex h-9 items-center gap-xs border border-glass-border px-md font-mono text-xs text-text-muted transition-colors hover:border-text-muted hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            Set up preferences
-            <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="square">
-              <path d="M3.5 8h9M9 4.5L12.5 8 9 11.5" />
-            </svg>
-          </Link>
-        </div>
-      </header>
+          */
+          action={
+            <Link
+              to="/onboarding"
+              className="inline-flex h-9 items-center gap-xs rounded-full border border-border-control/70 px-md text-[13px] font-medium text-text-muted transition-colors duration-standard ease-state hover:border-text-muted hover:bg-text-main/[0.04] hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Set up preferences
+              <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                <path d="M3.5 8h9M9 4.5L12.5 8 9 11.5" />
+              </svg>
+            </Link>
+          }
+        />
+      </div>
 
       <div className="flex flex-col gap-md">
         {pendingDeletion && (
@@ -792,11 +788,11 @@ export function SettingsPage() {
             onRetry={reload}
           />
         ) : loading ? (
-          <div className="border border-glass-border bg-surface/20 rounded-lg">
+          <Card>
             <div className="flex justify-center py-lg">
               <Spinner />
             </div>
-          </div>
+          </Card>
         ) : null}
 
         {/* Last on the page on purpose: the only destructive control here. */}

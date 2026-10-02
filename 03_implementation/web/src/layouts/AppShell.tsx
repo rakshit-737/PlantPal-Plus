@@ -16,7 +16,7 @@ function Avatar({ email }: { email: string }) {
   return (
     <span
       aria-hidden
-      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary font-display text-[15px] font-semibold text-on-primary shadow-glow-primary"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary font-display text-[15px] font-semibold text-on-primary shadow-glow-primary"
     >
       {initial}
     </span>
@@ -85,18 +85,18 @@ export function AppShell() {
       </a>
 
       {/* ------------------------------------------------ desktop sidebar */}
-      <aside className="sticky top-0 z-20 hidden h-screen w-[220px] shrink-0 flex-col border-r border-glass-border bg-background px-md pb-md pt-lg md:flex">
-        <NavLink to="/dashboard" className="mb-lg flex w-fit items-center rounded-md px-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <aside className="sticky top-0 z-20 hidden h-screen w-[268px] shrink-0 flex-col border-r border-glass-border bg-glass px-md pb-md pt-lg backdrop-blur-glass md:flex">
+        <NavLink to="/dashboard" className="mb-xl flex w-fit items-center rounded-md px-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <Wordmark size="sm" />
         </NavLink>
 
-        <nav className="flex flex-1 flex-col gap-md overflow-y-auto" aria-label="Primary">
+        <nav className="flex flex-1 flex-col gap-lg overflow-y-auto" aria-label="Primary">
           {NAV_GROUPS.map((group) => {
             const items = visibleItems.filter((item) => item.group === group.key)
             if (items.length === 0) return null
             return (
               <div key={group.key} className="flex flex-col gap-[2px]">
-                <p aria-hidden className="eyebrow mb-xs px-sm !text-[10px] font-mono tracking-wider text-text-muted">
+                <p aria-hidden className="eyebrow mb-xs px-sm !text-[10px]">
                   {group.label}
                 </p>
                 {items.map((item) => (
@@ -105,23 +105,29 @@ export function AppShell() {
                     to={item.to}
                     end={item.to === '/'}
                     className={({ isActive }) =>
-                      `group relative flex h-9 items-center gap-[10px] px-sm text-[13px] font-medium transition-colors duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                        isActive ? 'font-semibold text-text-main' : 'text-text-muted hover:text-text-main'
+                      `group relative flex h-10 items-center gap-[12px] rounded-md px-sm text-[14px] font-medium transition-colors duration-standard ease-state focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                        isActive ? 'text-text-main' : 'text-text-muted hover:text-text-main'
                       }`
                     }
                   >
                     {({ isActive }) => (
                       <>
                         {isActive ? (
-                          <span
+                          // One lit pill that glides between items, rather than
+                          // each item fading its own background in and out.
+                          <motion.span
+                            layoutId="sidebar-active"
                             aria-hidden
-                            className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r-full bg-primary"
+                            className="absolute inset-0 rounded-md border border-glass-border bg-surface-raised/80 shadow-2"
+                            transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40 }}
                           />
-                        ) : null}
+                        ) : (
+                          <span aria-hidden className="absolute inset-0 rounded-md bg-text-main/0 transition-colors duration-standard group-hover:bg-text-main/[0.04]" />
+                        )}
                         <span className={`relative ${isActive ? 'text-primary' : ''}`}>{item.icon}</span>
                         <span className="relative">{item.label}</span>
                         {isActive ? (
-                          <span aria-hidden className="relative ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                          <span aria-hidden className="relative ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow-primary" />
                         ) : null}
                       </>
                     )}

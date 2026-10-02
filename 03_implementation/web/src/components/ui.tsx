@@ -47,7 +47,7 @@ type ButtonSize = 'sm' | 'md' | 'lg'
 
 const buttonVariants: Record<ButtonVariant, string> = {
   // Lit behind the glass: the primary action is the only thing in the app
-  // that glows at rest. The fill and inner highlight live in `.btn-primary`.
+  // that glows at rest. The gradient and inner highlight live in `.btn-primary`.
   primary: 'btn-primary focus-visible:ring-primary',
   secondary:
     'border border-border-control bg-glass text-text-main shadow-1 backdrop-blur-glass hover:-translate-y-px hover:border-text-muted hover:bg-surface-raised hover:shadow-2 focus-visible:ring-primary',
@@ -523,9 +523,9 @@ export function Badge({
 type ProgressTone = 'primary' | 'secondary' | 'tertiary'
 
 const toneFill: Record<ProgressTone, string> = {
-  primary: 'bg-primary',
-  secondary: 'bg-secondary',
-  tertiary: 'bg-tertiary',
+  primary: 'from-primary/70 to-primary',
+  secondary: 'from-secondary/70 to-secondary',
+  tertiary: 'from-tertiary/70 to-tertiary',
 }
 
 /** An accessible linear progress bar with an optional label + value read-out. */
@@ -564,7 +564,7 @@ export function Progress({
           // The fill grows into place on the entrance curve rather than
           // snapping. Only width transitions — `transition-all` would also
           // animate the colour on a tone change, which reads as a glitch.
-          className={`h-full rounded-full transition-[width] duration-reveal ease-entrance ${toneFill[tone]}`}
+          className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-reveal ease-entrance ${toneFill[tone]}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -574,7 +574,7 @@ export function Progress({
 
 /**
  * A progress ring on the native <progress> element (see `progress.ring` in
- * index.css): real progressbar semantics, drawn with a conic fill. Rings
+ * index.css): real progressbar semantics, drawn with a conic gradient. Rings
  * can be stacked concentrically by giving each a smaller `size`.
  */
 export function Ring({
@@ -790,6 +790,7 @@ export function Modal({
         className="animate-grow-in relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-glass-border bg-glass-strong p-lg shadow-4 backdrop-blur-glass focus:outline-none sm:p-xl"
         onClick={(e) => e.stopPropagation()}
       >
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 rounded-t-xl bg-gradient-to-b from-primary/[0.07] to-transparent" />
         <h2 id={titleId} className="relative mb-lg font-display text-[26px] font-medium leading-tight tracking-[-0.02em] text-text-main">
           {title}
         </h2>
@@ -869,7 +870,6 @@ export function StatCard({
   subTone = 'text-text-muted',
   meter,
   icon,
-  noGlow = false,
 }: {
   label: string
   value: string
@@ -893,17 +893,15 @@ export function StatCard({
   meter?: number
   /** A glyph for the tile's corner, drawn in the tile's accent. */
   icon?: ReactNode
-  noGlow?: boolean
 }) {
   const shown = useCountUp(value)
   return (
     <Card className="group relative overflow-hidden transition-[box-shadow,transform] duration-standard ease-state hover:-translate-y-0.5 hover:shadow-glass-raised">
-      {!noGlow && (
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-current opacity-[0.07] blur-2xl transition-opacity duration-standard group-hover:opacity-[0.12] ${accent}`}
-        />
-      )}
+      {/* A wash of the tile's ink in the corner — colour as atmosphere. */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-current opacity-[0.07] blur-2xl transition-opacity duration-standard group-hover:opacity-[0.12] ${accent}`}
+      />
       <div className="flex items-start justify-between gap-sm">
         <p className="eyebrow">{label}</p>
         {icon ? (

@@ -175,7 +175,7 @@ export function RegisterPage() {
               <p className="text-[13px] text-accent">{fieldErrors.confirmAge}</p>
             ) : null}
           </div>
-          <Button type="submit" size="lg" loading={submitting} className="w-full !bg-[#0a4a30] !text-white !shadow-none hover:!bg-[#083d28] hover:!shadow-none">
+          <Button type="submit" size="lg" loading={submitting} className="w-full">
             Create account
           </Button>
         </form>
