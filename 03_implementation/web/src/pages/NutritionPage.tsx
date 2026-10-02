@@ -9,9 +9,7 @@ import {
   ErrorState,
   Input,
   Modal,
-  PageHeader,
   Progress,
-  Ring,
   Select,
   Spinner,
   useToast,
@@ -209,7 +207,7 @@ function WaterGlass({ fraction }: { fraction: number }) {
       className="relative h-[92px] w-[62px] shrink-0 overflow-hidden rounded-b-[20px] rounded-t-[8px] border border-secondary/30 bg-secondary/[0.06] shadow-[inset_0_1px_0_var(--glass-highlight)]"
     >
       <div
-        className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-secondary to-secondary/55 transition-[height] duration-reveal ease-entrance"
+        className="absolute inset-x-0 bottom-0 bg-secondary transition-[height] duration-reveal ease-entrance"
         style={{ height: `${pct}%` }}
       >
         {/* A soft crest on the waterline so the fill reads as liquid. */}
@@ -672,36 +670,38 @@ export function NutritionPage() {
   const waterMl = summary?.water_ml_total ?? 0
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className="mb-xl">
-        <PageHeader
-          eyebrow="Nourishment"
-          title="Nutrition"
-          subtitle="Daily calories, macros and hydration."
-          action={
-            <div className="flex items-center gap-sm">
-              <Button
-                variant="ghost"
-                aria-label="Previous day"
-                onClick={() => setDate(addDays(date, -1))}
-              >
-                <ChevronIcon direction="left" />
-              </Button>
-              <span className="font-mono text-sm text-text-muted">
-                {isToday ? 'Today' : ds}
-              </span>
-              <Button
-                variant="ghost"
-                aria-label="Next day"
-                onClick={() => setDate(addDays(date, 1))}
-                disabled={isToday}
-              >
-                <ChevronIcon direction="right" />
-              </Button>
-            </div>
-          }
-        />
-      </div>
+    <div className="mx-auto max-w-6xl space-y-xl">
+      {/* EDITORIAL HEADER */}
+      <header>
+        <p className="font-mono text-xs font-semibold tracking-widest text-text-muted uppercase">
+          NOURISHMENT · DAILY LOG
+        </p>
+        <div className="mt-xs flex items-end justify-between gap-md">
+          <h1 className="font-display text-4xl sm:text-5xl font-medium leading-tight tracking-tight text-text-main">
+            Nutrition
+          </h1>
+          <div className="flex items-center gap-sm">
+            <Button
+              variant="ghost"
+              aria-label="Previous day"
+              onClick={() => setDate(addDays(date, -1))}
+            >
+              <ChevronIcon direction="left" />
+            </Button>
+            <span className="font-mono text-sm text-text-muted">
+              {isToday ? 'Today' : ds}
+            </span>
+            <Button
+              variant="ghost"
+              aria-label="Next day"
+              onClick={() => setDate(addDays(date, 1))}
+              disabled={isToday}
+            >
+              <ChevronIcon direction="right" />
+            </Button>
+          </div>
+        </div>
+      </header>
 
       {loading ? (
         <div className="flex justify-center py-xl"><Spinner size="lg" /></div>
@@ -713,49 +713,51 @@ export function NutritionPage() {
         />
       ) : (
         <>
-          <div className="mb-xl grid grid-cols-1 gap-md md:grid-cols-2">
-            <Card className="flex flex-col gap-lg sm:flex-row sm:items-center">
-              {/* The ring and the figure in its middle are one reading: the
-                  <progress> carries the accessible value, the figure is the
-                  same number for sighted users. */}
-              <div className="relative grid shrink-0 place-items-center self-center">
-                <Ring
-                  value={kcal}
-                  max={DEFAULT_KCAL_TARGET}
-                  label="Calories eaten against the default target"
-                  size={156}
-                  thickness={13}
-                  tone="primary"
-                />
-                <div aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+          <div className="grid grid-cols-1 gap-md md:grid-cols-2">
+            {/* CALORIES & MACROS — instrument readout */}
+            <div className="border border-glass-border rounded-lg overflow-hidden">
+              <div className="border-b border-glass-border bg-surface/30 px-md py-sm flex items-center justify-between">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">Calories &amp; Macros</p>
+                <p className="font-mono text-xs text-text-muted">default target 2,000 kcal</p>
+              </div>
+              <div className="bg-surface/20 p-md space-y-md">
+                {/* Calorie readout */}
+                <div className="flex items-baseline justify-between gap-md">
                   <div>
-                    <p className="font-display text-[34px] font-medium leading-none tracking-[-0.02em] text-text-main">
+                    <p className="font-mono text-4xl font-medium tracking-[-0.02em] text-text-main">
                       {Math.round(kcal).toLocaleString()}
                     </p>
-                    <p className="mt-[5px] font-mono text-[11px] text-text-muted">
-                      of {DEFAULT_KCAL_TARGET.toLocaleString()} kcal
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted mt-xs">kcal consumed</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-mono text-sm font-medium ${
+                      kcal >= DEFAULT_KCAL_TARGET ? 'text-accent' : 'text-text-muted'
+                    }`}>
+                      {DEFAULT_KCAL_TARGET > 0
+                        ? `${Math.round((kcal / DEFAULT_KCAL_TARGET) * 100)}%`
+                        : ''}
                     </p>
+                    <p className="font-mono text-[10px] text-text-muted">of target</p>
                   </div>
                 </div>
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-md">
-                <div>
-                  <p className="eyebrow">Calories &amp; macros</p>
-                  <p className="mt-xs text-xs text-text-muted">
-                    Default target — <span className="font-mono">2,000</span> kcal
-                  </p>
-                </div>
+                {/* Text bar */}
+                <p className="font-mono text-xs text-primary">
+                  {'█'.repeat(Math.min(10, Math.round((kcal / (DEFAULT_KCAL_TARGET || 1)) * 10)))}
+                  {'░'.repeat(Math.max(0, 10 - Math.min(10, Math.round((kcal / (DEFAULT_KCAL_TARGET || 1)) * 10))))}
+                </p>
+                {/* Macro bars */}
                 <div className="flex w-full flex-col gap-sm">
                   <Progress value={summary?.totals.protein_g ?? 0} max={150} label="Protein (g)" tone="primary" />
                   <Progress value={summary?.totals.carbs_g ?? 0} max={250} label="Carbs (g)" tone="secondary" />
                   <Progress value={summary?.totals.fat_g ?? 0} max={65} label="Fat (g)" tone="tertiary" />
                 </div>
               </div>
-            </Card>
+            </div>
 
-            <Card className="flex flex-col gap-md">
-              <div className="flex items-center justify-between">
-                <p className="eyebrow">Hydration</p>
+            {/* HYDRATION — instrument readout */}
+            <div className="border border-glass-border rounded-lg overflow-hidden">
+              <div className="border-b border-glass-border bg-surface/30 px-md py-sm flex items-center justify-between">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">Hydration</p>
                 {!goalEditing ? (
                   <button
                     onClick={() => {
@@ -763,100 +765,108 @@ export function NutritionPage() {
                       setGoalError('')
                       setGoalEditing(true)
                     }}
-                    className="rounded-sm text-xs text-text-muted underline decoration-border underline-offset-2 hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="font-mono text-[10px] text-text-muted underline underline-offset-2 hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     Edit goal
                   </button>
                 ) : null}
               </div>
-              <div className="flex items-end gap-lg">
-                <WaterGlass fraction={goalMl > 0 ? waterMl / goalMl : 0} />
-                <div className="min-w-0 pb-[2px]">
-                  <p className="font-display text-[40px] font-medium leading-none tracking-[-0.02em] text-text-main">
-                    {waterMl.toLocaleString()}
-                    <span className="ml-[6px] font-mono text-sm font-normal tracking-normal text-text-muted">ml</span>
+              <div className="bg-surface/20 p-md space-y-md">
+                <div className="flex items-baseline justify-between gap-md">
+                  <div>
+                    <p className="font-mono text-4xl font-medium tracking-[-0.02em] text-secondary">
+                      {waterMl.toLocaleString()}
+                      <span className="ml-xs font-mono text-sm font-normal text-text-muted">ml</span>
+                    </p>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-text-muted mt-xs">consumed today</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-mono text-sm font-medium ${
+                      waterMl >= goalMl ? 'text-primary' : 'text-text-muted'
+                    }`}>
+                      {waterMl >= goalMl ? 'Goal reached' : `${(goalMl - waterMl).toLocaleString()} ml to go`}
+                    </p>
+                    <p className="font-mono text-[10px] text-text-muted">of {goalMl.toLocaleString()} ml</p>
+                  </div>
+                </div>
+                {/* Text bar */}
+                <p className="font-mono text-xs text-secondary">
+                  {'█'.repeat(Math.min(10, Math.round((waterMl / (goalMl || 1)) * 10)))}
+                  {'░'.repeat(Math.max(0, 10 - Math.min(10, Math.round((waterMl / (goalMl || 1)) * 10))))}
+                </p>
+                {goalEditing ? (
+                  <form
+                    className="flex items-start gap-sm"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      saveGoal()
+                    }}
+                  >
+                    <div className="w-32">
+                      <Input
+                        label="Daily goal (ml)"
+                        type="number"
+                        inputMode="numeric"
+                        min={250}
+                        max={10000}
+                        step={50}
+                        className="font-mono"
+                        value={goalInput}
+                        onChange={(e) => setGoalInput(e.target.value)}
+                        error={goalError || undefined}
+                      />
+                    </div>
+                    <div className="flex gap-sm pt-[22px]">
+                      <Button type="submit" variant="secondary">Save</Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setGoalEditing(false)
+                          setGoalError('')
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                ) : pendingGoal != null && pendingGoal !== goalMl ? (
+                  <p className="font-mono text-xs text-text-muted">
+                    New goal <span className="font-mono">{pendingGoal} ml</span> is recorded with
+                    your next water log.
                   </p>
-                  <p className="mt-xs font-mono text-xs text-text-muted">
-                    of {goalMl.toLocaleString()} ml goal
-                  </p>
-                  <p className="mt-sm text-sm font-medium text-secondary">
-                    {waterMl >= goalMl ? 'Goal reached' : `${(goalMl - waterMl).toLocaleString()} ml to go`}
-                  </p>
+                ) : null}
+                <div className="flex gap-sm">
+                  <Button
+                    variant="secondary"
+                    className="flex-1 font-mono"
+                    loading={water250Busy}
+                    onClick={() => handleWater(250)}
+                  >
+                    {water250Busy ? null : <DropIcon />}
+                    +250 ml
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="flex-1 font-mono"
+                    loading={water500Busy}
+                    onClick={() => handleWater(500)}
+                  >
+                    {water500Busy ? null : <DropIcon />}
+                    +500 ml
+                  </Button>
                 </div>
               </div>
-              <Progress value={waterMl} max={goalMl} srLabel="Water intake (ml)" tone="secondary" />
-              {goalEditing ? (
-                <form
-                  className="flex items-start gap-sm"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    saveGoal()
-                  }}
-                >
-                  <div className="w-32">
-                    <Input
-                      label="Daily goal (ml)"
-                      type="number"
-                      inputMode="numeric"
-                      min={250}
-                      max={10000}
-                      step={50}
-                      className="font-mono"
-                      value={goalInput}
-                      onChange={(e) => setGoalInput(e.target.value)}
-                      error={goalError || undefined}
-                    />
-                  </div>
-                  <div className="flex gap-sm pt-[22px]">
-                    <Button type="submit" variant="secondary">Save</Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setGoalEditing(false)
-                        setGoalError('')
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              ) : pendingGoal != null && pendingGoal !== goalMl ? (
-                <p className="text-xs text-text-muted">
-                  New goal <span className="font-mono">{pendingGoal} ml</span> is recorded with
-                  your next water log.
-                </p>
-              ) : null}
-              <div className="mt-auto flex gap-sm">
-                <Button
-                  variant="secondary"
-                  className="flex-1 font-mono"
-                  loading={water250Busy}
-                  onClick={() => handleWater(250)}
-                >
-                  {water250Busy ? null : <DropIcon />}
-                  +250 ml
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="flex-1 font-mono"
-                  loading={water500Busy}
-                  onClick={() => handleWater(500)}
-                >
-                  {water500Busy ? null : <DropIcon />}
-                  +500 ml
-                </Button>
-              </div>
-            </Card>
+            </div>
           </div>
 
-          <div className="mb-md flex items-center justify-between">
-            <h2 className="font-heading text-xl font-semibold text-text-main">Meals</h2>
+          <div className="flex items-center justify-between mb-sm">
+            <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted">Meals</h2>
             <Button onClick={() => openLog('BREAKFAST')}>Log meal</Button>
           </div>
 
           {!summary || summary.meals.length === 0 ? (
-            <Card>
+            <div className="border border-glass-border bg-surface/20 rounded-lg p-lg">
               <EmptyState
                 icon={
                   <svg
@@ -874,7 +884,7 @@ export function NutritionPage() {
                 body="Log your first meal to start tracking nutrition."
                 action={<Button onClick={() => openLog('BREAKFAST')}>Log meal</Button>}
               />
-            </Card>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-md md:grid-cols-2">
               {MEAL_TYPES.map((mt) => {
@@ -882,36 +892,37 @@ export function NutritionPage() {
                 const total = meals.reduce((s, m) => s + m.total_kcal, 0)
                 const items = meals.flatMap((m) => m.items)
                 return (
-                  <Card key={mt} className="flex flex-col gap-md">
-                    <div className="flex items-center gap-sm">
-                      <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${MEAL_TONE[mt]}`}>
-                        <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                  <div key={mt} className="border border-glass-border rounded-lg overflow-hidden">
+                    <div className="border-b border-glass-border bg-surface/30 px-md py-sm flex items-center gap-sm">
+                      <span aria-hidden className={`grid h-7 w-7 shrink-0 place-items-center ${MEAL_TONE[mt]}`}>
+                        <svg viewBox="0 0 24 24" className="h-[16px] w-[16px]" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="square" strokeLinejoin="round">
                           <path d={MEAL_GLYPHS[mt]} />
                         </svg>
                       </span>
-                      <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-text-main">{MEAL_LABELS[mt]}</h3>
-                      <p className="ml-auto font-mono text-sm text-text-muted">
+                      <h3 className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted flex-1">{MEAL_LABELS[mt]}</h3>
+                      <p className="font-mono text-xs text-text-muted">
                         {Math.round(total)} kcal
                       </p>
                       <button
                         type="button"
                         onClick={() => openLog(mt)}
                         aria-label={`Log ${MEAL_LABELS[mt].toLowerCase()}`}
-                        className="grid h-8 w-8 place-items-center rounded-full border border-border-control/70 text-text-muted transition-colors duration-standard ease-state hover:border-text-muted hover:bg-text-main/[0.04] hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="grid h-7 w-7 place-items-center border border-glass-border text-text-muted transition-colors hover:border-text-muted hover:text-text-main focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <PlusIcon />
                       </button>
                     </div>
+                    <div className="bg-surface/20">
                     {items.length === 0 ? (
-                      <p className="rounded-md border border-dashed border-border px-md py-sm text-sm text-text-muted">
+                      <p className="px-md py-sm font-mono text-xs text-text-muted">
                         Nothing logged yet.
                       </p>
                     ) : (
-                      <ul className="flex flex-col">
+                      <ul className="divide-y divide-glass-border">
                         {items.map((item) => (
                           <li
                             key={item.id}
-                            className="flex items-baseline justify-between gap-md border-b border-border py-sm text-sm first:pt-0 last:border-b-0 last:pb-0"
+                            className="flex items-baseline justify-between gap-md px-md py-sm text-sm"
                           >
                             <span className="min-w-0 truncate text-text-main">{item.food_name_at_log}</span>
                             <span className="shrink-0 font-mono text-xs text-text-muted">
@@ -921,7 +932,8 @@ export function NutritionPage() {
                         ))}
                       </ul>
                     )}
-                  </Card>
+                    </div>
+                  </div>
                 )
               })}
             </div>

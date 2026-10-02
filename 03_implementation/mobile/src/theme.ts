@@ -90,9 +90,9 @@ export const dark: Palette = {
   backgroundAlt: '#0a100d',
   surface: '#0d1411',
   surfaceRaised: '#131c18',
-  primary: '#4fd59a',
-  primaryHover: '#7be3b4',
-  primaryGlow: '#34e0a1',
+  primary: '#3aa56f',
+  primaryHover: '#52bd86',
+  primaryGlow: '#2f9d68',
   secondary: '#7cc4ea',
   tertiary: '#e6bd6a',
   accent: '#ff7b5c',
@@ -109,7 +109,7 @@ export const dark: Palette = {
   glassHighlight: 'rgba(255, 255, 255, 0.1)',
   danger: '#ff7b5c',
   warning: '#e6bd6a',
-  success: '#4fd59a',
+  success: '#3aa56f',
 }
 
 export function usePalette(): Palette {

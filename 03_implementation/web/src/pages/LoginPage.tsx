@@ -65,7 +65,7 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             hint="Forgot your password? Password reset is coming; contact support meanwhile."
           />
-          <Button type="submit" size="lg" loading={submitting} className="w-full">
+          <Button type="submit" size="lg" loading={submitting} className="w-full !bg-[#0a4a30] !text-white !shadow-none hover:!bg-[#083d28] hover:!shadow-none">
             Sign in
           </Button>
         </form>
