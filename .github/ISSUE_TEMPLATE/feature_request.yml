@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Many features are already specified in the [requirements](https://github.com/rakshit-737/PlantPal-Plus/tree/main/docs/requirements), with the release they belong to. A quick search there and in the existing issues may answer your question.
+        Many features are already specified in the [requirements](https://github.com/rakshit-737/PlantPal-Plus/tree/main/01_requirements), with the release they belong to. A quick search there and in the existing issues may answer your question.
 
   - type: textarea
     id: problem
