@@ -2,10 +2,10 @@
 // Built from apps/api/edge/index.ts by apps/api/edge/build.mjs.
 // Committed deliberately: the deployed edge function loads it from this
 // repository over a CDN. See deploy/README.md.
-var dt=Object.defineProperty;var o=(e,t)=>dt(e,"name",{value:t,configurable:!0});var Rs=(e,t)=>()=>(e&&(t=e(e=0)),t);var As=(e,t)=>{for(var r in t)dt(e,r,{get:t[r],enumerable:!0})};var wt={};As(wt,{getPool:()=>d,initPool:()=>Me,setPoolForTesting:()=>Cs,transaction:()=>R});import Os from"npm:pg@8.13.1";function Me(e,t=10,r){return Y=new Os.Pool({connectionString:e,max:t,idleTimeoutMillis:3e4,
-connectionTimeoutMillis:15e3,...r===void 0?{}:{ssl:r}}),Y.on("error",n=>{console.error({err:n},"postgres pool client error")}),Y}function d(){if(!Y)throw new Error("Database pool not initialised. Call\
- initPool() at boot.");return Y}async function R(e){let t=await d().connect();try{await t.query("BEGIN");let r=await e(t);return await t.query("COMMIT"),r}catch(r){try{await t.query("ROLLBACK")}catch{}
-throw r}finally{t.release()}}function Cs(e){Y=e}var Y,b=Rs(()=>{"use strict";o(Me,"initPool");o(d,"getPool");o(R,"transaction");o(Cs,"setPoolForTesting")});import{Buffer as ps}from"node:buffer";import{createHmac as Si,timingSafeEqual as Oi}from"node:crypto";import Ci from"node:process";import Li from"npm:express@4.21.2";import gi from"npm:cors@2.8.5";import fi from"npm:cookie-parser@1.4.7";import Zr from"npm:express@4.21.2";import yi from"npm:helmet@8.0.0";import{Router as Gs}from"npm:express@4.21.2";import{createHash as Fs}from"node:crypto";import{z as L}from"npm:zod@3.24.1";var Ts=L.object({NODE_ENV:L.enum(["development","test","production"]).default("development"),PORT:L.coerce.number().int().min(1).max(65535).default(3e3),DATABASE_URL:L.string().url().describe("Postgre\
+var dt=Object.defineProperty;var o=(e,t)=>dt(e,"name",{value:t,configurable:!0});var Rs=(e,t)=>()=>(e&&(t=e(e=0)),t);var As=(e,t)=>{for(var r in t)dt(e,r,{get:t[r],enumerable:!0})};var wt={};As(wt,{getPool:()=>d,initPool:()=>Me,setPoolForTesting:()=>Cs,transaction:()=>R});import Os from"npm:pg@8.13.1";function Me(e,t=10,r){return K=new Os.Pool({connectionString:e,max:t,idleTimeoutMillis:3e4,
+connectionTimeoutMillis:15e3,...r===void 0?{}:{ssl:r}}),K.on("error",n=>{console.error({err:n},"postgres pool client error")}),K}function d(){if(!K)throw new Error("Database pool not initialised. Call\
+ initPool() at boot.");return K}async function R(e){let t=await d().connect();try{await t.query("BEGIN");let r=await e(t);return await t.query("COMMIT"),r}catch(r){try{await t.query("ROLLBACK")}catch{}
+throw r}finally{t.release()}}function Cs(e){K=e}var K,b=Rs(()=>{"use strict";o(Me,"initPool");o(d,"getPool");o(R,"transaction");o(Cs,"setPoolForTesting")});import{Buffer as ps}from"node:buffer";import{createHmac as Oi,timingSafeEqual as Ci}from"node:crypto";import Li from"node:process";import Pi from"npm:express@4.21.2";import fi from"npm:cors@2.8.5";import yi from"npm:cookie-parser@1.4.7";import Zr from"npm:express@4.21.2";import wi from"npm:helmet@8.0.0";import{Router as Gs}from"npm:express@4.21.2";import{createHash as Fs}from"node:crypto";import{z as L}from"npm:zod@3.24.1";var Ts=L.object({NODE_ENV:L.enum(["development","test","production"]).default("development"),PORT:L.coerce.number().int().min(1).max(65535).default(3e3),DATABASE_URL:L.string().url().describe("Postgre\
 SQL connection string"),JWT_ACCESS_SECRET:L.string().min(32,"JWT_ACCESS_SECRET must be at least 32 characters"),AUDIT_PEPPER:L.string().min(32,"AUDIT_PEPPER must be at least 32 characters").optional(),
 CORS_ORIGINS:L.string().default("http://localhost:5173").transform(e=>e.split(",").map(t=>t.trim()).filter(Boolean)),LOG_LEVEL:L.enum(["fatal","error","warn","info","debug","trace"]).default("info"),REFRESH_COOKIE_PATH:L.
 string().startsWith("/").default("/api/auth"),REQUIRE_EMAIL_VERIFICATION:L.enum(["true","false","1","0"]).default("false").transform(e=>e==="true"||e==="1")}),ie;function _t(e=process.env){let t=Ts.safeParse(
@@ -22,10 +22,10 @@ errors.internal_error"},UPSTREAM_ERROR:{status:502,messageKey:"errors.upstream_e
 errors.upstream_timeout"}},m=class extends Error{static{o(this,"AppError")}code;status;messageKey;details;context;constructor(t,r,n){super(r,n?.cause!==void 0?{cause:n.cause}:void 0),this.name="AppErr\
 or",this.code=t,this.status=ae[t].status,this.messageKey=ae[t].messageKey,this.details=n?.details,this.context=n?.context}},T=o((e,t)=>new m("VALIDATION_FAILED",e,t?{details:t}:void 0),"badRequest");var v=o((e="That resource could not be found.")=>new m("NOT_FOUND",e),"notFound");import bs from"npm:pino@9.5.0";var ks=typeof globalThis.Deno<"u",Is=ks?{write(e){console.log(e.endsWith(`
 `)?e.slice(0,-1):e)}}:void 0,h=bs({level:process.env.LOG_LEVEL??"info",redact:{paths:["password","passwordHash","password_hash","*.password","*.passwordHash","*.password_hash","refreshToken","refresh_\
-token","*.refreshToken","*.refresh_token","authorization","req.headers.authorization","req.headers.cookie"],censor:"[redacted]"},base:{service:"plantpal-api"}},Is);import{createHash as xs,randomBytes as Ds,timingSafeEqual as Ki}from"node:crypto";import Pe from"npm:jsonwebtoken@9.0.2";var Ns=900,vs=720*60*60,Ss=32,pt=10,gt="plantpal-api",ft="plantpal-clients";function Ue(e,t,r,n=1,s=Math.floor(Date.now()/1e3)){let a={sub:e,sid:t,ver:n,jti:crypto.randomUUID(),iss:gt,aud:ft,iat:s,exp:s+
-Ns};return Pe.sign(a,r,{algorithm:"HS256"})}o(Ue,"signAccessToken");function yt(e,t){try{let r=Pe.verify(e,t,{algorithms:["HS256"]});return r.iss!==void 0&&r.iss!==gt||r.aud!==void 0&&r.aud!==ft?{ok:!1,
-reason:"invalid"}:{ok:!0,claims:r}}catch(r){return r instanceof Pe.TokenExpiredError?{ok:!1,reason:"expired"}:{ok:!1,reason:"invalid"}}}o(yt,"verifyAccessToken");function ue(){let e=Ds(Ss).toString("b\
-ase64url");return{token:e,digest:W(e)}}o(ue,"issueRefreshToken");function W(e){return xs("sha256").update(e,"utf8").digest("hex")}o(W,"digestRefreshToken");function le(e=new Date){return new Date(e.getTime()+vs*1e3)}o(le,"refreshTokenExpiresAt");b();async function ht(e){return await R(async t=>{let{rows:[r]}=await t.query(`insert into users (email, email_normalised, password_hash, minimum_age_confirmed, status)
+token","*.refreshToken","*.refresh_token","authorization","req.headers.authorization","req.headers.cookie"],censor:"[redacted]"},base:{service:"plantpal-api"}},Is);import{createHash as xs,randomBytes as Ds,timingSafeEqual as zi}from"node:crypto";import $e from"npm:jsonwebtoken@9.0.2";var Ns=900,vs=720*60*60,Ss=32,pt=10,gt="plantpal-api",ft="plantpal-clients";function Ue(e,t,r,n=1,s=Math.floor(Date.now()/1e3)){let a={sub:e,sid:t,ver:n,jti:crypto.randomUUID(),iss:gt,aud:ft,iat:s,exp:s+
+Ns};return $e.sign(a,r,{algorithm:"HS256"})}o(Ue,"signAccessToken");function yt(e,t){try{let r=$e.verify(e,t,{algorithms:["HS256"]});return r.iss!==void 0&&r.iss!==gt||r.aud!==void 0&&r.aud!==ft?{ok:!1,
+reason:"invalid"}:{ok:!0,claims:r}}catch(r){return r instanceof $e.TokenExpiredError?{ok:!1,reason:"expired"}:{ok:!1,reason:"invalid"}}}o(yt,"verifyAccessToken");function ue(){let e=Ds(Ss).toString("b\
+ase64url");return{token:e,digest:G(e)}}o(ue,"issueRefreshToken");function G(e){return xs("sha256").update(e,"utf8").digest("hex")}o(G,"digestRefreshToken");function le(e=new Date){return new Date(e.getTime()+vs*1e3)}o(le,"refreshTokenExpiresAt");b();async function ht(e){return await R(async t=>{let{rows:[r]}=await t.query(`insert into users (email, email_normalised, password_hash, minimum_age_confirmed, status)
        values ($1, lower(trim($1)), $2, $3, $4)
        on conflict (email_normalised) do nothing
        returning id, email, status`,[e.email,e.passwordHash,e.confirmedAge,e.status??"PENDING_VERIFICATION"]);if(!r)throw Object.assign(new Error("That email address is already registered."),{code:"CO\
@@ -107,14 +107,14 @@ sers where id = $1 and status <> 'DELETED'",[e]);return r[0]??null}o(It,"findPas
        where id = $1 and consumed_at is null`,[e]);if(i===0){let{rows:[_]}=await a.query(`select (now() - consumed_at) <= interval '15 seconds' as in_grace, generation
          from auth_tokens where id = $1`,[e]);if(_?.in_grace){let{rows:p}=await a.query(`update auth_tokens set consumed_at = now()
            where parent_id = $1 and consumed_at is null
-           returning id`,[e]);if(p.length>0){let y=le(),{token:k}=ue(),I=W(k);return await a.query(`insert into auth_tokens
+           returning id`,[e]);if(p.length>0){let y=le(),{token:k}=ue(),I=G(k);return await a.query(`insert into auth_tokens
                (user_id, session_id, token_family_id, parent_id, generation,
                 refresh_token_digest, expires_at, family_created_at)
              values ($1, $2, $3, $4,
                      (select generation + 1 from auth_tokens where id = $4),
                      $5, $6,
                      (select family_created_at from auth_tokens where id = $4))`,[n,r,t,e,I,y]),{kind:"ok",session:{sessionId:r,tokenFamilyId:t,refreshToken:k,refreshTokenDigest:I}}}}return await Ls(a,
-t,r,"REUSE_DETECTED"),{kind:"reuse"}}let u=le(),{token:l}=ue(),c=W(l);return await a.query(`insert into auth_tokens
+t,r,"REUSE_DETECTED"),{kind:"reuse"}}let u=le(),{token:l}=ue(),c=G(l);return await a.query(`insert into auth_tokens
          (user_id, session_id, token_family_id, parent_id, generation,
           refresh_token_digest, expires_at, family_created_at)
        values ($1, $2, $3, $4,
@@ -127,37 +127,37 @@ ndRotateToken");async function Ls(e,t,r,n){await e.query(`update auth_sessions
      set status = 'REVOKED', revoked_at = now(), revoke_reason = $2
      where token_family_id = $1 and status = 'ACTIVE'`,[t,n]),await e.query(`update auth_tokens
      set consumed_at = coalesce(consumed_at, now())
-     where token_family_id = $1 and consumed_at is null`,[t])}o(Ls,"revokeTokenFamily");var Dt="$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";import St from"npm:bcryptjs@2.4.3";import{argon2Verify as $s,argon2id as Ps}from"npm:hash-wasm@4.12.0";var Nt=12,vt=128,S=Object.freeze({memoryCost:19456,timeCost:2,parallelism:1,outputLen:32,saltLength:16}),Us=12,J;async function Ot(){if(J!==void 0)return J;try{J=await import("npm:@node-rs/argon2@2.0.2"),h.info(
+     where token_family_id = $1 and consumed_at is null`,[t])}o(Ls,"revokeTokenFamily");var Dt="$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";import St from"npm:bcryptjs@2.4.3";import{argon2Verify as Ps,argon2id as $s}from"npm:hash-wasm@4.12.0";var Nt=12,vt=128,S=Object.freeze({memoryCost:19456,timeCost:2,parallelism:1,outputLen:32,saltLength:16}),Us=12,J;async function Ot(){if(J!==void 0)return J;try{J=await import("npm:@node-rs/argon2@2.0.2"),h.info(
 {backend:"argon2id",params:S},"password hashing backend selected")}catch{J=null,h.info({backend:"argon2id-wasm",params:S},"native Argon2 unavailable, using the WebAssembly build")}return J}o(Ot,"getAr\
 gon2");var ce=class extends Error{static{o(this,"PasswordPolicyError")}};function He(e){let t=[...e].length;if(t<Nt)throw new ce(`Password must be at least ${Nt} characters.`);if(t>vt)throw new ce(`Pa\
-ssword must be at most ${vt} characters.`)}o(He,"assertPasswordPolicy");async function Ms(e){let t=new Uint8Array(S.saltLength);return crypto.getRandomValues(t),Ps({password:e,salt:t,parallelism:S.parallelism,
-iterations:S.timeCost,memorySize:S.memoryCost,hashLength:S.outputLen,outputType:"encoded"})}o(Ms,"hashArgon2Portable");async function qs(e,t){return $s({password:t,hash:e})}o(qs,"verifyArgon2Portable");
+ssword must be at most ${vt} characters.`)}o(He,"assertPasswordPolicy");async function Ms(e){let t=new Uint8Array(S.saltLength);return crypto.getRandomValues(t),$s({password:e,salt:t,parallelism:S.parallelism,
+iterations:S.timeCost,memorySize:S.memoryCost,hashLength:S.outputLen,outputType:"encoded"})}o(Ms,"hashArgon2Portable");async function qs(e,t){return Ps({password:t,hash:e})}o(qs,"verifyArgon2Portable");
 async function Ct(e){He(e);let t=await Ot();if(t)return t.hash(e,{memoryCost:S.memoryCost,timeCost:S.timeCost,parallelism:S.parallelism,outputLen:S.outputLen,saltLength:S.saltLength});try{return await Ms(
 e)}catch(r){return h.warn({err:r},"portable Argon2 unavailable, using the bcrypt fallback of NFR-SEC-03"),St.hash(e,Us)}}o(Ct,"hashPassword");async function de(e,t){try{if(t.startsWith("$argon2")){let r=await Ot();
 return r?await r.verify(t,e):await qs(t,e)}return t.startsWith("$2")?await St.compare(e,t):(h.error("stored password hash is in an unrecognised format"),!1)}catch{return!1}}o(de,"verifyPassword");function Lt(e){return e.trim().toLowerCase()}o(Lt,"normaliseEmail");function Hs(e){let t=e.ip??"0.0.0.0";return t.includes(":")?t.split(":").slice(0,3).join(":")+"::":t.split(".").slice(0,3).join(".")+
 ".0"}o(Hs,"ipPrefix");function Vs(e){let t=e.header("x-plantpal-device");return t&&t.replace(/[\x00-\x1f]/g,"").replace(/\s+/g," ").trim().slice(0,120)||null}o(Vs,"deviceLabel");function Ve(e){let t=e.
-header("x-plantpal-client");return t==="IOS"||t==="ANDROID"||t==="WEB"?t:"WEB"}o(Ve,"platform");function We(){return O().JWT_ACCESS_SECRET}o(We,"accessSecret");var Ws=250;async function $t(e,t=Ws){let r=t-
-(Date.now()-e);r>0&&await new Promise(n=>setTimeout(n,r))}o($t,"enforceTimingFloor");function Pt(){return{httpOnly:!0,secure:!0,sameSite:"none",path:O().REFRESH_COOKIE_PATH,maxAge:720*60*60*1e3}}o(Pt,
+header("x-plantpal-client");return t==="IOS"||t==="ANDROID"||t==="WEB"?t:"WEB"}o(Ve,"platform");function We(){return O().JWT_ACCESS_SECRET}o(We,"accessSecret");var Ws=250;async function Pt(e,t=Ws){let r=t-
+(Date.now()-e);r>0&&await new Promise(n=>setTimeout(n,r))}o(Pt,"enforceTimingFloor");function $t(){return{httpOnly:!0,secure:!0,sameSite:"none",path:O().REFRESH_COOKIE_PATH,maxAge:720*60*60*1e3}}o($t,
 "refreshCookieOptions");function Ut(e){if(!!!e.cookies?.refresh_token)return;let r=e.get("origin");if(!r){let n=e.get("referer");if(n)try{r=new URL(n).origin}catch{r=void 0}}if(!r||!O().CORS_ORIGINS.includes(
 r))throw new m("FORBIDDEN","Cross-origin session request refused.")}o(Ut,"assertTrustedOriginForCookieAuth");async function Mt(e,t,r){let n=Date.now();try{let{email:s,password:a,confirmed_age:i}=e.body,
 u=[],l=s?Lt(s):"";if((!s||s.length<5||s.length>254||!s.includes("@"))&&u.push({field:"email",issue:"invalid"}),!a)u.push({field:"password",issue:"required"});else try{He(a)}catch{u.push({field:"passwo\
 rd",issue:"policy_violation"})}if(i!==!0&&u.push({field:"confirmed_age",issue:"must_be_confirmed"}),u.length)throw new m("VALIDATION_FAILED","The request failed validation.",{details:u});let c=await Ct(
 a),_=O().REQUIRE_EMAIL_VERIFICATION;try{await ht({email:s,passwordHash:c,confirmedAge:i,status:_?"PENDING_VERIFICATION":"ACTIVE"})}catch(p){if(!(p&&typeof p=="object"&&"__appError"in p))throw p}h.info(
-{email_digest:Fs("sha256").update(l).digest("hex").slice(0,16)},"registration attempt"),await $t(n),t.status(202).json({status:"registered",verification_required:_,message:_?"Check your email for a co\
+{email_digest:Fs("sha256").update(l).digest("hex").slice(0,16)},"registration attempt"),await Pt(n),t.status(202).json({status:"registered",verification_required:_,message:_?"Check your email for a co\
 nfirmation link.":"Your account is ready. Sign in to continue."})}catch(s){r(s)}}o(Mt,"register");async function qt(e,t,r){let n=Date.now();try{let{email:s,password:a}=e.body;if(!s||!a)throw new m("VA\
 LIDATION_FAILED","Email and password are required.",{details:[...s?[]:[{field:"email",issue:"required"}],...a?[]:[{field:"password",issue:"required"}]]});let i=Lt(s),u=Hs(e),l=await Tt(i);if(l.failures>=
 5){let N=(l.lastFailureAt?.getTime()??Date.now())+l.lockSeconds*1e3;if(N>Date.now()){let X=Math.ceil((N-Date.now())/1e3);throw await M(i,u,"LOCKED_OUT"),t.setHeader("Retry-After",String(X)),new m("ACC\
-_ACCOUNT_LOCKED",`Too many attempts. Try again in ${X} seconds.`,{context:{retry_after_seconds:X}})}}let c=await Et(i),_=c?.password_hash??Dt,p=await de(a,_);if(await $t(n),!c||!c.password_hash)throw await M(
+_ACCOUNT_LOCKED",`Too many attempts. Try again in ${X} seconds.`,{context:{retry_after_seconds:X}})}}let c=await Et(i),_=c?.password_hash??Dt,p=await de(a,_);if(await Pt(n),!c||!c.password_hash)throw await M(
 i,u,"NO_ACCOUNT"),i&&await Fe(i),new m("INVALID_CREDENTIALS","That email or password is not right.");if(!p)throw await M(i,u,"BAD_PASSWORD"),await Fe(i),new m("INVALID_CREDENTIALS","That email or pass\
 word is not right.");let y=new Date;if(c.locked_until&&c.locked_until>y)throw await M(i,u,"LOCKED_OUT"),new m("ACCOUNT_LOCKED","Account is locked.");if(c.purge_after&&c.purge_after<=y)throw await M(i,
 u,"NO_ACCOUNT"),new m("INVALID_CREDENTIALS","That email or password is not right.");if(c.status==="PENDING_VERIFICATION"&&O().REQUIRE_EMAIL_VERIFICATION&&c.created_at.getTime()+6048e5<y.getTime())throw await M(
 i,u,"UNVERIFIED"),new m("EMAIL_NOT_VERIFIED","Confirm your email address to sign in.",{context:{resend_available:!0}});let k=crypto.randomUUID(),I=await qe({userId:c.id,platform:Ve(e),installationId:k,
-deviceLabel:Vs(e),ipAddressHash:u,userAgent:(e.get("user-agent")??"").slice(0,200)});await At(c.id),await M(i,u,"SUCCESS");let $={access_token:Ue(c.id,I.sessionId,We(),c.token_version),token_type:"Bea\
-rer",expires_in:900,user:{id:c.id,email:c.email,status:c.status}};Ve(e)==="WEB"?t.cookie("refresh_token",I.refreshToken,Pt()):$.refresh_token=I.refreshToken,c.status==="PENDING_DELETION"&&($.account_pending_deletion=
-!0,$.deletion_scheduled_at=c.purge_after?.toISOString()),t.status(200).json($)}catch(s){r(s)}}o(qt,"login");async function Ft(e,t,r){try{Ut(e);let n=e.cookies?.refresh_token??e.body?.refresh_token;if(!n)
-throw new m("AUTHENTICATION_REQUIRED","No refresh token provided.");let s=W(n),a=await bt(s)??await kt(s);if(!a)throw new m("TOKEN_EXPIRED","Session expired. Please sign in again.");let i=await xt(a.id,
-a.tokenFamilyId,a.sessionId,a.userId),u=Ue(a.userId,a.sessionId,We(),a.tokenVersion),l=Ve(e)==="WEB",c={access_token:u,token_type:"Bearer",expires_in:900};l?t.cookie("refresh_token",i.refreshToken,Pt()):
-c.refresh_token=i.refreshToken,t.status(200).json(c)}catch(n){r(n)}}o(Ft,"refresh");async function Ht(e,t,r){try{Ut(e);let n=e.cookies?.refresh_token??e.body?.refresh_token;if(n){let s=W(n),a=(await Promise.resolve().then(()=>(b(),wt))).
+deviceLabel:Vs(e),ipAddressHash:u,userAgent:(e.get("user-agent")??"").slice(0,200)});await At(c.id),await M(i,u,"SUCCESS");let P={access_token:Ue(c.id,I.sessionId,We(),c.token_version),token_type:"Bea\
+rer",expires_in:900,user:{id:c.id,email:c.email,status:c.status}};Ve(e)==="WEB"?t.cookie("refresh_token",I.refreshToken,$t()):P.refresh_token=I.refreshToken,c.status==="PENDING_DELETION"&&(P.account_pending_deletion=
+!0,P.deletion_scheduled_at=c.purge_after?.toISOString()),t.status(200).json(P)}catch(s){r(s)}}o(qt,"login");async function Ft(e,t,r){try{Ut(e);let n=e.cookies?.refresh_token??e.body?.refresh_token;if(!n)
+throw new m("AUTHENTICATION_REQUIRED","No refresh token provided.");let s=G(n),a=await bt(s)??await kt(s);if(!a)throw new m("TOKEN_EXPIRED","Session expired. Please sign in again.");let i=await xt(a.id,
+a.tokenFamilyId,a.sessionId,a.userId),u=Ue(a.userId,a.sessionId,We(),a.tokenVersion),l=Ve(e)==="WEB",c={access_token:u,token_type:"Bearer",expires_in:900};l?t.cookie("refresh_token",i.refreshToken,$t()):
+c.refresh_token=i.refreshToken,t.status(200).json(c)}catch(n){r(n)}}o(Ft,"refresh");async function Ht(e,t,r){try{Ut(e);let n=e.cookies?.refresh_token??e.body?.refresh_token;if(n){let s=G(n),a=(await Promise.resolve().then(()=>(b(),wt))).
 getPool();await a.query(`update auth_tokens
          set consumed_at = coalesce(consumed_at, now())
          where refresh_token_digest = $1 and consumed_at is null`,[s]),await a.query(`update auth_sessions s
@@ -171,33 +171,33 @@ header("authorization");if(!n?.startsWith("Bearer "))throw new m("AUTHENTICATION
 OKEN_EXPIRED":"TOKEN_INVALID",i.reason==="expired"?"Access token expired. Refresh to continue.":"Invalid access token.");e.userId=i.claims.sub,e.sessionId=i.claims.sid,r()}catch(n){r(n)}}o(E,"authenti\
 cate");function Ge(e){let t=new Map;return o(function(n,s,a){let i=Date.now();if(t.size>1e4)for(let[c,_]of t)_.resetAt<=i&&t.delete(c);let u=n.ip??"unknown",l=t.get(u);if(!l||l.resetAt<=i){t.set(u,{count:1,resetAt:i+
 e.windowMs}),a();return}if(l.count+=1,l.count>e.max){s.setHeader("Retry-After",String(Math.ceil((l.resetAt-i)/1e3))),a(new m("RATE_LIMITED","Too many requests. Slow down."));return}a()},"rateLimitMidd\
-leware")}o(Ge,"rateLimit");var K=Gs(),Wt=o((e,t,r)=>r(),"passThrough"),Gt=process.env.NODE_ENV==="test",jt=Gt?Wt:Ge({windowMs:6e4,max:30}),je=Gt?Wt:Ge({windowMs:6e4,max:300});K.post("/register",jt,Mt);K.post("/login",jt,qt);K.post(
-"/refresh",je,Ft);K.post("/logout",je,Ht);K.get("/me",je,E,Vt);var Bt=K;import{Router as po}from"npm:express@4.21.2";import{z as G}from"npm:zod@3.24.1";function f(e){let t=e.userId;if(typeof t!="string"||t.length===0)throw new m("AUTHENTICATION_REQUIRED","Authentication is required.");return t}o(f,"getUserId");function A(...e){return Object.freeze(Object.fromEntries(e.map(t=>[t,t])))}o(A,"asEnum");var Be=A("NORTHERN","SOUTHERN","EQUATORIAL"),w=A("SPRING","SUMMER","AUTUMN","WINTER","YEAR_ROUND"),Na=A("METRIC",
-"IMPERIAL"),Z=A("LOW","MEDIUM","BRIGHT_INDIRECT","DIRECT_SUN"),q=A("FABRIC","TERRACOTTA","CONCRETE","CERAMIC_GLAZED","METAL","PLASTIC","OTHER"),P=A("ORCHID_BARK","CACTUS_SUCCULENT","GARDEN_SOIL","STAN\
-DARD_POTTING","PEAT_BASED","COCO_COIR","SEMI_HYDRO_LECA","OTHER"),_e=A("INDOOR","OUTDOOR"),ee=A("NONE","HEATED_DRY_WINTER","AIR_CONDITIONED","HUMID_ROOM"),va=A("THRIVING","NEEDS_ATTENTION","CRITICAL",
-"DORMANT"),Sa=A("WALK","RUN","CYCLE","SWIM","STRENGTH","YOGA","HIIT","SPORT","OTHER"),Oa=A("LOW","MODERATE","VIGOROUS"),Ca=A("HEAVIEST_WEIGHT","BEST_ESTIMATED_1RM","BEST_REP_COUNT"),La=A("BREAKFAST","\
-LUNCH","DINNER","SNACK"),me=A("MALE","FEMALE","PREFER_NOT_TO_SAY"),z=A("SEDENTARY","LIGHTLY_ACTIVE","MODERATELY_ACTIVE","VERY_ACTIVE","EXTRA_ACTIVE"),$a=A("LOSE","MAINTAIN","GAIN"),Pa=A("GRAM","MILLIL\
-ITRE","PIECE","CUP","TABLESPOON","SLICE","CUSTOM"),Ua=A("SYNCED","PENDING","SYNCING","FAILED"),Ma=A("PENDING","SENT","DELIVERED","FAILED","SUPPRESSED","CANCELLED");function Ye(e){if(!Number.isFinite(e))throw new RangeError(`roundHalfUp expected a finite number, received ${e}`);return Math.sign(e)*Math.floor(Math.abs(e)+.5)}o(Ye,"roundHalfUp");function Q(e,t){if(!Number.
+leware")}o(Ge,"rateLimit");var z=Gs(),Wt=o((e,t,r)=>r(),"passThrough"),Gt=process.env.NODE_ENV==="test",jt=Gt?Wt:Ge({windowMs:6e4,max:30}),je=Gt?Wt:Ge({windowMs:6e4,max:300});z.post("/register",jt,Mt);z.post("/login",jt,qt);z.post(
+"/refresh",je,Ft);z.post("/logout",je,Ht);z.get("/me",je,E,Vt);var Bt=z;import{Router as po}from"npm:express@4.21.2";import{z as j}from"npm:zod@3.24.1";function f(e){let t=e.userId;if(typeof t!="string"||t.length===0)throw new m("AUTHENTICATION_REQUIRED","Authentication is required.");return t}o(f,"getUserId");function A(...e){return Object.freeze(Object.fromEntries(e.map(t=>[t,t])))}o(A,"asEnum");var Be=A("NORTHERN","SOUTHERN","EQUATORIAL"),w=A("SPRING","SUMMER","AUTUMN","WINTER","YEAR_ROUND"),va=A("METRIC",
+"IMPERIAL"),Z=A("LOW","MEDIUM","BRIGHT_INDIRECT","DIRECT_SUN"),q=A("FABRIC","TERRACOTTA","CONCRETE","CERAMIC_GLAZED","METAL","PLASTIC","OTHER"),$=A("ORCHID_BARK","CACTUS_SUCCULENT","GARDEN_SOIL","STAN\
+DARD_POTTING","PEAT_BASED","COCO_COIR","SEMI_HYDRO_LECA","OTHER"),_e=A("INDOOR","OUTDOOR"),ee=A("NONE","HEATED_DRY_WINTER","AIR_CONDITIONED","HUMID_ROOM"),Sa=A("THRIVING","NEEDS_ATTENTION","CRITICAL",
+"DORMANT"),Oa=A("WALK","RUN","CYCLE","SWIM","STRENGTH","YOGA","HIIT","SPORT","OTHER"),Ca=A("LOW","MODERATE","VIGOROUS"),La=A("HEAVIEST_WEIGHT","BEST_ESTIMATED_1RM","BEST_REP_COUNT"),Pa=A("BREAKFAST","\
+LUNCH","DINNER","SNACK"),me=A("MALE","FEMALE","PREFER_NOT_TO_SAY"),Q=A("SEDENTARY","LIGHTLY_ACTIVE","MODERATELY_ACTIVE","VERY_ACTIVE","EXTRA_ACTIVE"),$a=A("LOSE","MAINTAIN","GAIN"),Ua=A("GRAM","MILLIL\
+ITRE","PIECE","CUP","TABLESPOON","SLICE","CUSTOM"),Ma=A("SYNCED","PENDING","SYNCING","FAILED"),qa=A("PENDING","SENT","DELIVERED","FAILED","SUPPRESSED","CANCELLED");function Ye(e){if(!Number.isFinite(e))throw new RangeError(`roundHalfUp expected a finite number, received ${e}`);return Math.sign(e)*Math.floor(Math.abs(e)+.5)}o(Ye,"roundHalfUp");function F(e,t){if(!Number.
 isFinite(e))throw new RangeError(`roundTo expected a finite number, received ${e}`);if(!Number.isInteger(t)||t<0||t>10)throw new RangeError(`roundTo expected 0..10 decimals, received ${t}`);let r=10**
-t;return Math.sign(e)*Math.floor(Math.abs(e)*r+.5)/r}o(Q,"roundTo");function Yt(e,t,r){if(t>r)throw new RangeError(`clamp received an inverted range: min ${t} exceeds max ${r}`);return Math.min(Math.max(
+t;return Math.sign(e)*Math.floor(Math.abs(e)*r+.5)/r}o(F,"roundTo");function Yt(e,t,r){if(t>r)throw new RangeError(`clamp received an inverted range: min ${t} exceeds max ${r}`);return Math.min(Math.max(
 e,t),r)}o(Yt,"clamp");var js=[w.WINTER,w.WINTER,w.SPRING,w.SPRING,w.SPRING,w.SUMMER,w.SUMMER,w.SUMMER,w.AUTUMN,w.AUTUMN,w.AUTUMN,w.WINTER],Bs=Object.freeze({[w.WINTER]:w.SUMMER,[w.SUMMER]:w.WINTER,[w.SPRING]:w.AUTUMN,[w.AUTUMN]:w.
 SPRING,[w.YEAR_ROUND]:w.YEAR_ROUND});function Ys(e,t){if(t===Be.EQUATORIAL)return w.YEAR_ROUND;let r=js[e-1];if(r===void 0)throw new RangeError(`seasonForMonth expected a month in 1..12, received ${e}`);
 return t===Be.NORTHERN?r:Bs[r]}o(Ys,"seasonForMonth");function Kt(e,t){let r=/^(\d{4})-(\d{2})-(\d{2})$/.exec(e);if(!r?.[2])throw new RangeError(`seasonForLocalDate expected a YYYY-MM-DD date, receive\
 d "${e}"`);let n=Number(r[2]);if(n<1||n>12)throw new RangeError(`seasonForLocalDate received an out-of-range month in "${e}"`);return Ys(n,t)}o(Kt,"seasonForLocalDate");var Ks=Object.freeze({[w.SPRING]:.95,[w.SUMMER]:.8,[w.AUTUMN]:1.15,[w.WINTER]:1.4,[w.YEAR_ROUND]:1}),zs=Object.freeze({[Z.LOW]:1.25,[Z.MEDIUM]:1.1,[Z.BRIGHT_INDIRECT]:1,[Z.DIRECT_SUN]:.85}),Qs=Object.
-freeze({[q.FABRIC]:.75,[q.TERRACOTTA]:.8,[q.CONCRETE]:.9,[q.CERAMIC_GLAZED]:1,[q.OTHER]:1,[q.METAL]:1.05,[q.PLASTIC]:1.1}),Xs=Object.freeze({[P.ORCHID_BARK]:.75,[P.CACTUS_SUCCULENT]:.85,[P.GARDEN_SOIL]:.95,
-[P.STANDARD_POTTING]:1,[P.OTHER]:1,[P.PEAT_BASED]:1.1,[P.COCO_COIR]:1.1,[P.SEMI_HYDRO_LECA]:1.3}),Js=Object.freeze({[_e.INDOOR]:1,[_e.OUTDOOR]:.85}),Zs=Object.freeze({[ee.HEATED_DRY_WINTER]:.85,[ee.AIR_CONDITIONED]:.9,
+freeze({[q.FABRIC]:.75,[q.TERRACOTTA]:.8,[q.CONCRETE]:.9,[q.CERAMIC_GLAZED]:1,[q.OTHER]:1,[q.METAL]:1.05,[q.PLASTIC]:1.1}),Xs=Object.freeze({[$.ORCHID_BARK]:.75,[$.CACTUS_SUCCULENT]:.85,[$.GARDEN_SOIL]:.95,
+[$.STANDARD_POTTING]:1,[$.OTHER]:1,[$.PEAT_BASED]:1.1,[$.COCO_COIR]:1.1,[$.SEMI_HYDRO_LECA]:1.3}),Js=Object.freeze({[_e.INDOOR]:1,[_e.OUTDOOR]:.85}),Zs=Object.freeze({[ee.HEATED_DRY_WINTER]:.85,[ee.AIR_CONDITIONED]:.9,
 [ee.NONE]:1,[ee.HUMID_ROOM]:1.2});function eo(e){if(e==null)return 1;if(!Number.isFinite(e)||e<=0)throw new RangeError(`potDiameterFactor expected a positive diameter, received ${e}`);return e<10?.8:e<
 15?.9:e<20?1:e<30?1.15:e<40?1.3:1.45}o(eo,"potDiameterFactor");function to(e){return e===!1?1.15:1}o(to,"drainageFactor");function zt(e){let{baseIntervalDays:t,minIntervalDays:r,maxIntervalDays:n,season:s,
 lightExposure:a,placement:i}=e;if(!Number.isFinite(t)||t<=0)throw new RangeError(`baseIntervalDays must be positive, received ${t}`);if(r>n)throw new RangeError(`species bounds are inverted: min ${r} \
 exceeds max ${n}`);let u=Ks[s],l=zs[a],c=e.potMaterial?Qs[e.potMaterial]:1,_=eo(e.potDiameterCm),p=to(e.hasDrainage),y=c*_*p,k=Js[i],I=e.soilType?Xs[e.soilType]:1,x=i===_e.OUTDOOR?1:e.indoorClimate?Zs[e.
-indoorClimate]:1,$=k*I*x,U=t*u*l*y*$,N=Ye(U),X=Yt(N,r,n),Es=Math.max(X,1),$e=null;return N<r?$e="MIN":N>n&&($e="MAX"),{baseIntervalDays:t,season:s,fSeason:u,lightExposure:a,fLight:l,fPot:y,fMaterial:c,
-fDiameter:_,fDrainage:p,fEnv:$,fPlacement:k,fSoil:I,fClimate:x,rawInterval:U,effectiveIntervalDays:Es,clamped:$e}}o(zt,"computeWateringInterval");var Ja=Object.freeze({protein:4,carbohydrate:4,fat:9});var Za=Object.freeze({[me.MALE]:5,[me.FEMALE]:-161,[me.PREFER_NOT_TO_SAY]:-78}),eu=Object.freeze({[z.SEDENTARY]:1.2,[z.LIGHTLY_ACTIVE]:1.375,[z.MODERATELY_ACTIVE]:1.55,[z.VERY_ACTIVE]:1.725,[z.EXTRA_ACTIVE]:1.9}),
-tu=Object.freeze({bodyMassKg:{min:30,max:400},heightCm:{min:100,max:250},ageYears:{min:16,max:120}});function pe(e,t,r){if(!Number.isFinite(e)||e<1||e>23)throw new RangeError(`metValue must be between 1.0 and 23.0, received ${e}`);if(!Number.isFinite(t)||t<=0)throw new RangeError(`bodyMassKg must be \
-positive, received ${t}`);if(!Number.isFinite(r)||r<=0)throw new RangeError(`durationMinutes must be positive, received ${r}`);return Q(e*t*r/60,1)}o(pe,"workoutEnergyKcal");var Qt=Object.freeze({min:1,
+indoorClimate]:1,P=k*I*x,U=t*u*l*y*P,N=Ye(U),X=Yt(N,r,n),Es=Math.max(X,1),Pe=null;return N<r?Pe="MIN":N>n&&(Pe="MAX"),{baseIntervalDays:t,season:s,fSeason:u,lightExposure:a,fLight:l,fPot:y,fMaterial:c,
+fDiameter:_,fDrainage:p,fEnv:P,fPlacement:k,fSoil:I,fClimate:x,rawInterval:U,effectiveIntervalDays:Es,clamped:Pe}}o(zt,"computeWateringInterval");var Za=Object.freeze({protein:4,carbohydrate:4,fat:9});var eu=Object.freeze({[me.MALE]:5,[me.FEMALE]:-161,[me.PREFER_NOT_TO_SAY]:-78}),tu=Object.freeze({[Q.SEDENTARY]:1.2,[Q.LIGHTLY_ACTIVE]:1.375,[Q.MODERATELY_ACTIVE]:1.55,[Q.VERY_ACTIVE]:1.725,[Q.EXTRA_ACTIVE]:1.9}),
+nu=Object.freeze({bodyMassKg:{min:30,max:400},heightCm:{min:100,max:250},ageYears:{min:16,max:120}});function pe(e,t,r){if(!Number.isFinite(e)||e<1||e>23)throw new RangeError(`metValue must be between 1.0 and 23.0, received ${e}`);if(!Number.isFinite(t)||t<=0)throw new RangeError(`bodyMassKg must be \
+positive, received ${t}`);if(!Number.isFinite(r)||r<=0)throw new RangeError(`durationMinutes must be positive, received ${r}`);return F(e*t*r/60,1)}o(pe,"workoutEnergyKcal");var Qt=Object.freeze({min:1,
 max:12});function ge(e,t){if(!Number.isFinite(e)||e<0)throw new RangeError(`weightKg must be non-negative, received ${e}`);if(!Number.isInteger(t)||t<1)throw new RangeError(`reps must be a positive in\
-teger, received ${t}`);if(e===0)return 0;let r=t===1?e:e*(1+t/30);return Q(r,1)}o(ge,"estimatedOneRepMax");function fe(e,t){return e>0&&Number.isInteger(t)&&t>=Qt.min&&t<=Qt.max}o(fe,"isEligibleForOne\
+teger, received ${t}`);if(e===0)return 0;let r=t===1?e:e*(1+t/30);return F(r,1)}o(ge,"estimatedOneRepMax");function fe(e,t){return e>0&&Number.isInteger(t)&&t>=Qt.min&&t<=Qt.max}o(fe,"isEligibleForOne\
 RepMaxRecord");function ye(e,t){if(!Number.isInteger(e)||e<0)throw new RangeError(`reps must be a non-negative integer, received ${e}`);if(!Number.isFinite(t)||t<0)throw new RangeError(`weightKg must \
-be non-negative, received ${t}`);return Q(e*t,1)}o(ye,"setVolumeKg");function we(e){let t=e.reduce((r,n)=>r+n.reps*n.weightKg,0);return Q(t,1)}o(we,"totalVolumeKg");var Ke=/^\d{4}-\d{2}-\d{2}$/;function no(e,t){if(!Ke.test(e)||!Ke.test(t))throw new RangeError("local dates must be YYYY-MM-DD");return Math.round((Date.parse(t)-Date.parse(e))/864e5)}o(no,"localDateD\
+be non-negative, received ${t}`);return F(e*t,1)}o(ye,"setVolumeKg");function we(e){let t=e.reduce((r,n)=>r+n.reps*n.weightKg,0);return F(t,1)}o(we,"totalVolumeKg");var Ke=/^\d{4}-\d{2}-\d{2}$/;function no(e,t){if(!Ke.test(e)||!Ke.test(t))throw new RangeError("local dates must be YYYY-MM-DD");return Math.round((Date.parse(t)-Date.parse(e))/864e5)}o(no,"localDateD\
 iffDays");function Xt(e,t){if(!Ke.test(t))throw new RangeError("todayLocalDate must be YYYY-MM-DD");if(e.lastCountedDate===null)return{...e,currentLength:1,longestLength:Math.max(e.longestLength,1),lastCountedDate:t};
 let r=no(e.lastCountedDate,t);if(r<=0)return e;if(r===1){let s=e.currentLength+1;return{...e,currentLength:s,longestLength:Math.max(e.longestLength,s),lastCountedDate:t}}let n=r-1;if(n<=e.freezeTokens){
 let s=e.currentLength+1;return{currentLength:s,longestLength:Math.max(e.longestLength,s),lastCountedDate:t,freezeTokens:e.freezeTokens-n}}return{...e,currentLength:1,longestLength:Math.max(e.longestLength,
@@ -275,8 +275,8 @@ t,r);let{rows:u}=await n.query(`select streak_type, last_counted_date from strea
          from user_settings where user_id = $1`,[e]),c=[["PLANT_CARE",l?.plant_care_enabled??!0],["FITNESS",l?.fitness_enabled??!0],["NUTRITION",l?.nutrition_enabled??!0]].filter(([,y])=>y).map(([y])=>y),
 _=new Set(u.filter(y=>y.last_counted_date===r).map(y=>y.streak_type));c.length>0&&c.every(y=>_.has(y))&&await Jt(n,e,"OVERALL",r)}let i=await en(n,e);return{met:a,unlocked:i}})}o(io,"recordDailyLog");
 async function he(e){try{let t=await R(r=>en(r,e));t.length>0&&h.info({userId:e,unlocked:t},"achievements unlocked")}catch(t){h.warn({err:t,userId:e},"achievement evaluation failed (log write unaffect\
-ed)")}}o(he,"evaluateAchievementsSafe");async function F(e,t,r){try{let{met:n,unlocked:s}=await io(e,t,r);s.length>0&&h.info({userId:e,scope:t,met:n,unlocked:s},"achievements unlocked")}catch(n){h.warn(
-{err:n,userId:e,scope:t},"engagement update failed (log write unaffected)")}}o(F,"recordDailyLogSafe");b();async function nn(e){let t=d(),{rows:r}=await t.query(`select p.id as plant_id, p.user_id, p.nickname, p.next_water_due_at
+ed)")}}o(he,"evaluateAchievementsSafe");async function H(e,t,r){try{let{met:n,unlocked:s}=await io(e,t,r);s.length>0&&h.info({userId:e,scope:t,met:n,unlocked:s},"achievements unlocked")}catch(n){h.warn(
+{err:n,userId:e,scope:t},"engagement update failed (log write unaffected)")}}o(H,"recordDailyLogSafe");b();async function nn(e){let t=d(),{rows:r}=await t.query(`select p.id as plant_id, p.user_id, p.nickname, p.next_water_due_at
      from plants p
      where p.deleted_at is null
        and p.next_water_due_at is not null
@@ -395,9 +395,9 @@ let n=d(),{rows:s}=await n.query(`SELECT ${hn}
        FROM species WHERE lower(common_name) ILIKE $1 AND NOT is_custom ORDER BY common_name LIMIT 200`,[`%${e.toLowerCase()}%`]);return n}let{rows:r}=await t.query(`SELECT id, common_name, scientific\
 _name, base_interval_days, min_interval_days,
             max_interval_days, default_light, default_soil, care_notes, image_url
-     FROM species WHERE NOT is_custom ORDER BY common_name LIMIT 200`);return r}o(Tn,"listSpecies");var bn=["WATER","FERTILIZE","PRUNE","REPOT","MIST","ROTATE","TREAT"],lo=G.string().trim().max(2048).url().refine(e=>/^https?:\/\//i.test(e),"photo_url must be an http(s) URL"),co=G.object({photo_url:lo,
-photo_storage_key:G.string().trim().min(1).max(512).optional(),height_cm:G.number().min(0).max(5e3).optional(),note:G.string().trim().max(1e3).optional(),local_date_str:G.string().regex(/^\d{4}-\d{2}-\d{2}$/)}).
-strict(),_o=20;function mo(e){return e.issues.slice(0,_o).map(t=>({field:t.path.join(".")||"(root)",issue:t.message}))}o(mo,"detailsFor");function Te(e,t){let r=G.string().uuid().safeParse(e);if(!r.success)
+     FROM species WHERE NOT is_custom ORDER BY common_name LIMIT 200`);return r}o(Tn,"listSpecies");var bn=["WATER","FERTILIZE","PRUNE","REPOT","MIST","ROTATE","TREAT"],lo=j.string().trim().max(2048).url().refine(e=>/^https?:\/\//i.test(e),"photo_url must be an http(s) URL"),co=j.object({photo_url:lo,
+photo_storage_key:j.string().trim().min(1).max(512).optional(),height_cm:j.number().min(0).max(5e3).optional(),note:j.string().trim().max(1e3).optional(),local_date_str:j.string().regex(/^\d{4}-\d{2}-\d{2}$/)}).
+strict(),_o=20;function mo(e){return e.issues.slice(0,_o).map(t=>({field:t.path.join(".")||"(root)",issue:t.message}))}o(mo,"detailsFor");function Te(e,t){let r=j.string().uuid().safeParse(e);if(!r.success)
 throw T(`${t} must be a UUID.`,[{field:t,issue:"invalid"}]);return r.data}o(Te,"requireUuidParam");async function kn(e,t,r){try{let n=f(e),s=await pn(n);t.json(s)}catch(n){r(n)}}o(kn,"list");async function In(e,t,r){try{let n=f(e),s=await Re(e.params.id,n);if(!s)throw v();t.json(s)}catch(n){r(n)}}o(
 In,"get");async function xn(e,t,r){try{let n=f(e),s=e.body,a=typeof s.nickname=="string"?s.nickname.trim():"";if(!a||a.length>80)throw T("nickname must be 1\u201380 characters.",[{field:"nickname",issue:"\
 invalid"}]);let i=Number(s.base_interval_days);if(!Number.isInteger(i)||i<1||i>365)throw T("base_interval_days must be 1\u2013365.",[{field:"base_interval_days",issue:"invalid"}]);let u=Number(s.min_interval_days),
@@ -405,15 +405,15 @@ l=Number(s.max_interval_days);if(u>l)throw T("min_interval_days must not exceed 
 n)}}o(xn,"create");async function Dn(e,t,r){try{let n=f(e),s=await fn(e.params.id,n,e.body);if(!s)throw v();t.json(s)}catch(n){r(n)}}o(Dn,"update");async function Nn(e,t,r){try{let n=f(e);if(!await yn(
 e.params.id,n))throw v();await ze(n,e.params.id).catch(()=>{}),t.json({status:"deleted"})}catch(n){r(n)}}o(Nn,"remove");async function vn(e,t,r){try{let n=f(e),s=e.body,a=s.action_type;if(!a||!bn.includes(
 a))throw T("action_type must be one of: "+bn.join(", "),[{field:"action_type",issue:"invalid"}]);let i=s.local_date_str;if(!i)throw T("local_date_str is required.",[{field:"local_date_str",issue:"requ\
-ired"}]);try{await Ae(n,e.params.id,a,s.note,i,s.client_idempotency_key)}catch(u){throw u&&typeof u=="object"&&"__notFound"in u?v():u}a==="WATER"&&await ze(n,e.params.id).catch(()=>{}),await F(n,"PLAN\
+ired"}]);try{await Ae(n,e.params.id,a,s.note,i,s.client_idempotency_key)}catch(u){throw u&&typeof u=="object"&&"__notFound"in u?v():u}a==="WATER"&&await ze(n,e.params.id).catch(()=>{}),await H(n,"PLAN\
 T_CARE",i),t.status(201).json({status:"logged"})}catch(n){r(n)}}o(vn,"logCare");async function Sn(e,t,r){try{let n=f(e),s=await wn(e.params.id,n);t.json(s)}catch(n){r(n)}}o(Sn,"getCareHistory");async function On(e,t,r){
 try{let n=f(e),s=Te(e.params.id,"id"),a=co.safeParse(e.body);if(!a.success)throw T("The request failed validation.",mo(a.error));let i=a.data,u=await En(n,s,{photo_url:i.photo_url,photo_storage_key:i.
 photo_storage_key??i.photo_url,...i.height_cm!==void 0?{height_cm:i.height_cm}:{},...i.note!==void 0?{note:i.note}:{},local_date_str:i.local_date_str});if(u.status==="NOT_FOUND")throw v();if(u.status===
 "LIMIT_EXCEEDED")throw new m("CONFLICT",`This plant already has the maximum of ${u.ceiling} growth entries. Delete an older entry to add a new one.`,{details:[{field:"growth",issue:"limit_exceeded",current:u.
 current,ceiling:u.ceiling}]});t.status(201).json(u.entry)}catch(n){r(n)}}o(On,"logGrowth");async function Cn(e,t,r){try{let n=f(e),s=Te(e.params.id,"id");if(!await Re(s,n))throw v();t.json(await Rn(s,
 n))}catch(n){r(n)}}o(Cn,"getGrowthHistory");async function Ln(e,t,r){try{let n=f(e),s=Te(e.params.id,"id"),a=Te(e.params.entryId,"entryId");if(!await An(a,s,n))throw v();t.json({status:"deleted"})}catch(n){
-r(n)}}o(Ln,"removeGrowthEntry");async function $n(e,t,r){try{let n=await Tn(e.query.q);t.json(n)}catch(n){r(n)}}o($n,"searchSpecies");var D=po();D.use(E);D.get("/species",$n);D.get("/",kn);D.post("/",xn);D.get("/:id",In);D.put("/:id",Dn);D.delete("/:id",Nn);D.post("/:id/care",vn);D.get("/:id/care",Sn);D.post("/:id/growth",On);D.get(
-"/:id/growth",Cn);D.delete("/:id/growth/:entryId",Ln);var Pn=D;import{Router as Eo}from"npm:express@4.21.2";b();async function Un(e){if(e.length===0)return new Map;let t=d(),{rows:r}=await t.query(`select workout_id, id, set_index, reps,
+r(n)}}o(Ln,"removeGrowthEntry");async function Pn(e,t,r){try{let n=await Tn(e.query.q);t.json(n)}catch(n){r(n)}}o(Pn,"searchSpecies");var D=po();D.use(E);D.get("/species",Pn);D.get("/",kn);D.post("/",xn);D.get("/:id",In);D.put("/:id",Dn);D.delete("/:id",Nn);D.post("/:id/care",vn);D.get("/:id/care",Sn);D.post("/:id/growth",On);D.get(
+"/:id/growth",Cn);D.delete("/:id/growth/:entryId",Ln);var $n=D;import{Router as Eo}from"npm:express@4.21.2";b();async function Un(e){if(e.length===0)return new Map;let t=d(),{rows:r}=await t.query(`select workout_id, id, set_index, reps,
             weight_kg::float8        as weight_kg,
             volume_kg::float8        as volume_kg,
             estimated_1rm_kg::float8 as estimated_1rm_kg
@@ -481,25 +481,25 @@ query(`select id, name, activity_type, met_value, is_strength, muscle_group, is_
      where pr.user_id = $1
      order by e.name, pr.record_type`,[e]);return r}o(Vn,"getPersonalRecords");b();var go=70,fo={WALK:[2.8,3.5,5],RUN:[6,9.8,12.3],CYCLE:[4,8,12],SWIM:[4.8,7,10],STRENGTH:[3.5,5,6],YOGA:[2.5,3,4],HIIT:[6,8,10],SPORT:[4,6.5,9],OTHER:[3,4.5,6]},yo={LOW:0,MODERATE:1,VIGOROUS:2};function ke(e,t){
 let r=fo[e];if(r)return r[yo[t??"MODERATE"]??1]}o(ke,"activityMet");async function Ie(e){let{rows:t}=await d().query("select current_body_mass_kg::float8 as kg from profiles where user_id = $1",[e]),r=t[0]?.
-kg;return typeof r=="number"&&Number.isFinite(r)&&r>0?r:go}o(Ie,"resolveBodyMassKg");var j=f;async function Wn(e,t,r){try{let n=Number(e.query.limit??20),s=Number(e.query.offset??0),a=Number.isFinite(n)?Math.min(Math.max(1,Math.trunc(n)),100):20,i=Number.isFinite(s)?Math.max(0,Math.trunc(
-s)):0,u=await Mn(j(e),a,i);t.json({workouts:u})}catch(n){r(n)}}o(Wn,"listWorkoutsHandler");async function Gn(e,t,r){try{let n=await qn(e.params.id,j(e));if(!n)throw v();t.json(n)}catch(n){r(n)}}o(Gn,"\
+kg;return typeof r=="number"&&Number.isFinite(r)&&r>0?r:go}o(Ie,"resolveBodyMassKg");var B=f;async function Wn(e,t,r){try{let n=Number(e.query.limit??20),s=Number(e.query.offset??0),a=Number.isFinite(n)?Math.min(Math.max(1,Math.trunc(n)),100):20,i=Number.isFinite(s)?Math.max(0,Math.trunc(
+s)):0,u=await Mn(B(e),a,i);t.json({workouts:u})}catch(n){r(n)}}o(Wn,"listWorkoutsHandler");async function Gn(e,t,r){try{let n=await qn(e.params.id,B(e));if(!n)throw v();t.json(n)}catch(n){r(n)}}o(Gn,"\
 getWorkoutHandler");var wo=new Set(["WALK","RUN","CYCLE","SWIM","STRENGTH","YOGA","HIIT","SPORT","OTHER"]),ho=new Set(["LOW","MODERATE","VIGOROUS"]);async function jn(e,t,r){try{let n=e.body;if(!n.activity_type||
 !wo.has(n.activity_type))throw T("activity_type is required and must be a valid type.",[{field:"activity_type",issue:"required_or_invalid"}]);let s=n.duration_mins;if(s!=null&&(typeof s!="number"||!Number.
 isInteger(s)||s<1||s>1440))throw T("duration_mins must be an integer between 1 and 1440.",[{field:"duration_mins",issue:"out_of_range"}]);if(!n.local_date_str||!/^\d{4}-\d{2}-\d{2}$/.test(n.local_date_str))
 throw T("local_date_str is required in YYYY-MM-DD format.",[{field:"local_date_str",issue:"required_or_invalid"}]);if(n.perceived_intensity!==void 0&&n.perceived_intensity!==null&&!ho.has(n.perceived_intensity))
 throw T("perceived_intensity must be LOW, MODERATE or VIGOROUS.",[{field:"perceived_intensity",issue:"invalid"}]);if(n.steps!==void 0&&n.steps!==null&&(typeof n.steps!="number"||!Number.isInteger(n.steps)||
 n.steps<0||n.steps>2e5))throw T("steps must be a whole number between 0 and 200000.",[{field:"steps",issue:"out_of_range"}]);if(n.note!==void 0&&n.note!==null&&(typeof n.note!="string"||n.note.length>
-500))throw T("note must be text of at most 500 characters.",[{field:"note",issue:"too_long"}]);let i=(Array.isArray(n.sets)?n.sets:[]).map((x,$)=>{let U=Number(x.reps??0),N=Number(x.weight_kg??0);return{
-set_index:Number(x.set_index??$+1),reps:U,weight_kg:N,volume_kg:ye(U,N),estimated_1rm_kg:fe(N,U)?ge(N,U):void 0}}),u=we(i.map(x=>({reps:x.reps,weightKg:x.weight_kg}))),l=n.met_value_at_log;if(l!=null&&
+500))throw T("note must be text of at most 500 characters.",[{field:"note",issue:"too_long"}]);let i=(Array.isArray(n.sets)?n.sets:[]).map((x,P)=>{let U=Number(x.reps??0),N=Number(x.weight_kg??0);return{
+set_index:Number(x.set_index??P+1),reps:U,weight_kg:N,volume_kg:ye(U,N),estimated_1rm_kg:fe(N,U)?ge(N,U):void 0}}),u=we(i.map(x=>({reps:x.reps,weightKg:x.weight_kg}))),l=n.met_value_at_log;if(l!=null&&
 (typeof l!="number"||!(l>=1&&l<=23)))throw T("met_value_at_log must be a number between 1 and 23.",[{field:"met_value_at_log",issue:"out_of_range"}]);let c=n.body_mass_at_log_kg;if(c!=null&&(typeof c!=
 "number"||!(c>=20&&c<=635)))throw T("body_mass_at_log_kg must be a number between 20 and 635.",[{field:"body_mass_at_log_kg",issue:"out_of_range"}]);let _=typeof s=="number"&&s>0,p=l??(_?ke(n.activity_type,
-n.perceived_intensity):void 0),y=c??(_&&p!==void 0?await Ie(j(e)):void 0),k=n.calories_burned;k===void 0&&p!==void 0&&y!==void 0&&_&&(k=pe(p,y,s));let I=await be(j(e),{exercise_id:n.exercise_id,activity_type:n.
+n.perceived_intensity):void 0),y=c??(_&&p!==void 0?await Ie(B(e)):void 0),k=n.calories_burned;k===void 0&&p!==void 0&&y!==void 0&&_&&(k=pe(p,y,s));let I=await be(B(e),{exercise_id:n.exercise_id,activity_type:n.
 activity_type,duration_mins:s??void 0,perceived_intensity:n.perceived_intensity,met_value_at_log:p,body_mass_at_log_kg:y,calories_burned:k,total_volume_kg:u,steps:n.steps,note:n.note,local_date_str:n.
 local_date_str,client_idempotency_key:typeof n.client_idempotency_key=="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{3,4}-[0-9a-f]{3,4}-[0-9a-f]{12}$/i.test(n.client_idempotency_key)?n.client_idempotency_key:
-void 0,sets:i.length>0?i:void 0});await F(j(e),"FITNESS",n.local_date_str),t.status(201).json(I)}catch(n){r(n)}}o(jn,"logWorkout");async function Bn(e,t,r){try{let n=e.query.week;if(!n||!/^\d{4}-\d{2}-\d{2}$/.
-test(n))throw T("week query parameter is required in YYYY-MM-DD format.",[{field:"week",issue:"required_or_invalid"}]);let s=await Fn(j(e),n);t.json(s)}catch(n){r(n)}}o(Bn,"getSummary");async function Yn(e,t,r){
-try{let n=e.query.q,s=await Hn(n);t.json({exercises:s})}catch(n){r(n)}}o(Yn,"searchExercises");async function Kn(e,t,r){try{let n=await Vn(j(e));t.json({personal_records:n})}catch(n){r(n)}}o(Kn,"getPe\
-rsonalRecordsHandler");var H=Eo();H.use(E);H.get("/exercises",Yn);H.get("/personal-records",Kn);H.get("/summary",Bn);H.get("/",Wn);H.post("/",jn);H.get("/:id",Gn);var zn=H;import{Router as ko}from"npm:express@4.21.2";import{z as C}from"npm:zod@3.24.1";b();var Xn=`id, name, brand,
+void 0,sets:i.length>0?i:void 0});await H(B(e),"FITNESS",n.local_date_str),t.status(201).json(I)}catch(n){r(n)}}o(jn,"logWorkout");async function Bn(e,t,r){try{let n=e.query.week;if(!n||!/^\d{4}-\d{2}-\d{2}$/.
+test(n))throw T("week query parameter is required in YYYY-MM-DD format.",[{field:"week",issue:"required_or_invalid"}]);let s=await Fn(B(e),n);t.json(s)}catch(n){r(n)}}o(Bn,"getSummary");async function Yn(e,t,r){
+try{let n=e.query.q,s=await Hn(n);t.json({exercises:s})}catch(n){r(n)}}o(Yn,"searchExercises");async function Kn(e,t,r){try{let n=await Vn(B(e));t.json({personal_records:n})}catch(n){r(n)}}o(Kn,"getPe\
+rsonalRecordsHandler");var V=Eo();V.use(E);V.get("/exercises",Yn);V.get("/personal-records",Kn);V.get("/summary",Bn);V.get("/",Wn);V.post("/",jn);V.get("/:id",Gn);var zn=V;import{Router as Io}from"npm:express@4.21.2";import{z as C}from"npm:zod@3.24.1";b();var Xn=`id, name, brand,
        kcal_per_100g::float8    as kcal_per_100g,
        protein_per_100g::float8 as protein_per_100g,
        carbs_per_100g::float8   as carbs_per_100g,
@@ -539,7 +539,7 @@ ect id, meal_type,
             note
      from meals
      where user_id = $1 and local_date_str = $2 and deleted_at is null
-     order by logged_at_utc asc`,[e,t]),s=n.map(u=>({...u,items:[]}));if(s.length>0){let u=s.map(_=>_.id),{rows:l}=await r.query(`select mi.meal_id, mi.id, mi.food_id, mi.food_name_at_log,
+     order by logged_at_utc asc`,[e,t]),s=n.map(i=>({...i,items:[]}));if(s.length>0){let i=s.map(c=>c.id),{rows:u}=await r.query(`select mi.meal_id, mi.id, mi.food_id, mi.food_name_at_log,
               mi.quantity::float8  as quantity,
               mi.serving_unit,
               mi.grams::float8     as grams,
@@ -549,13 +549,14 @@ ect id, meal_type,
               mi.fat_g::float8     as fat_g
        from meal_items mi
        where mi.meal_id = any ($1::uuid[])
-       order by mi.created_at asc`,[u]),c=new Map;for(let{meal_id:_,...p}of l){let y=c.get(_);y?y.push(p):c.set(_,[p])}for(let _ of s)_.items=c.get(_.id)??[]}let{rows:[a]}=await r.query(`select coales\
+       order by mi.created_at asc`,[i]),l=new Map;for(let{meal_id:c,..._}of u){let p=l.get(c);p?p.push(_):l.set(c,[_])}for(let c of s)c.items=l.get(c.id)??[]}let{rows:[a]}=await r.query(`select coales\
 ce(sum(amount_ml), 0)::text as water_ml_total,
             max(goal_ml_at_log)               as water_goal_ml
      from water_logs
-     where user_id = $1 and local_date_str = $2`,[e,t]),i=s.reduce((u,l)=>(u.kcal+=l.total_kcal,u.protein_g+=l.total_protein_g,u.carbs_g+=l.total_carbs_g,u.fat_g+=l.total_fat_g,u),{kcal:0,protein_g:0,
-carbs_g:0,fat_g:0});return{meals:s,water_ml_total:Number(a?.water_ml_total??0),water_goal_ml:a?.water_goal_ml??Ro,totals:i}}o(tr,"getDailySummary");async function xe(e,t){return R(async r=>{let n=t.items.
-reduce((c,_)=>c+_.kcal,0),s=t.items.reduce((c,_)=>c+_.protein_g,0),a=t.items.reduce((c,_)=>c+_.carbs_g,0),i=t.items.reduce((c,_)=>c+_.fat_g,0),{rows:u}=await r.query(`insert into meals
+     where user_id = $1 and local_date_str = $2`,[e,t]);return{meals:s,water_ml_total:Number(a?.water_ml_total??0),water_goal_ml:a?.water_goal_ml??Ro,totals:Ao(s)}}o(tr,"getDailySummary");function Ao(e){
+let t=o(r=>F(e.reduce((n,s)=>n+s[r],0),1),"sum");return{kcal:t("total_kcal"),protein_g:t("total_protein_g"),carbs_g:t("total_carbs_g"),fat_g:t("total_fat_g")}}o(Ao,"sumMealTotals");async function xe(e,t){
+return R(async r=>{let n=t.items.reduce((c,_)=>c+_.kcal,0),s=t.items.reduce((c,_)=>c+_.protein_g,0),a=t.items.reduce((c,_)=>c+_.carbs_g,0),i=t.items.reduce((c,_)=>c+_.fat_g,0),{rows:u}=await r.query(`\
+insert into meals
          (user_id, meal_type, total_kcal, total_protein_g, total_carbs_g, total_fat_g,
           note, local_date_str, client_idempotency_key)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -571,17 +572,17 @@ for(let c of t.items)await r.query(`insert into meal_items
 async function De(e,t){let r=d(),{rows:n}=await r.query(`insert into water_logs (user_id, amount_ml, goal_ml_at_log, local_date_str, client_idempotency_key)
      values ($1, $2, $3, $4, $5)
      returning id, amount_ml`,[e,t.amount_ml,t.goal_ml_at_log??null,t.local_date_str,t.client_idempotency_key??null]),s=n[0];if(!s)throw new Error("water_logs insert returned no row");return s}o(De,"l\
-ogWater");var nr=["BREAKFAST","LUNCH","DINNER","SNACK"],Xe=["GRAM","MILLILITRE","PIECE","CUP","TABLESPOON","SLICE","CUSTOM"];function Ao(){return new Date().toISOString().slice(0,10)}o(Ao,"todayUtcDateStr");function Je(e){
-return typeof e=="string"&&/^\d{4}-\d{2}-\d{2}$/.test(e)}o(Je,"isValidDateStr");function To(e,t){let r=C.string().uuid().safeParse(e);if(!r.success)throw new m("VALIDATION_FAILED",`${t} must be a UUID\
-.`,{details:[{field:t,issue:"invalid"}]});return r.data}o(To,"requireUuidParam");async function rr(e,t,r){try{let n=e.query.q;if(n!==void 0&&typeof n!="string")throw new m("VALIDATION_FAILED","Query p\
-arameter q must be a string.");let s=f(e),a=await Jn((n??"").trim(),s);t.status(200).json({foods:a})}catch(n){r(n)}}o(rr,"searchFoodsHandler");var bo=C.object({name:C.string().trim().min(1).max(120),brand:C.
+ogWater");var nr=["BREAKFAST","LUNCH","DINNER","SNACK"],Xe=["GRAM","MILLILITRE","PIECE","CUP","TABLESPOON","SLICE","CUSTOM"];function To(){return new Date().toISOString().slice(0,10)}o(To,"todayUtcDateStr");function Je(e){
+return typeof e=="string"&&/^\d{4}-\d{2}-\d{2}$/.test(e)}o(Je,"isValidDateStr");function bo(e,t){let r=C.string().uuid().safeParse(e);if(!r.success)throw new m("VALIDATION_FAILED",`${t} must be a UUID\
+.`,{details:[{field:t,issue:"invalid"}]});return r.data}o(bo,"requireUuidParam");async function rr(e,t,r){try{let n=e.query.q;if(n!==void 0&&typeof n!="string")throw new m("VALIDATION_FAILED","Query p\
+arameter q must be a string.");let s=f(e),a=await Jn((n??"").trim(),s);t.status(200).json({foods:a})}catch(n){r(n)}}o(rr,"searchFoodsHandler");var ko=C.object({name:C.string().trim().min(1).max(120),brand:C.
 string().trim().max(80).optional(),kcal_per_100g:C.number().min(0).max(9e3),protein_per_100g:C.number().min(0).max(100).default(0),carbs_per_100g:C.number().min(0).max(100).default(0),fat_per_100g:C.number().
 min(0).max(100).default(0),default_serving_unit:C.enum(Xe).default("GRAM"),default_serving_grams:C.number().min(.1).max(5e3).optional(),barcode:C.string().regex(/^\d{8,14}$/,"must be 8 to 14 digits").
-optional()}).strict();async function sr(e,t,r){try{let n=f(e),s=bo.safeParse(e.body);if(!s.success)throw new m("VALIDATION_FAILED","The request failed validation.",{details:s.error.issues.slice(0,20).
+optional()}).strict();async function sr(e,t,r){try{let n=f(e),s=ko.safeParse(e.body);if(!s.success)throw new m("VALIDATION_FAILED","The request failed validation.",{details:s.error.issues.slice(0,20).
 map(u=>({field:u.path.join(".")||"(root)",issue:u.message}))});let a=s.data,i=await Zn(n,{...a,brand:a.brand?a.brand:void 0});if(i.status==="LIMIT_EXCEEDED")throw new m("CONFLICT",`You have reached yo\
 ur limit of ${i.ceiling} custom foods. Deleting one frees its slot ${te} days later, when its retention window closes.`,{details:[{field:"foods",issue:"limit_exceeded",current:i.current,ceiling:i.ceiling,
-deleted:i.deleted,retention_days:te}]});t.status(201).json(i.food)}catch(n){r(n)}}o(sr,"createCustomFoodHandler");async function or(e,t,r){try{let n=f(e),s=To(e.params.id,"id");if(!await er(s,n))throw v();
-t.json({status:"deleted"})}catch(n){r(n)}}o(or,"deleteCustomFoodHandler");async function ir(e,t,r){try{let n=e.query.date??Ao();if(!Je(n))throw new m("VALIDATION_FAILED","date must be YYYY-MM-DD.");let s=f(
+deleted:i.deleted,retention_days:te}]});t.status(201).json(i.food)}catch(n){r(n)}}o(sr,"createCustomFoodHandler");async function or(e,t,r){try{let n=f(e),s=bo(e.params.id,"id");if(!await er(s,n))throw v();
+t.json({status:"deleted"})}catch(n){r(n)}}o(or,"deleteCustomFoodHandler");async function ir(e,t,r){try{let n=e.query.date??To();if(!Je(n))throw new m("VALIDATION_FAILED","date must be YYYY-MM-DD.");let s=f(
 e),a=await tr(s,n);t.status(200).json(a)}catch(n){r(n)}}o(ir,"getDailySummaryHandler");async function ar(e,t,r){try{let n=e.body,s=[];if((!n.meal_type||!nr.includes(n.meal_type))&&s.push({field:"meal_\
 type",issue:`must be one of ${nr.join(", ")}`}),Je(n.local_date_str)||s.push({field:"local_date_str",issue:"required, must be YYYY-MM-DD"}),!Array.isArray(n.items)||n.items.length===0)s.push({field:"i\
 tems",issue:"must be a non-empty array"});else for(let u=0;u<n.items.length;u++){let l=n.items[u];(!l.food_name_at_log||typeof l.food_name_at_log!="string")&&s.push({field:`items[${u}].food_name_at_lo\
@@ -590,11 +591,11 @@ ving_unit`,issue:`must be one of ${Xe.join(", ")}`}),(typeof l.grams!="number"||
 s.push({field:`items[${u}].kcal`,issue:"must be a non-negative number"})}if(s.length)throw new m("VALIDATION_FAILED","The request failed validation.",{details:s});let a=f(e),i=await xe(a,{meal_type:n.
 meal_type,note:typeof n.note=="string"?n.note:void 0,local_date_str:n.local_date_str,client_idempotency_key:typeof n.client_idempotency_key=="string"?n.client_idempotency_key:void 0,items:n.items.map(
 u=>({food_id:typeof u.food_id=="string"?u.food_id:void 0,food_name_at_log:u.food_name_at_log,quantity:u.quantity,serving_unit:u.serving_unit,grams:u.grams,kcal:u.kcal,protein_g:typeof u.protein_g=="nu\
-mber"?u.protein_g:0,carbs_g:typeof u.carbs_g=="number"?u.carbs_g:0,fat_g:typeof u.fat_g=="number"?u.fat_g:0}))});await F(a,"NUTRITION",n.local_date_str),t.status(201).json(i)}catch(n){r(n)}}o(ar,"logM\
+mber"?u.protein_g:0,carbs_g:typeof u.carbs_g=="number"?u.carbs_g:0,fat_g:typeof u.fat_g=="number"?u.fat_g:0}))});await H(a,"NUTRITION",n.local_date_str),t.status(201).json(i)}catch(n){r(n)}}o(ar,"logM\
 ealHandler");async function ur(e,t,r){try{let n=e.body,s=[];if((typeof n.amount_ml!="number"||n.amount_ml<1||n.amount_ml>5e3)&&s.push({field:"amount_ml",issue:"must be a number between 1 and 5000"}),Je(
 n.local_date_str)||s.push({field:"local_date_str",issue:"required, must be YYYY-MM-DD"}),s.length)throw new m("VALIDATION_FAILED","The request failed validation.",{details:s});let a=f(e),i=await De(a,
 {amount_ml:n.amount_ml,local_date_str:n.local_date_str,goal_ml_at_log:typeof n.goal_ml_at_log=="number"?n.goal_ml_at_log:void 0,client_idempotency_key:typeof n.client_idempotency_key=="string"?n.client_idempotency_key:
-void 0});await he(a),t.status(201).json(i)}catch(n){r(n)}}o(ur,"logWaterHandler");var V=ko();V.use(E);V.get("/foods/search",rr);V.post("/foods",sr);V.delete("/foods/:id",or);V.get("/summary",ir);V.post("/meals",ar);V.post("/water",ur);var lr=V;import{Router as Do}from"npm:express@4.21.2";b();var Io=1e4,cr=2e3;async function dr(e,t){let r=d(),[n,s,a,i,u]=await Promise.all([r.query(`select current_length, longest_length
+void 0});await he(a),t.status(201).json(i)}catch(n){r(n)}}o(ur,"logWaterHandler");var W=Io();W.use(E);W.get("/foods/search",rr);W.post("/foods",sr);W.delete("/foods/:id",or);W.get("/summary",ir);W.post("/meals",ar);W.post("/water",ur);var lr=W;import{Router as No}from"npm:express@4.21.2";b();var xo=1e4,cr=2e3;async function dr(e,t){let r=d(),[n,s,a,i,u]=await Promise.all([r.query(`select current_length, longest_length
          from streaks
          where user_id = $1 and streak_type = 'OVERALL'
          limit 1`,[e]),r.query(`select id, nickname
@@ -612,8 +613,8 @@ void 0});await he(a),t.status(201).json(i)}catch(n){r(n)}}o(ur,"logWaterHandler"
          from meals
          where user_id = $1 and local_date_str = $2 and deleted_at is null`,[e,t])]),l=n.rows[0],c=Number(i.rows[0]?.steps??0),_=Number(u.rows[0]?.calories??0),p=[...s.rows.map(y=>({type:"PLANT_WATER",
 id:y.id,title:y.nickname}))];return _<cr&&p.push({type:"LOG_MEAL",id:"log_meal",title:"Log a meal"}),{streak:{current:l?.current_length??0,longest:l?.longest_length??0},plants:{due_today:s.rows.length,
-overdue:Number(a.rows[0]?.count??0)},fitness:{steps:c,goal:Io},nutrition:{calories_consumed:_,target:cr},today_list:p}}o(dr,"getDashboard");function xo(){return new Date().toISOString().slice(0,10)}o(xo,"todayUtcDateStr");async function _r(e,t,r){try{let n=typeof e.query.date=="string"&&/^\d{4}-\d{2}-\d{2}$/.test(e.query.date)?e.query.date:
-xo(),s=f(e),a=await dr(s,n);t.status(200).json(a)}catch(n){r(n)}}o(_r,"getDashboardHandler");var Ze=Do();Ze.use(E);Ze.get("/",_r);var mr=Ze;import{Router as No}from"npm:express@4.21.2";b();async function pr(e){let t=d(),{rows:r}=await t.query(`select a.id as a_id, a.code, a.name, a.description, a.module, a.icon,
+overdue:Number(a.rows[0]?.count??0)},fitness:{steps:c,goal:xo},nutrition:{calories_consumed:_,target:cr},today_list:p}}o(dr,"getDashboard");function Do(){return new Date().toISOString().slice(0,10)}o(Do,"todayUtcDateStr");async function _r(e,t,r){try{let n=typeof e.query.date=="string"&&/^\d{4}-\d{2}-\d{2}$/.test(e.query.date)?e.query.date:
+Do(),s=f(e),a=await dr(s,n);t.status(200).json(a)}catch(n){r(n)}}o(_r,"getDashboardHandler");var Ze=No();Ze.use(E);Ze.get("/",_r);var mr=Ze;import{Router as vo}from"npm:express@4.21.2";b();async function pr(e){let t=d(),{rows:r}=await t.query(`select a.id as a_id, a.code, a.name, a.description, a.module, a.icon,
             a.tier, a.points, a.is_active,
             ua.id as ua_id, ua.unlocked_at, ua.progress_pct, ua.seen_at
      from achievements a
@@ -628,9 +629,9 @@ query(`select streak_type, current_length, longest_length, last_counted_date, fr
      order by streak_type`,[e]);return r}o(gr,"listStreaks");async function fr(e){return(await d().query(`update user_achievements
      set seen_at = now()
      where user_id = $1 and unlocked_at is not null and seen_at is null`,[e])).rowCount??0}o(fr,"markSeen");async function yr(e,t,r){try{let n=f(e),s=await pr(n);t.status(200).json(s)}catch(n){r(n)}}o(yr,"listAchievementsHandler");async function wr(e,t,r){try{let n=f(e),s=await gr(n);t.status(200).json({streaks:s})}catch(n){
-r(n)}}o(wr,"listStreaksHandler");async function hr(e,t,r){try{let n=f(e),s=await fr(n);t.status(200).json({marked_seen:s})}catch(n){r(n)}}o(hr,"markSeenHandler");var ne=No();ne.use(E);ne.get("/",yr);ne.get("/streaks",wr);ne.post("/seen",hr);var Er=ne;import{Router as vo}from"npm:express@4.21.2";var Ne=vo();Ne.use(E);Ne.get("/",async(e,t,r)=>{try{let n=await dn(f(e));t.status(200).json({reminders:n})}catch(n){r(n)}});Ne.post("/:id/dismiss",async(e,t,r)=>{try{let n=e.params.id;if(!n||!/^[0-9a-f-]{36}$/i.
+r(n)}}o(wr,"listStreaksHandler");async function hr(e,t,r){try{let n=f(e),s=await fr(n);t.status(200).json({marked_seen:s})}catch(n){r(n)}}o(hr,"markSeenHandler");var ne=vo();ne.use(E);ne.get("/",yr);ne.get("/streaks",wr);ne.post("/seen",hr);var Er=ne;import{Router as So}from"npm:express@4.21.2";var Ne=So();Ne.use(E);Ne.get("/",async(e,t,r)=>{try{let n=await dn(f(e));t.status(200).json({reminders:n})}catch(n){r(n)}});Ne.post("/:id/dismiss",async(e,t,r)=>{try{let n=e.params.id;if(!n||!/^[0-9a-f-]{36}$/i.
 test(n))throw new m("VALIDATION_FAILED","Reminder id must be a UUID.");if(!await _n(f(e),n))throw new m("NOT_FOUND","Reminder not found or already resolved.");t.status(200).json({status:"dismissed"})}catch(n){
-r(n)}});var Rr=Ne;import{Router as Oo}from"npm:express@4.21.2";import{z as B}from"npm:zod@3.24.1";b();var So=5;async function Tr(e,t){try{return await Ar(e,t)}catch(r){if(typeof r=="object"&&r!==null&&r.code==="23505")return Ar(e,t);throw r}}o(Tr,"registerToken");async function Ar(e,t){return R(async r=>{
+r(n)}});var Rr=Ne;import{Router as Co}from"npm:express@4.21.2";import{z as Y}from"npm:zod@3.24.1";b();var Oo=5;async function Tr(e,t){try{return await Ar(e,t)}catch(r){if(typeof r=="object"&&r!==null&&r.code==="23505")return Ar(e,t);throw r}}o(Tr,"registerToken");async function Ar(e,t){return R(async r=>{
 let{rows:n}=await r.query(`select id, user_id from device_push_tokens
        where token = $1
        order by (status = 'ACTIVE') desc, created_at desc
@@ -658,7 +659,7 @@ let{rows:n}=await r.query(`select id, user_id from device_push_tokens
          where user_id = $1 and status = 'ACTIVE'
          order by last_confirmed_at desc nulls last
          offset $2
-       )`,[e,So]);let{rows:i}=await r.query(`select id, platform, device_label, app_version, permission_status, last_confirmed_at
+       )`,[e,Oo]);let{rows:i}=await r.query(`select id, platform, device_label, app_version, permission_status, last_confirmed_at
        from device_push_tokens
        where user_id = $1 and status = 'ACTIVE'
        order by last_confirmed_at desc nulls last`,[e]);return{id:a,devices:i}})}o(Ar,"registerTokenOnce");async function br(e){if(e.length===0)return new Map;let t=d(),{rows:r}=await t.query(`select \
@@ -670,10 +671,10 @@ user_id, token
 if(e.length===0)return;await d().query(`update device_push_tokens
      set status = case when $2 = 'DEVICE_NOT_REGISTERED' then 'UNREGISTERED' else 'STALE' end,
          revoked_at = now(), revoke_reason = $2, updated_at = now()
-     where token = any ($1::text[]) and status = 'ACTIVE'`,[e,t])}o(kr,"revokeTokens");var Co=B.object({expo_push_token:B.string().min(20).max(200).regex(/^Expo(nent)?PushToken\[.+\]$/),platform:B.enum(["IOS","ANDROID"]),client_installation_id:B.string().uuid(),device_label:B.string().max(
-64).optional(),app_version:B.string().max(20).optional(),permission_status:B.enum(["GRANTED","DENIED","UNDETERMINED"])}).strict(),et=Oo();et.use(E);et.post("/",async(e,t,r)=>{try{let n=Co.safeParse(e.
+     where token = any ($1::text[]) and status = 'ACTIVE'`,[e,t])}o(kr,"revokeTokens");var Lo=Y.object({expo_push_token:Y.string().min(20).max(200).regex(/^Expo(nent)?PushToken\[.+\]$/),platform:Y.enum(["IOS","ANDROID"]),client_installation_id:Y.string().uuid(),device_label:Y.string().max(
+64).optional(),app_version:Y.string().max(20).optional(),permission_status:Y.enum(["GRANTED","DENIED","UNDETERMINED"])}).strict(),et=Co();et.use(E);et.post("/",async(e,t,r)=>{try{let n=Lo.safeParse(e.
 body);if(!n.success)throw new m("VALIDATION_FAILED","The request failed validation.",{details:n.error.issues.slice(0,10).map(i=>({field:i.path.join("."),issue:i.message}))});let{id:s,devices:a}=await Tr(
-f(e),{...n.data,device_label:n.data.device_label?.trim()||void 0});t.status(200).json({id:s,devices:a})}catch(n){r(n)}});var Ir=et;import{Router as Yo}from"npm:express@4.21.2";import{z as g}from"npm:zod@3.24.1";b();async function xr(e,t,r,n){let s=d(),{rows:a}=await s.query(`insert into sync_events (user_id, client_idempotency_key, entity_type, payload)
+f(e),{...n.data,device_label:n.data.device_label?.trim()||void 0});t.status(200).json({id:s,devices:a})}catch(n){r(n)}});var Ir=et;import{Router as Ko}from"npm:express@4.21.2";import{z as g}from"npm:zod@3.24.1";b();async function xr(e,t,r,n){let s=d(),{rows:a}=await s.query(`insert into sync_events (user_id, client_idempotency_key, entity_type, payload)
      values ($1, $2, $3, $4)
      on conflict (user_id, client_idempotency_key) do nothing
      returning id, client_idempotency_key, entity_type, status, result_entity_id, error_code`,[e,t,r,JSON.stringify(n)]),i=a[0];if(i)return{row:i,replay:!1};let{rows:u}=await s.query(`select id, clien\
@@ -685,52 +686,52 @@ async function tt(e,t){await d().query(`update sync_events
      where id = $1`,[e,t])}o(tt,"markProcessed");async function Dr(e,t,r){await d().query(`update sync_events
      set status = 'FAILED', error_code = $2, error_detail = $3, processed_at = now()
      where id = $1`,[e,t.slice(0,60),r.slice(0,500)])}o(Dr,"markFailed");async function nt(e,t,r){let n=d(),{rows:s}=await n.query(`select id from ${e} where user_id = $1 and client_idempotency_key = \
-$2`,[t,r]);return s[0]?.id??null}o(nt,"findEntityIdByKey");var Lo=50,ve=g.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(e=>{let t=Date.parse(e);return t>Date.now()-366*864e5&&t<Date.now()+2*864e5},"local_date_str outside the accepted window"),$o=g.object({plant_id:g.
-string().uuid(),action_type:g.enum(["WATER","FERTILIZE","PRUNE","REPOT","MIST","ROTATE","TREAT"]),note:g.string().max(500).optional(),local_date_str:ve}).strict(),Po=g.object({set_index:g.number().int().
-min(1).max(200).optional(),reps:g.number().int().min(0).max(1e3),weight_kg:g.number().min(0).max(1e3)}).strict(),Uo=g.object({activity_type:g.string().min(1).max(40),duration_mins:g.number().int().min(
+$2`,[t,r]);return s[0]?.id??null}o(nt,"findEntityIdByKey");var Po=50,ve=g.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(e=>{let t=Date.parse(e);return t>Date.now()-366*864e5&&t<Date.now()+2*864e5},"local_date_str outside the accepted window"),$o=g.object({plant_id:g.
+string().uuid(),action_type:g.enum(["WATER","FERTILIZE","PRUNE","REPOT","MIST","ROTATE","TREAT"]),note:g.string().max(500).optional(),local_date_str:ve}).strict(),Uo=g.object({set_index:g.number().int().
+min(1).max(200).optional(),reps:g.number().int().min(0).max(1e3),weight_kg:g.number().min(0).max(1e3)}).strict(),Mo=g.object({activity_type:g.string().min(1).max(40),duration_mins:g.number().int().min(
 1).max(1440).optional(),perceived_intensity:g.enum(["LOW","MODERATE","VIGOROUS"]).optional(),met_value_at_log:g.number().min(1).max(23).optional(),body_mass_at_log_kg:g.number().min(20).max(400).optional(),
-steps:g.number().int().min(0).max(2e5).optional(),note:g.string().max(500).optional(),local_date_str:ve,sets:g.array(Po).max(200).optional()}).strict(),Mo=g.object({food_id:g.string().uuid().optional(),
+steps:g.number().int().min(0).max(2e5).optional(),note:g.string().max(500).optional(),local_date_str:ve,sets:g.array(Uo).max(200).optional()}).strict(),qo=g.object({food_id:g.string().uuid().optional(),
 food_name_at_log:g.string().min(1).max(200),quantity:g.number().positive().max(1e5),serving_unit:g.string().min(1).max(20),grams:g.number().positive().max(1e5),kcal:g.number().min(0).max(1e5),protein_g:g.
-number().min(0).max(1e4),carbs_g:g.number().min(0).max(1e4),fat_g:g.number().min(0).max(1e4)}).strict(),qo=g.object({meal_type:g.enum(["BREAKFAST","LUNCH","DINNER","SNACK"]),note:g.string().max(500).optional(),
-local_date_str:ve,items:g.array(Mo).min(1).max(50)}).strict(),Fo=g.object({amount_ml:g.number().int().min(1).max(5e3),goal_ml_at_log:g.number().int().min(1).max(2e4).optional(),local_date_str:ve}).strict(),
-Ho=g.object({client_idempotency_key:g.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i),entity_type:g.enum(["PLANT_CARE_EVENT","WORKOUT","MEAL","WATER_LOG"]),payload:g.
-unknown()}).strict(),Vo=g.object({events:g.array(Ho).min(1).max(Lo)}).strict();function Wo(e){return typeof e=="object"&&e!==null&&e.code==="23505"}o(Wo,"isUniqueViolation");var Go={PLANT_CARE_EVENT:"\
-plant_care_events",WORKOUT:"workouts",MEAL:"meals",WATER_LOG:"water_logs"},jo={PLANT_CARE_EVENT:"PLANT_CARE",WORKOUT:"FITNESS",MEAL:"NUTRITION",WATER_LOG:null};async function Bo(e,t,r,n){switch(r){case"\
-PLANT_CARE_EVENT":{let s=$o.parse(n);return await Ae(e,s.plant_id,s.action_type,s.note,s.local_date_str,t),nt("plant_care_events",e,t)}case"WORKOUT":{let s=Uo.parse(n),a=(s.sets??[]).map((p,y)=>{let k=ye(
+number().min(0).max(1e4),carbs_g:g.number().min(0).max(1e4),fat_g:g.number().min(0).max(1e4)}).strict(),Fo=g.object({meal_type:g.enum(["BREAKFAST","LUNCH","DINNER","SNACK"]),note:g.string().max(500).optional(),
+local_date_str:ve,items:g.array(qo).min(1).max(50)}).strict(),Ho=g.object({amount_ml:g.number().int().min(1).max(5e3),goal_ml_at_log:g.number().int().min(1).max(2e4).optional(),local_date_str:ve}).strict(),
+Vo=g.object({client_idempotency_key:g.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i),entity_type:g.enum(["PLANT_CARE_EVENT","WORKOUT","MEAL","WATER_LOG"]),payload:g.
+unknown()}).strict(),Wo=g.object({events:g.array(Vo).min(1).max(Po)}).strict();function Go(e){return typeof e=="object"&&e!==null&&e.code==="23505"}o(Go,"isUniqueViolation");var jo={PLANT_CARE_EVENT:"\
+plant_care_events",WORKOUT:"workouts",MEAL:"meals",WATER_LOG:"water_logs"},Bo={PLANT_CARE_EVENT:"PLANT_CARE",WORKOUT:"FITNESS",MEAL:"NUTRITION",WATER_LOG:null};async function Yo(e,t,r,n){switch(r){case"\
+PLANT_CARE_EVENT":{let s=$o.parse(n);return await Ae(e,s.plant_id,s.action_type,s.note,s.local_date_str,t),nt("plant_care_events",e,t)}case"WORKOUT":{let s=Mo.parse(n),a=(s.sets??[]).map((p,y)=>{let k=ye(
 p.reps,p.weight_kg),I=fe(p.weight_kg,p.reps);return{set_index:p.set_index??y+1,reps:p.reps,weight_kg:p.weight_kg,volume_kg:k,...I?{estimated_1rm_kg:ge(p.weight_kg,p.reps)}:{}}}),i=we(a.map(p=>({reps:p.
 reps,weightKg:p.weight_kg}))),u=s.met_value_at_log??(s.duration_mins!==void 0?ke(s.activity_type,s.perceived_intensity):void 0),l=s.body_mass_at_log_kg??(s.duration_mins!==void 0&&u!==void 0?await Ie(
 e):void 0),c;return u!==void 0&&l!==void 0&&s.duration_mins!==void 0&&(c=pe(u,l,s.duration_mins)),(await be(e,{activity_type:s.activity_type,duration_mins:s.duration_mins,perceived_intensity:s.perceived_intensity,
 met_value_at_log:u,body_mass_at_log_kg:l,calories_burned:c,total_volume_kg:i,steps:s.steps,note:s.note,local_date_str:s.local_date_str,client_idempotency_key:t,sets:a.length>0?a:void 0})).id}case"MEAL":{
-let s=qo.parse(n);return(await xe(e,{...s,client_idempotency_key:t})).id}case"WATER_LOG":{let s=Fo.parse(n);return(await De(e,{...s,client_idempotency_key:t})).id}}}o(Bo,"applyEvent");async function Nr(e,t,r){
-try{let n=f(e),s=Vo.safeParse(e.body);if(!s.success)throw new m("VALIDATION_FAILED","The request failed validation.",{details:s.error.issues.slice(0,20).map(i=>({field:i.path.join("."),issue:i.message}))});
+let s=Fo.parse(n);return(await xe(e,{...s,client_idempotency_key:t})).id}case"WATER_LOG":{let s=Ho.parse(n);return(await De(e,{...s,client_idempotency_key:t})).id}}}o(Yo,"applyEvent");async function Nr(e,t,r){
+try{let n=f(e),s=Wo.safeParse(e.body);if(!s.success)throw new m("VALIDATION_FAILED","The request failed validation.",{details:s.error.issues.slice(0,20).map(i=>({field:i.path.join("."),issue:i.message}))});
 let a=[];for(let i of s.data.events){let u=i.client_idempotency_key.toLowerCase(),{row:l,replay:c}=await xr(n,u,i.entity_type,i.payload);if(c&&l.status!=="PENDING"){a.push({client_idempotency_key:u,status:l.
-status==="FAILED"?"FAILED":"PROCESSED",replay:!0,entity_id:l.result_entity_id,error_code:l.error_code});continue}try{let _=await Bo(n,u,i.entity_type,i.payload);await tt(l.id,_);let p=jo[i.entity_type],
-y=i.payload.local_date_str;p&&y?await F(n,p,y):i.entity_type==="WATER_LOG"&&await he(n),a.push({client_idempotency_key:u,status:"PROCESSED",replay:!1,entity_id:_,error_code:null})}catch(_){if(Wo(_)){let x=await nt(
-Go[i.entity_type],n,u);if(x){await tt(l.id,x),a.push({client_idempotency_key:u,status:"PROCESSED",replay:!0,entity_id:x,error_code:null});continue}}let p=_ instanceof g.ZodError,y=typeof _=="object"&&
+status==="FAILED"?"FAILED":"PROCESSED",replay:!0,entity_id:l.result_entity_id,error_code:l.error_code});continue}try{let _=await Yo(n,u,i.entity_type,i.payload);await tt(l.id,_);let p=Bo[i.entity_type],
+y=i.payload.local_date_str;p&&y?await H(n,p,y):i.entity_type==="WATER_LOG"&&await he(n),a.push({client_idempotency_key:u,status:"PROCESSED",replay:!1,entity_id:_,error_code:null})}catch(_){if(Go(_)){let x=await nt(
+jo[i.entity_type],n,u);if(x){await tt(l.id,x),a.push({client_idempotency_key:u,status:"PROCESSED",replay:!0,entity_id:x,error_code:null});continue}}let p=_ instanceof g.ZodError,y=typeof _=="object"&&
 _!==null&&"__notFound"in _,k=p?"VALIDATION_FAILED":y?"PARENT_NOT_FOUND":"INTERNAL_ERROR",I=_ instanceof Error?_.message:String(_);await Dr(l.id,k,I),h.warn({key:u,entity_type:i.entity_type,code:k},"sy\
-nc event failed"),a.push({client_idempotency_key:u,status:"FAILED",replay:!1,entity_id:null,error_code:k})}}t.status(200).json({results:a})}catch(n){r(n)}}o(Nr,"drainOutboxHandler");var rt=Yo();rt.use(E);rt.post("/outbox",Nr);var vr=rt;import{Router as ei}from"npm:express@4.21.2";import{z as zo}from"npm:zod@3.24.1";b();var Or=`timezone, hemisphere, locale, unit_system, theme, week_start_day,
+nc event failed"),a.push({client_idempotency_key:u,status:"FAILED",replay:!1,entity_id:null,error_code:k})}}t.status(200).json({results:a})}catch(n){r(n)}}o(Nr,"drainOutboxHandler");var rt=Ko();rt.use(E);rt.post("/outbox",Nr);var vr=rt;import{Router as ti}from"npm:express@4.21.2";import{z as Qo}from"npm:zod@3.24.1";b();var Or=`timezone, hemisphere, locale, unit_system, theme, week_start_day,
   plant_care_enabled, fitness_enabled, nutrition_enabled, quiet_hours_mode,
   quiet_start_time, quiet_end_time,
   daily_notification_cap, reduce_motion, larger_text, high_contrast, analytics_opt_in`;function Sr(e){return e===null?null:/^(\d{2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(e)?.[1]??e}o(Sr,"normaliseTimeOfD\
 ay");function Cr(e){return{...e,quiet_start_time:Sr(e.quiet_start_time),quiet_end_time:Sr(e.quiet_end_time)}}o(Cr,"normaliseSettingsRow");async function Se(e){let t=d();await t.query("insert into user\
-_settings (user_id) values ($1) on conflict (user_id) do nothing",[e]);let{rows:r}=await t.query(`select ${Or} from user_settings where user_id = $1`,[e]);return Cr(r[0])}o(Se,"getSettings");var Ko=new Set(
+_settings (user_id) values ($1) on conflict (user_id) do nothing",[e]);let{rows:r}=await t.query(`select ${Or} from user_settings where user_id = $1`,[e]);return Cr(r[0])}o(Se,"getSettings");var zo=new Set(
 ["timezone","hemisphere","locale","unit_system","theme","week_start_day","plant_care_enabled","fitness_enabled","nutrition_enabled","quiet_hours_mode","quiet_start_time","quiet_end_time","daily_notifi\
-cation_cap","reduce_motion","larger_text","high_contrast","analytics_opt_in"]);async function Lr(e,t){let r=Object.entries(t).filter(([u,l])=>l!==void 0&&Ko.has(u));if(r.length===0)return Se(e);let n=d();
+cation_cap","reduce_motion","larger_text","high_contrast","analytics_opt_in"]);async function Lr(e,t){let r=Object.entries(t).filter(([u,l])=>l!==void 0&&zo.has(u));if(r.length===0)return Se(e);let n=d();
 await n.query("insert into user_settings (user_id) values ($1) on conflict (user_id) do nothing",[e]);let s=r.map(([u],l)=>`${u}=$${l+2}`).join(", "),a=r.map(([,u])=>u),{rows:i}=await n.query(`update \
 user_settings set ${s}, updated_at=now()
      where user_id=$1
-     returning ${Or}`,[e,...a]);return Cr(i[0])}o(Lr,"updateSettings");var Qo={hemisphere:["NORTHERN","SOUTHERN","EQUATORIAL"],unit_system:["METRIC","IMPERIAL"],theme:["LIGHT","DARK","SYSTEM"],week_start_day:["SUNDAY","MONDAY"],quiet_hours_mode:["OFF","WINDOW","SCHEDULED\
-_ONLY"]},Xo=["plant_care_enabled","fitness_enabled","nutrition_enabled","reduce_motion","larger_text","high_contrast","analytics_opt_in"],Jo=zo.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),$r=[
-"quiet_start_time","quiet_end_time"],Zo=["quiet_hours_mode",...$r];async function Pr(e,t,r){try{t.json(await Se(f(e)))}catch(n){r(n)}}o(Pr,"getSettingsHandler");async function Ur(e,t,r){try{let n=e.body??
-{},s=[],a={};for(let[c,_]of Object.entries(Qo)){let p=n[c];p!==void 0&&(typeof p!="string"||!_.includes(p)?s.push({field:c,issue:`must_be_one_of:${_.join(",")}`}):a[c]=p)}for(let c of Xo){let _=n[c];_!==
-void 0&&(typeof _!="boolean"?s.push({field:c,issue:"must_be_boolean"}):a[c]=_)}for(let c of $r){let _=n[c];if(_===void 0)continue;let p=Jo.safeParse(_);p.success?a[c]=p.data:s.push({field:c,issue:"mus\
+     returning ${Or}`,[e,...a]);return Cr(i[0])}o(Lr,"updateSettings");var Xo={hemisphere:["NORTHERN","SOUTHERN","EQUATORIAL"],unit_system:["METRIC","IMPERIAL"],theme:["LIGHT","DARK","SYSTEM"],week_start_day:["SUNDAY","MONDAY"],quiet_hours_mode:["OFF","WINDOW","SCHEDULED\
+_ONLY"]},Jo=["plant_care_enabled","fitness_enabled","nutrition_enabled","reduce_motion","larger_text","high_contrast","analytics_opt_in"],Zo=Qo.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),Pr=[
+"quiet_start_time","quiet_end_time"],ei=["quiet_hours_mode",...Pr];async function $r(e,t,r){try{t.json(await Se(f(e)))}catch(n){r(n)}}o($r,"getSettingsHandler");async function Ur(e,t,r){try{let n=e.body??
+{},s=[],a={};for(let[c,_]of Object.entries(Xo)){let p=n[c];p!==void 0&&(typeof p!="string"||!_.includes(p)?s.push({field:c,issue:`must_be_one_of:${_.join(",")}`}):a[c]=p)}for(let c of Jo){let _=n[c];_!==
+void 0&&(typeof _!="boolean"?s.push({field:c,issue:"must_be_boolean"}):a[c]=_)}for(let c of Pr){let _=n[c];if(_===void 0)continue;let p=Zo.safeParse(_);p.success?a[c]=p.data:s.push({field:c,issue:"mus\
 t_be_hh_mm_24h_or_null"})}if(n.timezone!==void 0&&(typeof n.timezone!="string"||n.timezone.length>64?s.push({field:"timezone",issue:"must_be_string_max_64"}):a.timezone=n.timezone),n.locale!==void 0&&
 (typeof n.locale!="string"||n.locale.length>20?s.push({field:"locale",issue:"must_be_string_max_20"}):a.locale=n.locale),n.daily_notification_cap!==void 0){let c=n.daily_notification_cap;typeof c!="nu\
 mber"||!Number.isInteger(c)||c<1||c>20?s.push({field:"daily_notification_cap",issue:"must_be_integer_1_to_20"}):a.daily_notification_cap=c}if(s.length>0)throw new m("VALIDATION_FAILED","The request fa\
 iled validation.",{details:s});let i=f(e),l={...await Se(i),...a};if(!l.plant_care_enabled&&!l.fitness_enabled&&!l.nutrition_enabled)throw new m("VALIDATION_FAILED","At least one module must stay enab\
-led.",{details:[{field:"modules",issue:"at_least_one_module_required"}]});if(Zo.some(c=>c in a)&&l.quiet_hours_mode==="WINDOW"){if(l.quiet_start_time===null||l.quiet_end_time===null)throw new m("VALID\
+led.",{details:[{field:"modules",issue:"at_least_one_module_required"}]});if(ei.some(c=>c in a)&&l.quiet_hours_mode==="WINDOW"){if(l.quiet_start_time===null||l.quiet_end_time===null)throw new m("VALID\
 ATION_FAILED","Quiet hours need both a start and an end time.",{details:[{field:"quiet_hours_mode",issue:"window_requires_start_and_end"}]});if(l.quiet_start_time===l.quiet_end_time)throw new m("VALID\
-ATION_FAILED","Quiet hours need a different start and end time.",{details:[{field:"quiet_end_time",issue:"window_start_equals_end"}]})}t.json(await Lr(i,a))}catch(n){r(n)}}o(Ur,"updateSettingsHandler");var Oe=ei();Oe.use(E);Oe.get("/",Pr);Oe.put("/",Ur);var Mr=Oe;import{Router as oi}from"npm:express@4.21.2";import{z as st}from"npm:zod@3.24.1";b();var ti=30,qr="PENDING_DELETION",re="status, deletion_requested_at, purge_after";async function Fr(e){let t=d(),{rows:r}=await t.query(`select ${re} from users where id = $1`,[e]);return r[0]??null}o(Fr,
+ATION_FAILED","Quiet hours need a different start and end time.",{details:[{field:"quiet_end_time",issue:"window_start_equals_end"}]})}t.json(await Lr(i,a))}catch(n){r(n)}}o(Ur,"updateSettingsHandler");var Oe=ti();Oe.use(E);Oe.get("/",$r);Oe.put("/",Ur);var Mr=Oe;import{Router as ii}from"npm:express@4.21.2";import{z as st}from"npm:zod@3.24.1";b();var ni=30,qr="PENDING_DELETION",re="status, deletion_requested_at, purge_after";async function Fr(e){let t=d(),{rows:r}=await t.query(`select ${re} from users where id = $1`,[e]);return r[0]??null}o(Fr,
 "getAccountState");async function Hr(e,t){return R(async r=>{let{rows:[n]}=await r.query(`select ${re} from users where id = $1 for update`,[e]);if(!n)return{kind:"missing"};if(n.status===qr)return{kind:"\
 already_pending",state:n};let{rows:[s]}=await r.query(`update users
        set status = 'PENDING_DELETION',
@@ -746,7 +747,7 @@ already_pending",state:n};let{rows:[s]}=await r.query(`update users
        -- so it cannot have changed state or disappeared, and the update is
        -- therefore guaranteed to return exactly one row.
        where id = $1
-       returning ${re}`,[e,ti]);return await r.query(`update auth_sessions
+       returning ${re}`,[e,ni]);return await r.query(`update auth_sessions
        set status = 'REVOKED', revoked_at = now(), revoke_reason = 'DELETION_REQUESTED'
        where user_id = $1
          and status = 'ACTIVE'
@@ -761,32 +762,32 @@ already_pending",state:n};let{rows:[s]}=await r.query(`update users
            purge_after = null,
            updated_at = now()
        where id = $1 and status = 'PENDING_DELETION'
-       returning ${re}`,[e,O().REQUIRE_EMAIL_VERIFICATION]);return{kind:"cancelled",state:n}})}o(Vr,"cancelDeletion");var ni=st.object({password:st.string().min(1,"Your password is required to confirm deletion.")}).strict();function ri(e){return new m("VALIDATION_FAILED","The request failed validation.",{details:e.issues.
-slice(0,10).map(t=>({field:t.path.join(".")||"(root)",issue:t.message}))})}o(ri,"validationError");function si(e){let t=e.sessionId,r=st.string().uuid().safeParse(t);return r.success?r.data:null}o(si,
+       returning ${re}`,[e,O().REQUIRE_EMAIL_VERIFICATION]);return{kind:"cancelled",state:n}})}o(Vr,"cancelDeletion");var ri=st.object({password:st.string().min(1,"Your password is required to confirm deletion.")}).strict();function si(e){return new m("VALIDATION_FAILED","The request failed validation.",{details:e.issues.
+slice(0,10).map(t=>({field:t.path.join(".")||"(root)",issue:t.message}))})}o(si,"validationError");function oi(e){let t=e.sessionId,r=st.string().uuid().safeParse(t);return r.success?r.data:null}o(oi,
 "callerSessionId");function ot(e){let t=e.purge_after?.toISOString()??null;return{status:e.status,deletion_requested_at:e.deletion_requested_at?.toISOString()??null,purge_after:t,deletion_scheduled_at:t}}
 o(ot,"toBody");function Ce(){return new m("AUTHENTICATION_REQUIRED","Authentication is required.")}o(Ce,"accountGone");async function Wr(e,t,r){try{let n=await Fr(f(e));if(!n)throw Ce();t.status(200).
-json(ot(n))}catch(n){r(n)}}o(Wr,"getAccountHandler");async function Gr(e,t,r){try{let n=ni.safeParse(e.body??{});if(!n.success)throw ri(n.error);let s=f(e),a=await It(s);if(!a)throw Ce();if(a.password_hash===
+json(ot(n))}catch(n){r(n)}}o(Wr,"getAccountHandler");async function Gr(e,t,r){try{let n=ri.safeParse(e.body??{});if(!n.success)throw si(n.error);let s=f(e),a=await It(s);if(!a)throw Ce();if(a.password_hash===
 null)throw new m("VALIDATION_FAILED","The request failed validation.",{details:[{field:"password",issue:"password_required_but_account_has_none"}]});if(!await de(n.data.password,a.password_hash))throw new m(
-"INVALID_CREDENTIALS","That password is not right.");let i=await Hr(s,si(e));if(i.kind==="missing")throw Ce();t.status(200).json({...ot(i.state),already_pending:i.kind==="already_pending"})}catch(n){r(
+"INVALID_CREDENTIALS","That password is not right.");let i=await Hr(s,oi(e));if(i.kind==="missing")throw Ce();t.status(200).json({...ot(i.state),already_pending:i.kind==="already_pending"})}catch(n){r(
 n)}}o(Gr,"requestDeletionHandler");async function jr(e,t,r){try{let n=await Vr(f(e));if(n.kind==="missing")throw Ce();if(n.kind==="not_pending")throw new m("CONFLICT","This account is not scheduled fo\
-r deletion.");t.status(200).json(ot(n.state))}catch(n){r(n)}}o(jr,"cancelDeletionHandler");var se=oi();se.use(E);se.get("/",Wr);se.post("/deletion",Gr);se.delete("/deletion",jr);var Br=se;b();import{ZodError as li}from"npm:zod@3.24.1";import{randomUUID as ii}from"node:crypto";var Yr="x-request-id",ai=64,ui=/^[A-Za-z0-9._-]+$/,Kr=o((e,t,r)=>{let n=e.header(Yr),a=(n&&n.length<=ai&&ui.test(n)?n:void 0)??ii();e.requestId=a,t.setHeader(Yr,a),r()},"requestId");function zr(e){return e.
-requestId??"unknown"}o(zr,"getRequestId");var ci=50;function di(e){return e.errors.slice(0,ci).map(t=>({field:t.path.join(".")||"(root)",issue:t.code,message:t.message}))}o(di,"detailsFromZod");var Xr=o((e,t,r)=>{r(new m("NOT_FOUND",`No route\
+r deletion.");t.status(200).json(ot(n.state))}catch(n){r(n)}}o(jr,"cancelDeletionHandler");var se=ii();se.use(E);se.get("/",Wr);se.post("/deletion",Gr);se.delete("/deletion",jr);var Br=se;b();import{ZodError as ci}from"npm:zod@3.24.1";import{randomUUID as ai}from"node:crypto";var Yr="x-request-id",ui=64,li=/^[A-Za-z0-9._-]+$/,Kr=o((e,t,r)=>{let n=e.header(Yr),a=(n&&n.length<=ui&&li.test(n)?n:void 0)??ai();e.requestId=a,t.setHeader(Yr,a),r()},"requestId");function zr(e){return e.
+requestId??"unknown"}o(zr,"getRequestId");var di=50;function _i(e){return e.errors.slice(0,di).map(t=>({field:t.path.join(".")||"(root)",issue:t.code,message:t.message}))}o(_i,"detailsFromZod");var Xr=o((e,t,r)=>{r(new m("NOT_FOUND",`No route\
  matches ${e.method} ${e.path}`))},"notFoundHandler"),Qr={"22P02":{code:"VALIDATION_FAILED",issue:"invalid_format"},22001:{code:"VALIDATION_FAILED",issue:"too_long"},22003:{code:"VALIDATION_FAILED",issue:"\
 out_of_range"},22007:{code:"VALIDATION_FAILED",issue:"invalid_format"},22008:{code:"VALIDATION_FAILED",issue:"out_of_range"},23502:{code:"VALIDATION_FAILED",issue:"required"},23503:{code:"VALIDATION_F\
-AILED",issue:"unknown_reference"},23514:{code:"VALIDATION_FAILED",issue:"invalid"},23505:{code:"CONFLICT",issue:"duplicate"}};function _i(e){if(!(e instanceof Error))return!1;let t=e;return typeof t.code==
-"string"&&/^[0-9A-Z]{5}$/.test(t.code)&&typeof t.severity=="string"}o(_i,"isPgError");function mi(e){if(e.column)return e.column;if(e.constraint){let t=e.constraint;if(e.table&&t.startsWith(`${e.table}\
-_`)&&(t=t.slice(e.table.length+1)),t=t.replace(/_(check|fkey|key|not_null)$/,""),/^[a-z_]+$/.test(t))return t}return"(request)"}o(mi,"fieldFromPgError");function pi(e){if(!(e instanceof Error))return!1;
-let t=e;return t.__appError===!0&&typeof t.code=="string"&&t.code in ae}o(pi,"isMarkedAppError");var Jr=o((e,t,r,n)=>{let s=zr(t),a=new Date().toISOString(),i;if(e instanceof m)i=e;else if(e instanceof
-li)i=new m("VALIDATION_FAILED","The request failed validation.",{details:di(e)});else if(e instanceof SyntaxError&&"body"in e)i=new m("MALFORMED_REQUEST","The request body is not valid JSON.");else if(_i(
-e)&&Qr[e.code]){let c=Qr[e.code],_=mi(e);i=new m(c.code,c.code==="CONFLICT"?"That already exists.":_==="(request)"?"The request contains a value in the wrong format.":`The value for ${_} is not allowe\
-d.`,{details:[{field:_,issue:c.issue}],context:{sqlstate:e.code,constraint:e.constraint??null}})}else pi(e)?i=new m(e.code,e.message):i=new m("INTERNAL_ERROR","An unexpected error occurred.",{cause:e});
+AILED",issue:"unknown_reference"},23514:{code:"VALIDATION_FAILED",issue:"invalid"},23505:{code:"CONFLICT",issue:"duplicate"}};function mi(e){if(!(e instanceof Error))return!1;let t=e;return typeof t.code==
+"string"&&/^[0-9A-Z]{5}$/.test(t.code)&&typeof t.severity=="string"}o(mi,"isPgError");function pi(e){if(e.column)return e.column;if(e.constraint){let t=e.constraint;if(e.table&&t.startsWith(`${e.table}\
+_`)&&(t=t.slice(e.table.length+1)),t=t.replace(/_(check|fkey|key|not_null)$/,""),/^[a-z_]+$/.test(t))return t}return"(request)"}o(pi,"fieldFromPgError");function gi(e){if(!(e instanceof Error))return!1;
+let t=e;return t.__appError===!0&&typeof t.code=="string"&&t.code in ae}o(gi,"isMarkedAppError");var Jr=o((e,t,r,n)=>{let s=zr(t),a=new Date().toISOString(),i;if(e instanceof m)i=e;else if(e instanceof
+ci)i=new m("VALIDATION_FAILED","The request failed validation.",{details:_i(e)});else if(e instanceof SyntaxError&&"body"in e)i=new m("MALFORMED_REQUEST","The request body is not valid JSON.");else if(mi(
+e)&&Qr[e.code]){let c=Qr[e.code],_=pi(e);i=new m(c.code,c.code==="CONFLICT"?"That already exists.":_==="(request)"?"The request contains a value in the wrong format.":`The value for ${_} is not allowe\
+d.`,{details:[{field:_,issue:c.issue}],context:{sqlstate:e.code,constraint:e.constraint??null}})}else gi(e)?i=new m(e.code,e.message):i=new m("INTERNAL_ERROR","An unexpected error occurred.",{cause:e});
 let u={requestId:s,code:i.code,status:i.status,method:t.method,path:t.path,context:i.context,err:i.status>=500?e:void 0};i.status>=500?h.error(u,i.message):h.warn(u,i.message);let l={error:{code:i.code,
 message:i.message,message_key:i.messageKey,...i.details?{details:i.details}:{},request_id:s,timestamp:a}};r.status(i.status).json(l)},"errorHandler");function es(e){let t=Zr();t.set("trust proxy",1),t.disable("x-powered-by");let r=e.basePath?.replace(/\/+$/,"");r&&t.use((s,a,i)=>{s.url===r?(s.url="/",s.originalUrl="/"):s.url.startsWith(`${r}/`)&&(s.
-url=s.url.slice(r.length),s.originalUrl=s.url),i()}),t.use(Kr),t.use(yi()),t.use(gi({origin:e.corsOrigins,credentials:!0,exposedHeaders:["x-request-id"]})),t.use(Zr.json({limit:e.bodyLimit??"1mb"})),t.
-use(fi()),t.use("/api/auth",Bt),t.use("/api/v1/plants",Pn),t.use("/api/v1/fitness",zn),t.use("/api/v1/nutrition",lr),t.use("/api/v1/dashboard",mr),t.use("/api/v1/achievements",Er),t.use("/api/v1/remin\
+url=s.url.slice(r.length),s.originalUrl=s.url),i()}),t.use(Kr),t.use(wi()),t.use(fi({origin:e.corsOrigins,credentials:!0,exposedHeaders:["x-request-id"]})),t.use(Zr.json({limit:e.bodyLimit??"1mb"})),t.
+use(yi()),t.use("/api/auth",Bt),t.use("/api/v1/plants",$n),t.use("/api/v1/fitness",zn),t.use("/api/v1/nutrition",lr),t.use("/api/v1/dashboard",mr),t.use("/api/v1/achievements",Er),t.use("/api/v1/remin\
 ders",Rr),t.use("/api/v1/devices",Ir),t.use("/api/v1/sync",vr),t.use("/api/v1/settings",Mr),t.use("/api/v1/account",Br),t.get("/healthz",(s,a)=>{a.json({status:"ok",uptime_s:Math.round(process.uptime())})});
-let n;return t.get("/readyz",async(s,a)=>{let i=Date.now();if(!n||i-n.at>3e4){let u=!1;try{await d().query("select 1"),u=!0}catch{u=!1}n={ok:u,at:i}}a.set("cache-control","no-store"),a.status(n.ok?200:
-503).json({status:n.ok?"ready":"unavailable",database:n.ok?"up":"down"})}),t.get("/api/v1",(s,a)=>{a.json({name:"PlantPal+ API",version:"v1"})}),t.use(Xr),t.use(Jr),t}o(es,"createApp");b();import Ld from"npm:node-cron@4.6.0";b();import{createHmac as wi}from"node:crypto";var it=100,ts=Object.freeze([{table:"profiles",column:"user_id"},{table:"user_settings",column:"user_id"},{table:"auth_sessions",column:"user_id"},{table:"auth_tokens",column:"user_id"},{table:"email_\
+let n;return t.get("/readyz",async(s,a)=>{let i=Date.now();if(!n||i-n.at>3e4){let u;try{await d().query("select 1"),u=!0}catch{u=!1}n={ok:u,at:i}}a.set("cache-control","no-store"),a.status(n.ok?200:503).
+json({status:n.ok?"ready":"unavailable",database:n.ok?"up":"down"})}),t.get("/api/v1",(s,a)=>{a.json({name:"PlantPal+ API",version:"v1"})}),t.use(Xr),t.use(Jr),t}o(es,"createApp");b();import $d from"npm:node-cron@4.6.0";b();import{createHmac as hi}from"node:crypto";var it=100,ts=Object.freeze([{table:"profiles",column:"user_id"},{table:"user_settings",column:"user_id"},{table:"auth_sessions",column:"user_id"},{table:"auth_tokens",column:"user_id"},{table:"email_\
 verification_tokens",column:"user_id"},{table:"password_reset_tokens",column:"user_id"},{table:"consent_records",column:"user_id"},{table:"device_push_tokens",column:"user_id"},{table:"plants",column:"\
 user_id"},{table:"plant_care_events",column:"user_id"},{table:"growth_log_entries",column:"user_id"},{table:"workouts",column:"user_id"},{table:"personal_records",column:"user_id"},{table:"meals",column:"\
 user_id"},{table:"water_logs",column:"user_id"},{table:"foods",column:"created_by"},{table:"reminders",column:"user_id"},{table:"streaks",column:"user_id"},{table:"user_achievements",column:"user_id"},
@@ -796,7 +797,7 @@ user_id"},{table:"water_logs",column:"user_id"},{table:"foods",column:"created_b
         and purge_after is not null
         and purge_after <= now()
       order by purge_after asc
-      limit $1`,[e]);return t}o(ns,"findAccountsDueForPurge");function hi(e,t){return wi("sha256",t).update(e).digest("hex")}o(hi,"subjectHash");async function rs(e,t){return R(async r=>{let{rows:[n]}=await r.
+      limit $1`,[e]);return t}o(ns,"findAccountsDueForPurge");function Ei(e,t){return hi("sha256",t).update(e).digest("hex")}o(Ei,"subjectHash");async function rs(e,t){return R(async r=>{let{rows:[n]}=await r.
 query(`select id
          from users
         where id = $1
@@ -804,44 +805,44 @@ query(`select id
           and purge_after is not null
           and purge_after <= now()
         for update`,[e.id]);if(!n)return{erased:!1,counts:{}};let s=ts.map(({table:_,column:p},y)=>`(select count(*)::int from ${_} where ${p} = $1) as "t${y}"`).join(", "),{rows:[a]}=await r.query(`s\
-elect ${s}`,[e.id]),i={};ts.forEach(({table:_},p)=>{i[_]=a?.[`t${p}`]??0});let u=hi(e.id,t),{rowCount:l}=await r.query(`update audit_events
+elect ${s}`,[e.id]),i={};ts.forEach(({table:_},p)=>{i[_]=a?.[`t${p}`]??0});let u=Ei(e.id,t),{rowCount:l}=await r.query(`update audit_events
           set user_id = null,
               payload = (payload - 'email' - 'email_normalised')
                         || jsonb_build_object('subject', $2::text)
         where user_id = $1`,[e.id,u]);i.audit_events_anonymised=l??0;let{rowCount:c}=await r.query("delete from login_attempts where email_normalised = $1",[e.email_normalised]);return i.login_attempts=
 c??0,await r.query("delete from users where id = $1",[e.id]),i.users=1,await r.query(`insert into audit_events (user_id, event_type, payload)
-       values (null, 'ACCOUNT_ERASED', $1::jsonb)`,[JSON.stringify({subject:u,rows:i,erased_at:new Date().toISOString()})]),{erased:!0,counts:i}})}o(rs,"purgeAccount");function Ei(){let e=O();return e.AUDIT_PEPPER??e.JWT_ACCESS_SECRET}o(Ei,"pepper");async function ss(e=it){let t=await ns(e),r={due:t.length,erased:0,skipped:0,failed:0,counts:{}};if(t.length===0)return r;
-let n=Ei();for(let s of t)try{let a=await rs(s,n);if(!a.erased){r.skipped++;continue}r.erased++;for(let[i,u]of Object.entries(a.counts))r.counts[i]=(r.counts[i]??0)+u}catch(a){r.failed++,h.error({err:a},
-"account erasure failed; will retry on the next sweep")}return h.info(r,"account erasure sweep complete"),r}o(ss,"runPurgePass");import Bd from"npm:node-cron@4.6.0";var Ri="https://exp.host/--/api/v2/push/send",Ai=100;function Ti(e,t=Ai){let r=[];for(let n=0;n<e.length;n+=t)r.push(e.slice(n,n+t));return r}o(Ti,"chunkMessages");async function os(e){let t={delivered:[],
-notRegistered:[],failed:[]};for(let r of Ti(e))try{let n=await fetch(Ri,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(r)});if(!n.ok){t.failed.
+       values (null, 'ACCOUNT_ERASED', $1::jsonb)`,[JSON.stringify({subject:u,rows:i,erased_at:new Date().toISOString()})]),{erased:!0,counts:i}})}o(rs,"purgeAccount");function Ri(){let e=O();return e.AUDIT_PEPPER??e.JWT_ACCESS_SECRET}o(Ri,"pepper");async function ss(e=it){let t=await ns(e),r={due:t.length,erased:0,skipped:0,failed:0,counts:{}};if(t.length===0)return r;
+let n=Ri();for(let s of t)try{let a=await rs(s,n);if(!a.erased){r.skipped++;continue}r.erased++;for(let[i,u]of Object.entries(a.counts))r.counts[i]=(r.counts[i]??0)+u}catch(a){r.failed++,h.error({err:a},
+"account erasure failed; will retry on the next sweep")}return h.info(r,"account erasure sweep complete"),r}o(ss,"runPurgePass");import Kd from"npm:node-cron@4.6.0";var Ai="https://exp.host/--/api/v2/push/send",Ti=100;function bi(e,t=Ti){let r=[];for(let n=0;n<e.length;n+=t)r.push(e.slice(n,n+t));return r}o(bi,"chunkMessages");async function os(e){let t={delivered:[],
+notRegistered:[],failed:[]};for(let r of bi(e))try{let n=await fetch(Ai,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(r)});if(!n.ok){t.failed.
 push(...r.map(i=>i.to)),h.warn({status:n.status},"expo push batch rejected");continue}let a=(await n.json()).data??[];r.forEach((i,u)=>{let l=a[u];l?.status==="ok"?t.delivered.push(i.to):l?.details?.error===
 "DeviceNotRegistered"?t.notRegistered.push(i.to):t.failed.push(i.to)})}catch(n){t.failed.push(...r.map(s=>s.to)),h.warn({err:n},"expo push batch failed")}return t}o(os,"sendPushMessages");function ls(e,t,r=24){let n=r*36e5;return t.filter(s=>s.next_water_due_at.getTime()-e.getTime()<=n).map(s=>({user_id:s.user_id,reminder_type:"WATER_PLANT",target_entity_id:s.plant_id,target_entity_type:"\
 PLANT",title:`Water ${s.nickname}`,body:s.next_water_due_at.getTime()<=e.getTime()?`${s.nickname} is due for watering.`:`${s.nickname} needs water soon.`,due_at_utc:s.next_water_due_at.getTime()<e.getTime()?
-e:s.next_water_due_at}))}o(ls,"planWateringReminders");var bi=5,cs={timezone:"UTC",quiet_hours_mode:"WINDOW",quiet_start_time:null,quiet_end_time:null,daily_notification_cap:12},is={hourCycle:"h23",year:"\
-numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"},as=new Map;function ki(e){let t=as.get(e);if(t)return t;let r;try{r=new Intl.DateTimeFormat("en-US",{...is,timeZone:e})}catch{r=
-new Intl.DateTimeFormat("en-US",{...is,timeZone:"UTC"})}return as.set(e,r),r}o(ki,"formatterFor");function at(e,t){let r=ki(t).formatToParts(e),n=o(a=>r.find(i=>i.type===a)?.value??"00","part"),s=Number(
-n("hour"))%24;return{dateKey:`${n("year")}-${n("month")}-${n("day")}`,minutes:s*60+Number(n("minute"))}}o(at,"localClock");var Ii=1440;function us(e){if(e===null)return null;let t=/^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.
-exec(e.trim());if(!t)return null;let r=Number(t[1])*60+Number(t[2]);return r>=0&&r<Ii?r:null}o(us,"wallClockMinutes");function xi(e,t){if(t.quiet_hours_mode==="OFF")return!1;if(t.quiet_hours_mode==="S\
-CHEDULED_ONLY")return!0;let r=us(t.quiet_start_time),n=us(t.quiet_end_time);if(r===null||n===null||r===n)return!1;let s=at(e,t.timezone).minutes;return r<n?s>=r&&s<n:s>=r||s<n}o(xi,"isWithinQuietHours");
-function Di(e,t,r){let n=at(t,r).dateKey,s=0;for(let a of e)at(a,r).dateKey===n&&(s+=1);return s}o(Di,"sentOnLocalDay");function Ni(e){let t=e.daily_notification_cap;return!Number.isFinite(t)||t<1?cs.
-daily_notification_cap:Math.floor(t)}o(Ni,"capOf");function ds(e,t,r={}){let n={send:[],fail:[],defer:[]},s=t.filter(i=>i.due_at_utc.getTime()<=e.getTime()).sort((i,u)=>{let l=i.due_at_utc.getTime()-u.
-due_at_utc.getTime();return l!==0?l:i.id<u.id?-1:i.id>u.id?1:0}),a=new Map;for(let i of s){if(i.attempts>=bi){n.fail.push(i.id);continue}let u=r.settings?.get(i.user_id)??cs;if(xi(e,u)){n.defer.push({
-id:i.id,reason:"QUIET_HOURS"});continue}let l=a.get(i.user_id);if(l===void 0){let c=r.sentAt?.get(i.user_id)??[];l=Math.max(0,Ni(u)-Di(c,e,u.timezone))}if(l===0){a.set(i.user_id,0),n.defer.push({id:i.
-id,reason:"DAILY_CAP_REACHED"});continue}a.set(i.user_id,l-1),n.send.push(i.id)}return n}o(ds,"tick");var _s=24;async function vi(e){if(e.length===0)return 0;let t=await br([...new Set(e.map(i=>i.user_id))]);if(t.size===0)return 0;let r=[],n=new Map;for(let i of e)for(let u of t.get(i.user_id)??[]){r.
+e:s.next_water_due_at}))}o(ls,"planWateringReminders");var ki=5,cs={timezone:"UTC",quiet_hours_mode:"WINDOW",quiet_start_time:null,quiet_end_time:null,daily_notification_cap:12},is={hourCycle:"h23",year:"\
+numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"},as=new Map;function Ii(e){let t=as.get(e);if(t)return t;let r;try{r=new Intl.DateTimeFormat("en-US",{...is,timeZone:e})}catch{r=
+new Intl.DateTimeFormat("en-US",{...is,timeZone:"UTC"})}return as.set(e,r),r}o(Ii,"formatterFor");function at(e,t){let r=Ii(t).formatToParts(e),n=o(a=>r.find(i=>i.type===a)?.value??"00","part"),s=Number(
+n("hour"))%24;return{dateKey:`${n("year")}-${n("month")}-${n("day")}`,minutes:s*60+Number(n("minute"))}}o(at,"localClock");var xi=1440;function us(e){if(e===null)return null;let t=/^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.
+exec(e.trim());if(!t)return null;let r=Number(t[1])*60+Number(t[2]);return r>=0&&r<xi?r:null}o(us,"wallClockMinutes");function Di(e,t){if(t.quiet_hours_mode==="OFF")return!1;if(t.quiet_hours_mode==="S\
+CHEDULED_ONLY")return!0;let r=us(t.quiet_start_time),n=us(t.quiet_end_time);if(r===null||n===null||r===n)return!1;let s=at(e,t.timezone).minutes;return r<n?s>=r&&s<n:s>=r||s<n}o(Di,"isWithinQuietHours");
+function Ni(e,t,r){let n=at(t,r).dateKey,s=0;for(let a of e)at(a,r).dateKey===n&&(s+=1);return s}o(Ni,"sentOnLocalDay");function vi(e){let t=e.daily_notification_cap;return!Number.isFinite(t)||t<1?cs.
+daily_notification_cap:Math.floor(t)}o(vi,"capOf");function ds(e,t,r={}){let n={send:[],fail:[],defer:[]},s=t.filter(i=>i.due_at_utc.getTime()<=e.getTime()).sort((i,u)=>{let l=i.due_at_utc.getTime()-u.
+due_at_utc.getTime();return l!==0?l:i.id<u.id?-1:i.id>u.id?1:0}),a=new Map;for(let i of s){if(i.attempts>=ki){n.fail.push(i.id);continue}let u=r.settings?.get(i.user_id)??cs;if(Di(e,u)){n.defer.push({
+id:i.id,reason:"QUIET_HOURS"});continue}let l=a.get(i.user_id);if(l===void 0){let c=r.sentAt?.get(i.user_id)??[];l=Math.max(0,vi(u)-Ni(c,e,u.timezone))}if(l===0){a.set(i.user_id,0),n.defer.push({id:i.
+id,reason:"DAILY_CAP_REACHED"});continue}a.set(i.user_id,l-1),n.send.push(i.id)}return n}o(ds,"tick");var _s=24;async function Si(e){if(e.length===0)return 0;let t=await br([...new Set(e.map(i=>i.user_id))]);if(t.size===0)return 0;let r=[],n=new Map;for(let i of e)for(let u of t.get(i.user_id)??[]){r.
 push({to:u,title:i.title,body:i.body??"",data:{reminder_id:i.id}});let l=n.get(u);l?l.push(i.id):n.set(u,[i.id])}if(r.length===0)return 0;let s=await os(r);await kr(s.notRegistered,"DEVICE_NOT_REGISTE\
-RED");let a=new Set;for(let i of s.delivered)for(let u of n.get(i)??[])a.add(u);return await un([...a]),a.size}o(vi,"deliverByPush");async function ms(e=new Date){let t=await nn(_s),r=ls(e,t,_s),n=await rn(
-r),s=await an(),a=[...new Set(s.map(p=>p.user_id))],[i,u]=await Promise.all([sn(a),on(a,e)]),l=ds(e,s,{settings:i,sentAt:u});await ln(l.send),await cn(l.fail);let c=new Set(l.send),_=await vi(s.filter(
+RED");let a=new Set;for(let i of s.delivered)for(let u of n.get(i)??[])a.add(u);return await un([...a]),a.size}o(Si,"deliverByPush");async function ms(e=new Date){let t=await nn(_s),r=ls(e,t,_s),n=await rn(
+r),s=await an(),a=[...new Set(s.map(p=>p.user_id))],[i,u]=await Promise.all([sn(a),on(a,e)]),l=ds(e,s,{settings:i,sentAt:u});await ln(l.send),await cn(l.fail);let c=new Set(l.send),_=await Si(s.filter(
 p=>c.has(p.id)));return{scheduled:n,sent:l.send.length,delivered:_,failed:l.fail.length,deferred:l.defer.length}}o(ms,"runReminderPass");var lt=Deno.env.get("SUPABASE_FUNCTION_SLUG")??"plantpal-api";function ut(e){let t=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??Deno.env.get("SUPABASE_ANON_KEY")??Deno.env.get("SUPABASE_DB_URL");if(!t)throw new Error(
-"No platform secret to derive from: set JWT_ACCESS_SECRET on the function explicitly.");return Si("sha256",t).update(`plantpal:${e}`).digest("hex")}o(ut,"derivedSecret");function Le(e,t){let r=Deno.env.
+"No platform secret to derive from: set JWT_ACCESS_SECRET on the function explicitly.");return Oi("sha256",t).update(`plantpal:${e}`).digest("hex")}o(ut,"derivedSecret");function Le(e,t){let r=Deno.env.
 get(e);return r&&r.length>0?r:t}o(Le,"fromEdge");var $i=(Deno.env.get("EXTRA_CORS_ORIGINS")??Deno.env.get("CORS_ORIGINS")??"").split(",").map(e=>e.trim()).filter(Boolean),ys=Deno.env.get("DATABASE_URL")??
-Deno.env.get("SUPABASE_DB_URL");if(!ys)throw new Error("Neither DATABASE_URL nor SUPABASE_DB_URL is set.");var ws=new URL(Deno.env.get("SUPABASE_URL")??"https://localhost").origin,hs=mt({...Ci.env,NODE_ENV:"\
+Deno.env.get("SUPABASE_DB_URL");if(!ys)throw new Error("Neither DATABASE_URL nor SUPABASE_DB_URL is set.");var ws=new URL(Deno.env.get("SUPABASE_URL")??"https://localhost").origin,hs=mt({...Li.env,NODE_ENV:"\
 production",DATABASE_URL:ys,JWT_ACCESS_SECRET:Le("JWT_ACCESS_SECRET",ut("jwt-access")),AUDIT_PEPPER:Le("AUDIT_PEPPER",ut("audit-pepper")),LOG_LEVEL:Le("LOG_LEVEL","info"),CORS_ORIGINS:[ws,...$i].join(
-","),REFRESH_COOKIE_PATH:Le("REFRESH_COOKIE_PATH","/")});Me(hs.DATABASE_URL,3,{rejectUnauthorized:!1});var gs=Deno.env.get("TICK_SECRET")||void 0,fs=ut("internal-tick"),oe;async function Pi(){if(gs)return gs;
+","),REFRESH_COOKIE_PATH:Le("REFRESH_COOKIE_PATH","/")});Me(hs.DATABASE_URL,3,{rejectUnauthorized:!1});var gs=Deno.env.get("TICK_SECRET")||void 0,fs=ut("internal-tick"),oe;async function Ui(){if(gs)return gs;
 if(!(oe&&(oe.value!==null||Date.now()-oe.at<6e4)))try{let{rows:t}=await d().query(`select decrypted_secret as secret
            from vault.decrypted_secrets
           where name = 'plantpal_tick_secret'
-          limit 1`);oe={value:t[0]?.secret??null,at:Date.now()}}catch(t){return h.warn({err:t},"internal tick: Vault lookup failed, using the derived secret"),fs}return oe?.value??fs}o(Pi,"tickSecret");
-function Ui(e,t){let r=ps.from(e),n=ps.from(t);return r.length===n.length&&Oi(r,n)}o(Ui,"sameSecret");var Mi=es({corsOrigins:hs.CORS_ORIGINS,basePath:`/${lt}`}),ct=Li();ct.post(`/${lt}/internal/tick`,
-async(e,t)=>{let r=(e.get("authorization")??"").replace(/^Bearer\s+/i,""),n=!1;try{n=r.length>0&&Ui(r,await Pi())}catch{n=!1}if(!n){t.status(401).json({error:{code:"AUTHENTICATION_REQUIRED"}});return}
-let s=Promise.allSettled([ms(),ss()]).then(([a,i])=>{h.info({reminders:a.status==="fulfilled"?a.value:"failed",purge:i.status==="fulfilled"?i.value:"failed"},"internal tick complete")});typeof EdgeRuntime<
-"u"&&EdgeRuntime?.waitUntil?.(s),t.status(202).json({status:"accepted"})});ct.use(Mi);h.info({slug:lt,origin:ws},"PlantPal+ API starting on Supabase Edge");ct.listen(8e3);
+          limit 1`);oe={value:t[0]?.secret??null,at:Date.now()}}catch(t){return h.warn({err:t},"internal tick: Vault lookup failed, using the derived secret"),fs}return oe?.value??fs}o(Ui,"tickSecret");
+function Mi(e,t){let r=ps.from(e),n=ps.from(t);return r.length===n.length&&Ci(r,n)}o(Mi,"sameSecret");var qi=es({corsOrigins:hs.CORS_ORIGINS,basePath:`/${lt}`}),ct=Pi();ct.post(`/${lt}/internal/tick`,
+async(e,t)=>{let r=(e.get("authorization")??"").replace(/^Bearer\s+/i,""),n;try{n=r.length>0&&Mi(r,await Ui())}catch{n=!1}if(!n){t.status(401).json({error:{code:"AUTHENTICATION_REQUIRED"}});return}let s=Promise.
+allSettled([ms(),ss()]).then(([a,i])=>{h.info({reminders:a.status==="fulfilled"?a.value:"failed",purge:i.status==="fulfilled"?i.value:"failed"},"internal tick complete")});typeof EdgeRuntime<"u"&&EdgeRuntime?.
+waitUntil?.(s),t.status(202).json({status:"accepted"})});ct.use(qi);h.info({slug:lt,origin:ws},"PlantPal+ API starting on Supabase Edge");ct.listen(8e3);

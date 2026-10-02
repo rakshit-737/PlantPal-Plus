@@ -9,7 +9,7 @@ PlantPal+ consists of multiple applications:
 - A React Vite Web App (`apps/web`)
 - A React Native Expo Mobile App (`apps/mobile`)
 
-There is a strict requirement (`NFR-MAIN-03`) that domain calculations (like the watering algorithm, Atwater energy calculation, etc.) must exist in exactly one place to ensure bit-for-bit agreement across the server, web, and mobile clients.
+There is a strict requirement (`NFR-MAIN-04`) that domain calculations (like the watering algorithm, Atwater energy calculation, etc.) must exist in exactly one place to ensure bit-for-bit agreement across the server, web, and mobile clients.
 We need a repository structure that supports this code sharing seamlessly without publishing internal packages to a registry.
 
 ## Decision

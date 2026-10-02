@@ -11,7 +11,7 @@ import { monoFont } from '../lib/fonts'
 import { describeWriteError, logMealWriteThrough, logWaterWriteThrough } from '../offline'
 import { usePalette, space } from '../theme'
 
-// NFR-MAIN-03: the meal vocabulary lives once, in @plantpal/shared.
+// NFR-MAIN-04: the meal vocabulary lives once, in @plantpal/shared.
 const MEAL_TYPES = Object.keys(MealType)
 
 const fmtInt = (n: number) => n.toLocaleString('en-US')

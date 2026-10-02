@@ -1,6 +1,12 @@
 # PlantPal+ API reference
 
-Base URL: `http://localhost:4000` in development; the Render service URL in production.
+| Environment | Base URL |
+|---|---|
+| Local development | `http://localhost:4000` |
+| Production (direct) | `https://mmqqijfgtcjviogqporc.supabase.co/functions/v1/plantpal-api` |
+| Production (from the website) | `https://plant-pal-plus.vercel.app` — Vercel rewrites `/api/*` to the API, so the browser stays on one origin |
+
+Paths below are relative to the base URL, e.g. `GET {base}/api/v1/plants`.
 Full request/response schemas live in the OpenAPI 3.1 spec at
 [docs/architecture](architecture/) — this page is the quick human-readable index.
 
@@ -12,7 +18,9 @@ Full request/response schemas live in the OpenAPI 3.1 spec at
   depends on the client, which `authController` decides from the
   `x-plantpal-client` header (`IOS`/`ANDROID`/`WEB`, defaulting to `WEB`):
   - **Web** — set as an httpOnly, `Secure`, `SameSite=None` cookie named
-    `refresh_token`, scoped to `/api/auth`, and never included in the JSON body.
+    `refresh_token`, scoped to `REFRESH_COOKIE_PATH` (`/api/auth` by default; `/` on the
+    edge deployment, where the browser sees two different paths), and never included
+    in the JSON body.
   - **Mobile** (`IOS`/`ANDROID`) — returned **in the response body** as
     `refresh_token`, because a native client has no cookie jar to rely on
     (BR-ACC-07 clause 7).
@@ -34,13 +42,14 @@ Full request/response schemas live in the OpenAPI 3.1 spec at
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/healthz` | Liveness — dependency-free, returns `{status, uptime_s}` |
+| GET | `/readyz` | Readiness — runs `select 1` (cached 30 s); `200 {status:"ready",database:"up"}` or `503 {status:"unavailable",database:"down"}` |
 | GET | `/api/v1` | API banner/version |
 
 ## Auth — `/api/auth`
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/register` | — | Create account. Body: `email`, `password`, `confirmed_age: true`. Returns 202 always (no account enumeration). |
+| POST | `/register` | — | Create account. Body: `email`, `password`, `confirmed_age: true`. Returns 202 always (no account enumeration), with `verification_required` telling the client whether an email confirmation step follows — `false` while `REQUIRE_EMAIL_VERIFICATION` is off, in which case the account is active and the client may sign in at once. |
 | POST | `/login` | — | Body: `email`, `password`. Returns `access_token` + user; the refresh token is set as a cookie for web and returned as `refresh_token` in the body for mobile. Constant-time on unknown accounts; lockout after repeated failures. |
 | POST | `/refresh` | cookie or body | Rotates the refresh-token family, returns a fresh `access_token` (plus `refresh_token` in the body on mobile). Reuse of a consumed token revokes the whole family. |
 | POST | `/logout` | cookie or body | Revokes the session and clears the cookie. |
@@ -101,7 +110,7 @@ Growth entry body:
 | GET | `/personal-records` | PRs (estimated 1RM via shared `estimatedOneRepMax`). |
 | GET | `/summary` | Weekly summary for the week beginning `?week=YYYY-MM-DD` (required). |
 | GET | `/` | List workouts. |
-| POST | `/` | Log a workout (`activity_type`, `duration_mins`, `perceived_intensity`, `steps`, `local_date_str`). Calorie estimate uses frozen MET + Mifflin-St Jeor from `@plantpal/shared`. |
+| POST | `/` | Log a workout (`activity_type`, `duration_mins`, `perceived_intensity` `LOW`/`MODERATE`/`VIGOROUS`, `steps` 0–200000, `note` ≤ 500 chars, `local_date_str`, optional `sets`). Out-of-range input answers 422. Every timed workout gets the FR-FIT-05 energy estimate, `MET × body mass × minutes / 60`: a MET the client omits comes from the BR-FIT-02 catalogue by activity and intensity, a body mass it omits from the profile or the 70 kg default, and both are frozen onto the row. |
 | GET | `/:id` | One workout. |
 
 ## Nutrition — `/api/v1/nutrition`

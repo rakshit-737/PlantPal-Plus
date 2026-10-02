@@ -11,7 +11,7 @@ import { monoFont } from '../lib/fonts'
 import { describeWriteError, logWorkoutWriteThrough } from '../offline'
 import { usePalette, space } from '../theme'
 
-// NFR-MAIN-03: the activity vocabulary lives once, in @plantpal/shared.
+// NFR-MAIN-04: the activity vocabulary lives once, in @plantpal/shared.
 const ACTIVITY_TYPES = Object.keys(ActivityTypeCode)
 
 export function FitnessScreen() {

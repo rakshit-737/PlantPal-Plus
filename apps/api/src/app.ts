@@ -129,7 +129,7 @@ export function createApp(options: AppOptions): Express {
   app.get('/readyz', async (_req, res) => {
     const now = Date.now()
     if (!readiness || now - readiness.at > 30_000) {
-      let ok = false
+      let ok: boolean
       try {
         await getPool().query('select 1')
         ok = true

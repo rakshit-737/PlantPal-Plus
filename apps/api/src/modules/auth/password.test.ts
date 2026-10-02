@@ -88,7 +88,7 @@ describe('portable Argon2 (WebAssembly) — the edge runtime has no native build
   })
 
   it('verifies a hash the native build wrote, so Node-created accounts sign in on the edge', async () => {
-    let native: typeof import('@node-rs/argon2') | null = null
+    let native: typeof import('@node-rs/argon2') | null
     try {
       native = await import('@node-rs/argon2')
     } catch {

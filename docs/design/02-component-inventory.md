@@ -2,277 +2,255 @@
 
 | Field | Value |
 | --- | --- |
-| Document | `02-component-inventory.md` — Component mapping and animation strategy |
-| Version | 2.0 |
-| Updated | 2026-07-31 |
+| Document | `02-component-inventory.md` — Component mapping and interaction contracts |
+| Version | 3.0 |
+| Updated | 2026-10-02 |
 | Owner | Rakshit |
 
-> **v2.0 supersedes v1.0.** v1.0 planned shadcn/ui, React Native Paper, Lucide, Framer Motion, Lottie and Recharts. **None of those are installed.** The shipped app hand-rolls a small primitive set against the design tokens. See §7 for what was dropped and why.
+> **v3.0 tracks design language v4.0 "Conservatory".** The primitive set is still hand-rolled against the design tokens; what changed is the material (glass panes instead of hairline cards), the shapes, and a handful of new primitives — `Ring`, `Skeleton`, `useCountUp` and the brand components. §7 records every dependency decision, including the ones v3.0 reversed.
 
 ## 1. Overview
 
-The entire web UI is built from one file — `apps/web/src/components/ui.tsx` — and the entire native UI from its mirror, `apps/mobile/src/components/ui.tsx`. Between them they have **zero UI dependencies**: `apps/web/package.json` ships `react`, `react-dom`, `react-router-dom` and `@plantpal/shared`; `apps/mobile/package.json` ships Expo modules and `react-native-safe-area-context`. Nothing else.
+The web UI is built from `apps/web/src/components/ui.tsx` plus four small companions — `Brand.tsx`, `ThemeToggle.tsx`, `PlantAvatar.tsx` and the shell in `layouts/AppShell.tsx`. The native UI is built from `apps/mobile/src/components/ui.tsx`.
 
-Three rules govern every component here:
+The web app's runtime dependencies are `react`, `react-dom`, `react-router-dom`, `motion` (layout and entrance animation), `clsx` + `tailwind-merge` (the `cn` class merger in `lib/utils.ts`) and `@plantpal/shared`. There is no component library.
+
+Three rules govern every component:
 
 - **Tokens only.** No hard-coded colour. Every value resolves through a Tailwind class backed by a CSS custom property (web) or a `usePalette()` field (native).
-- **Native elements first.** `<button>`, `<input>`, `<select>`, `<label htmlFor>`. Keyboard support and screen-reader semantics come free; we only hand-roll ARIA where no native element exists (`Combobox`, `Modal`).
-- **Field-notebook styling.** `rounded-sm`/`rounded-md` only, hairline borders instead of shadows, uppercase letterspaced eyebrows for labels, and every metric in `font-mono`.
+- **Native elements first.** `<button>`, `<input>`, `<select>`, `<label htmlFor>`, `<progress>`. Keyboard and screen-reader behaviour come free; ARIA is hand-rolled only where no native element exists (`Combobox`, `Modal`).
+- **One material.** Every card is a `.pane` (`01-design-language.md` §5); every metric is `font-mono`; every interactive edge uses `border-control`.
 
 ## 2. Web Component Inventory
 
-All exported from `apps/web/src/components/ui.tsx`. Covered by `apps/web/src/components/ui.test.tsx`.
+Exported from `apps/web/src/components/ui.tsx` unless stated otherwise. Covered by `ui.test.tsx` and the page tests.
 
 ### Button
 
 | | |
 | --- | --- |
-| **Purpose** | Every clickable action. There is no separate IconButton, FAB or link-button. |
-| **Props** | `variant?: 'primary' \| 'secondary' \| 'ghost' \| 'danger'` (default `primary`), `loading?: boolean` (default `false`), plus all native `ButtonHTMLAttributes`. |
-| **States** | Idle · hover (variant-specific) · focus-visible (`ring-2` + `ring-offset-2 ring-offset-background`) · disabled (`opacity-60`, `cursor-not-allowed`) · loading. |
+| **Purpose** | Every clickable action. There is no separate IconButton, FAB or link-button component. |
+| **Props** | `variant?: 'primary' \| 'secondary' \| 'ghost' \| 'danger'` (default `primary`), `size?: 'sm' \| 'md' \| 'lg'` (32 / 40 / 48px tall, default `md`), `loading?: boolean`, plus all native `ButtonHTMLAttributes`. |
+| **States** | Idle · hover · active (`scale-[0.985]`) · focus-visible (`ring-2` + `ring-offset-2`) · disabled (`opacity-55`) · loading. |
 
-Variants: **primary** is a solid `bg-primary` fill with `text-on-primary`. **secondary** is `bg-surface` with a hairline border that darkens to `text-muted` on hover. **ghost** is transparent muted text that gains a `bg-surface` wash on hover. **danger** is an *accent-outline stamp* — transparent fill, `border-accent/40`, `text-accent`, `bg-accent/10` on hover, and it rings in `accent` rather than `primary`.
+Variants: **primary** is `.btn-primary` — a lit emerald gradient with an inner highlight and the primary glow, the only element that glows at rest. **secondary** is a glass button with a `border-control` edge that lifts 1px and turns opaque on hover. **ghost** is muted text that gains a faint wash on hover. **danger** is a full-strength `accent` outline (a control boundary, so it must clear 3:1) with an accent glow on hover, and it rings in `accent`.
 
 **Usage rules**
-- `loading` implies disabled (`disabled={disabled || loading}`) and sets `aria-busy`.
-- **The label stays mounted while loading** — a spinner dot is prepended, never substituted, so the button never changes width mid-request. Do not swap children for "Saving…".
-- **Never a solid red button.** Destructive intent is `variant="danger"`, an outline. Confirmation for a genuinely destructive action belongs in a `Modal`, not in the button's colour.
-- **Every independently-triggerable action owns its busy flag.** A list of ten "Water" buttons needs ten flags, not one — the shipped pattern is `useState<Set<string>>` keyed by row id (`PlantsPage`, `DashboardPage`) so watering one plant never spins the other nine. Same for the hydration `+250` / `+500` pair in `NutritionPage`.
+- `loading` implies disabled and sets `aria-busy`. **The label stays mounted** — a spinner is prepended, never substituted, so the button never changes width mid-request.
+- **Never a solid red button.** Destructive intent is `variant="danger"`; confirmation for a genuinely destructive action belongs in a `Modal`.
+- **Every independently triggerable action owns its busy flag.** Ten "Water" buttons need ten flags — the shipped pattern is a `Set<string>` keyed by row id (`PlantsPage`, `DashboardPage`), and the hydration `+250` / `+500` pair has one flag each.
 
 ### Input
 
 | | |
 | --- | --- |
-| **Purpose** | A labelled text field. Wraps label + input + message in one `flex-col gap-xs`. |
-| **Props** | `label: string` (**required**), `error?: string`, `hint?: string`, plus all native `InputHTMLAttributes`. `forwardRef` to the `<input>`. |
-| **States** | Idle · focus-visible (`ring-2 ring-primary`) · error (`border-accent` + `aria-invalid`) · hint · disabled (native). |
+| **Purpose** | A labelled text field: label, field and message in one column. |
+| **Props** | `label: string` (**required**), `error?`, `hint?`, plus all native `InputHTMLAttributes`; `forwardRef` to the `<input>`. |
+| **Styling** | 44px glass well, `rounded-md`, `border-control` edge (`accent` on error); on focus the ring **and** the primary glow. |
 
 **Usage rules**
-- The label is an eyebrow: 11px, uppercase, `tracking-[0.08em]`, muted. It is required — there are no unlabelled fields in this app.
-- The id resolves `id ?? name ?? slugified label`, so `htmlFor` always binds without callers inventing ids.
-- `error` and `hint` are mutually exclusive in the ARIA wiring: `aria-describedby` points at the error when present, otherwise the hint. Pass both freely; the error wins while it exists.
-- Validation messages go in `error` (field-level), not in an `Alert` (form-level).
+- The label is 13px medium sentence case and is required — there are no unlabelled fields.
+- The id resolves `id ?? name ?? slugified label`, so `htmlFor` always binds.
+- `aria-describedby` points at the error when present, otherwise the hint; errors render with a leading glyph.
+- Field problems go in `error`; form-level problems go in an `Alert`.
 
 ### Select
 
-Same shape and contract as `Input` (`label` required, `error`, `hint`, `forwardRef`, all native `SelectHTMLAttributes`), wrapping a **native `<select>`** styled `appearance-none` with an inline chevron SVG positioned in the `pr-xl` gutter.
-
-**Usage rule:** use `Select` for closed sets the user can enumerate (units, meal type, care action). Reach for `Combobox` only when the list is long enough or remote enough that typing beats scrolling.
+Same contract as `Input`, wrapping a **native `<select>`** (`appearance-none`, inline chevron). Use it for closed sets the user can enumerate — units, meal type, status. Reach for `Combobox` only when typing beats scrolling.
 
 ### Combobox
 
 | | |
 | --- | --- |
 | **Purpose** | Accessible autocomplete for large or remote option sets — plant species, foods, exercises. |
-| **Props** | `label`, `query: string`, `onQueryChange: (q: string) => void`, `options: ComboOption[]`, `onSelect: (option: ComboOption \| null) => void`, `placeholder?`, `loading?`, `error?`, `hint?`, `emptyText?` (default `'No matches'`). |
-| **`ComboOption`** | `{ id: string; label: string; sub?: string }` — `sub` renders as a quiet **mono** second line (latin name, macros, MET value). |
-| **States** | Closed · open with results · open with `emptyText` · loading (inline `Spinner` in the field) · error/hint. |
+| **Props** | `label`, `query`, `onQueryChange`, `options: ComboOption[]`, `onSelect(option \| null)`, `placeholder?`, `loading?`, `error?`, `hint?`, `emptyText?`. |
+| **`ComboOption`** | `{ id: string; label: string; sub?: string }` — `sub` renders as a quiet mono second line (latin name, macros, MET value). |
 
-**Ownership split.** The parent owns the query text and the option list, so debounced fetching lives where the data lives. The component owns open state, keyboard navigation and ARIA (`role="combobox"`, `aria-expanded`, `aria-controls`, `aria-autocomplete="list"`, `aria-activedescendant`, `role="listbox"`/`"option"`).
+**Ownership split.** The parent owns the query and the option list, so debounced fetching lives where the data lives. The component owns open state, keyboard navigation and ARIA (`role="combobox"`, `aria-expanded`, `aria-controls`, `aria-autocomplete="list"`, `aria-activedescendant`, `listbox`/`option`).
 
 **Usage rules**
-- **Selection contract:** `onSelect` fires with the picked option; the parent then sets `query` to that option's label. Typing afterwards fires `onSelect(null)` — a stale id can never ride along under newer text. Callers must honour this or they will submit mismatched ids.
-- Nothing is highlighted until an arrow key asks for it (`activeIndex` starts at `-1`), so Enter on typed text never silently picks a row the user did not aim at.
-- The highlight resets when the **option ids** change, not on every parent re-render — re-rendering must not drop a user mid-navigation.
-- Escape calls `stopPropagation` while open, so closing the list does not also close an enclosing `Modal`.
-- Focus leaving the widget closes the list, so the listbox never covers the control the user tabbed to.
+- **Selection contract:** `onSelect` fires with the picked option and the parent sets `query` to its label; typing afterwards fires `onSelect(null)`, so a stale id can never ride along under newer text.
+- Nothing is highlighted until an arrow key asks for it, so Enter on typed text never picks a row the user did not aim at.
+- Escape stops propagation while open, so closing the list does not also close an enclosing `Modal`; focus leaving the widget closes the list.
 
 ### Card
 
 | | |
 | --- | --- |
-| **Purpose** | The only container. Every panel in the app is a Card. |
-| **Props** | `children`, `className?`. |
-| **Styling** | `rounded-md border border-border bg-surface p-lg`. |
+| **Purpose** | The container. Every panel in the app is a Card. |
+| **Props** | `children`, `className?`, `style?` (an escape hatch for the per-row `animationDelay` of a staggered entrance). |
+| **Styling** | `pane rounded-lg p-lg`. |
 
-**Usage rules:** no shadow, ever. Do not nest Cards — use a hairline `border-t`/`border-border` divider inside one Card instead. `className` is for layout (`flex`, `grid`, `gap-*`), not for repainting the surface.
+**Usage rules:** do not nest Cards — use a hairline divider inside one. `className` is for layout and for one of the sanctioned accents (`edge-gradient`, a hover lift); it never repaints the surface.
 
 ### Alert
 
 | | |
 | --- | --- |
-| **Purpose** | A **form-level** inline notice: auth failures, submission successes. |
+| **Purpose** | A **form-level** inline notice: auth failures, registration results. |
 | **Props** | `tone?: 'error' \| 'success' \| 'info'` (default `error`), `children`. |
-| **Semantics** | `role="alert"`. |
+| **Semantics** | `role="alert"`. Tinted glass with a leading glyph, so the tone is legible before the text is read. |
 
-Tones are 40%-border / 10%-tint pairs on `accent`, `primary` (text in `primary-hover`) and `secondary`.
-
-**Usage rules:** field-level problems belong in `Input.error`, not here. Alert renders no dismiss affordance — callers clear it by unmounting (setting their error state to null). Transient confirmations should be a **toast**, not an Alert; use Alert only when the message must persist next to the form.
+Transient confirmations are toasts, not Alerts; use an Alert only when the message must persist next to the form.
 
 ### Spinner
 
-| | |
-| --- | --- |
-| **Purpose** | Indeterminate loading, inline or full-panel. |
-| **Props** | `size?: 'sm' \| 'md' \| 'lg'` (16 / 24 / 32px). |
-| **Semantics** | `role="status"`, `aria-label="Loading"`. |
+`size?: 'sm' | 'md' | 'lg'` (16 / 24 / 32px), `role="status"`, `aria-label="Loading"`. A CSS ring whose track uses `border-control` so the whole ring is visible, not just the moving head. A first load uses a centred `lg` Spinner or skeletons; a refresh keeps the existing data on screen.
 
-A pure CSS border ring (`border-border border-t-primary animate-spin`) — one of only two `rounded-full` exceptions in the design.
+### Skeleton
 
-**Usage rule:** first load of a page uses a centred `size="lg"` Spinner; a refresh of already-rendered data should keep the data on screen rather than replacing it with a spinner. Inline `size="sm"` for in-field states (Combobox).
+`className` sizes the block. `aria-hidden` placeholder shaped like the content it stands in for, so the layout does not shift when data arrives. Used for the dashboard tiles; the page keeps exactly one `role="status"` announcement while loading.
 
 ### Badge
 
 | | |
 | --- | --- |
-| **Purpose** | Small status/tier/count stamp. |
-| **Props** | `tone?: 'default' \| 'success' \| 'warning' \| 'danger' \| 'info'` (default `default`), `children`. |
-| **Styling** | `rounded-sm`, 11px, medium, uppercase, `tracking-[0.06em]`, border + 10% tint. |
+| **Purpose** | A small status, tier or count stamp. |
+| **Props** | `tone?: 'default' \| 'success' \| 'warning' \| 'danger' \| 'info'`, `children`. |
+| **Styling** | A pill (`rounded-full`) led by a tone dot; 11px semibold uppercase; 30% border + 10% tint of the tone ink; `w-fit` and `whitespace-nowrap`, so it never stretches or wraps. |
 
-**Usage rule:** a Badge is a *label*, never a control — if it is clickable it should be a `Button`. Keep the text to one or two words; it is set uppercase and will not wrap gracefully.
+A Badge is a label, never a control. Keep it to one or two words.
 
 ### Progress
 
 | | |
 | --- | --- |
-| **Purpose** | Linear progress against a target — macros, hydration, streak goals. |
-| **Props** | `value: number`, `max: number`, `label?: string`, `srLabel?: string`, `tone?: 'primary' \| 'secondary' \| 'tertiary'` (default `primary`). |
-| **Semantics** | `role="progressbar"` with `aria-valuenow` / `aria-valuemin` / `aria-valuemax`, named by `label ?? srLabel`. |
+| **Purpose** | Linear progress against a target — macros, hydration, steps. |
+| **Props** | `value`, `max`, `label?`, `srLabel?`, `tone?: 'primary' \| 'secondary' \| 'tertiary'`. |
+| **Semantics** | `role="progressbar"` with `aria-valuenow/min/max`, named by `label ?? srLabel`. |
 
-The fill is clamped to 0–100% and returns 0 when `max <= 0`, so a missing target cannot produce a NaN width. When `label` is given, the component renders a header row with the label on the left and a **mono** `value / max` read-out on the right.
+An 8px gradient pill that grows into place on the entrance curve. The fill clamps to 0–100% and is 0 when `max <= 0`, so a missing target cannot produce a NaN width. **If you render the visible label yourself, pass `srLabel`** — otherwise the bar reaches screen readers unnamed. Tones map to categories, not severity.
 
-**Usage rules**
-- **`srLabel` is not optional in practice.** If you render the visible label yourself (a section heading above the bar), you must pass `srLabel` — otherwise the bar reaches screen readers as an unnamed progressbar.
-- Tones map to categories (primary = plants/protein, secondary = fitness/carbs, tertiary = nutrition/fat), not to severity.
-
-### EmptyState
+### Ring
 
 | | |
 | --- | --- |
-| **Purpose** | A list or screen that legitimately has no rows yet. |
-| **Props** | `icon?: ReactNode`, `title: string`, `body?: string`, `action?: ReactNode`. |
+| **Purpose** | Circular progress — the dashboard rings, the calorie ring, the watering ring. |
+| **Props** | `value`, `max?` (default 100), `label` (**required** accessible name), `size?` (px, default 160), `thickness?` (px, default 14), `tone?`, `className?`. |
+| **Semantics** | A native `<progress class="ring">`, so it is a real progressbar. |
 
-**Usage rules:** the copy invites the next action ("No plants yet — add your first"), and `action` should carry the `Button` that performs it. Pass a stroke SVG per §6 of `01-design-language.md` for `icon`, not an emoji.
+Rings stack concentrically by giving each a smaller `size`. The value sweeps in from zero after mount (immediately under reduced motion). A figure drawn in the ring's centre is `aria-hidden`; the `<progress>` carries the value.
+
+### EmptyState
+
+`icon?`, `title`, `body?`, `action?`. A list or screen that legitimately has no rows yet. The icon sits in a tinted well; the copy invites the next action and `action` carries the `Button` that performs it.
 
 ### ErrorState
 
 | | |
 | --- | --- |
 | **Purpose** | A **load failure**. Deliberately distinct from `EmptyState`. |
-| **Props** | `title?` (default `"Couldn't load this"`), `body?` (default `'The server could not be reached. Your data is safe — try again.'`), `onRetry?: () => void`, `retryLabel?` (default `'Try again'`). |
-| **Semantics** | `role="alert"`; accent-tinted panel with a `Connection trouble` eyebrow; retry renders as `Button variant="secondary"`. |
+| **Props** | `title?`, `body?` (default reassures that nothing was lost), `onRetry?`, `retryLabel?`. |
+| **Semantics** | `role="alert"`; an accent-edged pane with a "Connection trouble" eyebrow and a **primary** retry button — retrying is the whole point of the panel. |
 
-**Usage rule — the important one:** *an empty garden invites planting; a failed request explains itself and offers a retry.* **A load failure must render `ErrorState` with an `onRetry`, never `EmptyState`.** Showing "No plants yet" when the fetch died tells the user their data is gone. Every page that fetches keeps a separate `…Error` boolean alongside its data (`dashError`, `remindersError`, `loadError`) precisely so the two cases can never collapse into one. Reassure explicitly that nothing was lost.
+**The important rule:** *an empty garden invites planting; a failed request explains itself and offers a retry.* A load failure must render `ErrorState` with an `onRetry`, never `EmptyState`. Every page that fetches keeps a separate error flag beside its data so the two cases can never collapse into one.
 
 ### Modal
 
 | | |
 | --- | --- |
-| **Purpose** | Focused create/confirm flows without leaving the page — Add plant, Log workout, Remove plant. |
-| **Props** | `open: boolean`, `onClose: () => void`, `title: string`, `children`, `busy?: boolean` (default `false`). |
-| **Semantics** | `role="dialog"`, `aria-modal`, `aria-labelledby` on the `font-heading` title. |
+| **Purpose** | Focused create and confirm flows — Add plant, Log workout, Log meal, Remove plant. |
+| **Props** | `open`, `onClose`, `title`, `children`, `busy?`. |
+| **Semantics** | `role="dialog"`, `aria-modal`, `aria-labelledby` on the Fraunces title. |
+| **Styling** | `glass-strong` panel, `rounded-xl`, `shadow-4`, over a blurred scrim. A bottom sheet on phones, centred from `sm` up; grows in. |
 
 **Behaviour**
-- **Focus trap.** Tab and Shift+Tab cycle inside the panel. If focus escapes entirely (e.g. a button disables itself and the browser drops focus to `<body>`), the next Tab **recaptures** to the first focusable element rather than walking the page. With no focusable children, Tab is swallowed.
-- The trap deliberately does **not** filter by `offsetParent`: the panel sits inside a fixed-position backdrop where `offsetParent` is null in some engines (and always under jsdom), which would empty the candidate list and swallow Tab entirely. The selector already skips `[disabled]`, and conditionally-hidden fields in this app are unmounted rather than `display:none`.
-- Focus moves into the panel on open and is **restored** to the previously active element on close.
-- Body scroll locks while open and the previous `overflow` is restored on close.
-- **`busy` guards dismissal.** While `busy`, Escape and backdrop clicks are ignored so an in-flight save cannot be discarded by a stray click. Pass the same flag that drives the submit button's `loading`.
+- **Focus trap** with recapture: if focus escapes to `<body>` (a button disabling itself), the next Tab returns to the first focusable element. The trap does not filter by `offsetParent`, which is null inside a fixed backdrop in some engines.
+- Focus moves into the panel on open and is restored on close; body scroll locks while open.
+- **`busy` guards dismissal** — Escape and backdrop clicks are ignored while a save is in flight.
 
 ### StatCard
 
 | | |
 | --- | --- |
-| **Purpose** | A dashboard ledger tile: eyebrow label, big mono value, quiet mono context line. |
-| **Props** | `label: string`, `value: string`, `sub: string`, `accent: string` — **`accent` is a Tailwind text-colour class** (e.g. `'text-primary'`), applied to the value. |
+| **Purpose** | A dashboard ledger tile: eyebrow label, large mono value, quiet mono context line. |
+| **Props** | `label`, `value` (pre-formatted string), `sub`, `accent` (a token-backed text class, e.g. `'text-secondary'`), `subTone?`, `meter?` (0–100), `icon?`. |
 
-**Usage rules:** `value` is pre-formatted by the caller (locale separators, units) because the component only renders. Both `value` and `sub` are `font-mono` — a StatCard whose number is not mono is a bug. `accent` must be a token-backed class; never an arbitrary hex.
+The value counts up on arrival (`useCountUp`; reduced motion skips to the answer) while a visually hidden copy gives screen readers the final number. `meter` draws a hairline bar **only where a real denominator exists** — "1,180 of 2,000" is a fraction; a streak of 12 days is not, and inventing a target would make one of the bars a lie. `subTone` lets one tile raise an alarm (an overdue count) without a second component.
 
 ### PageHeader
 
 | | |
 | --- | --- |
-| **Purpose** | The consistent top of every page. |
-| **Props** | `title: string`, `subtitle?: string`, `action?: ReactNode`. |
-| **Styling** | 26px `font-heading` bold `tracking-tight`; subtitle 14px muted; `action` pinned right, `shrink-0`. |
+| **Purpose** | The top of every page. |
+| **Props** | `title`, `subtitle?`, `action?`, `eyebrow?`. |
+| **Styling** | Optional eyebrow, then the Fraunces title (34px → 40px), a 15px muted subtitle, and `action` pinned right. |
 
-**Usage rule:** exactly one `PageHeader` per route, and it owns the only `<h1>`. The page's primary action (Add plant, Log workout) goes in `action`; there is no FAB.
+Exactly one `PageHeader` per route, and it owns the only `<h1>` (the plant detail page builds its own hero with the same scale). The page's primary action goes in `action`; there is no FAB.
 
 ### ToastProvider / useToast
 
 | | |
 | --- | --- |
-| **Purpose** | Ephemeral confirmation and failure feedback. |
-| **API** | `useToast()` → `{ success(message), error(message), info(message) }`. |
-| **Provider** | `<ToastProvider>` wraps the app; the viewport is a fixed `aria-live="polite"` region — bottom-centre above the mobile tab bar (`bottom-[calc(72px+env(safe-area-inset-bottom))]`), bottom-right on `md+`. |
+| **API** | `useToast()` → `{ success(message), error(message), info(message) }`. Outside a provider it returns a safe no-op, so components unit-test without wrapping. |
+| **Viewport** | A fixed live region — bottom-centre above the mobile-web dock, bottom-right from `md` up. |
 
-**Behaviour**
-- Each toast is a hairline card with a 2px **tone-coloured left edge** and an eyebrow: `Logged` (success, `primary`), `Not saved` (error, `accent`), `Note` (info, `secondary`).
-- Dismissal timers: **4000ms**, **6500ms for errors**. Hover or focus **pauses** the timer; leaving restarts a 2000ms grace period.
-- Stack is capped — new toasts append to `list.slice(-3)`, so at most four are on screen.
-- Errors render `role="alert"`; success and info render `role="status"`.
-- Each toast has a dismiss button labelled `Dismiss notification`.
-- Entrance is the `toast-enter` class (160ms rise + fade) and is neutralised by both reduced-motion mechanisms.
-- `useToast()` returns a **safe no-op triple** outside a provider, so components can be unit-tested without wrapping.
+Each toast is a `glass-strong` card with a tone glyph and an eyebrow — `Logged` (success), `Not saved` (error), `Note` (info). Timers are 4000ms (6500ms for errors); hover or focus pauses them and leaving restarts a 2000ms grace period. At most four are on screen. Errors are `role="alert"`, the rest `role="status"`, and every toast has a "Dismiss notification" button. Success copy confirms the verb that caused it ("Watered Monstera"), not a generic "Saved".
 
-**Usage rules:** success copy confirms the verb that caused it ("Watered Monstera"), not a generic "Saved". Error copy says what failed and that retrying is safe. A message the user must act on is an `Alert` or `ErrorState`, not a toast — toasts disappear.
+### Companions
+
+| Component | File | Notes |
+| --- | --- | --- |
+| `BrandMark`, `Wordmark` | `Brand.tsx` | The app-icon tile (a sprout on emerald glass, its leaves in two module inks) and the Fraunces wordmark. Decorative — the surrounding link carries the name. |
+| `ThemeToggle` | `ThemeToggle.tsx` | One icon button. Its accessible name says what a press will do ("Switch to dark mode"), not the current state. |
+| `PlantAvatar` | `PlantAvatar.tsx` | A plant's monogram on emerald glass with a leaf in the corner; `md` (44px) in lists, `lg` (64px) on the detail hero. Decorative. |
+| `useCountUp` | `ui.tsx` | Animates a numeric string to its value; non-numeric strings pass through untouched. |
+| `AppShell` | `layouts/AppShell.tsx` | Glass sidebar with grouped navigation (Today · Habits · You) and a gliding active pill from `md` up; a glass top bar and a floating tab dock below `md`. Both read the same `NAV_ITEMS`, so disabling a module hides it everywhere. |
 
 ## 3. Mobile Component Inventory
 
-`apps/mobile/src/components/ui.tsx`, styled from `apps/mobile/src/theme.ts`. Small on purpose — these cover every screen.
+`apps/mobile/src/components/ui.tsx`, styled from `apps/mobile/src/theme.ts`. The native screens have not yet been restyled to v4.0 shapes: `theme.ts` already carries the v4.0 palette, radius scale, motion values and elevation steps, while the components below still draw the v2.0 hairline cards and 2–4px corners.
 
 | Component | Props | Notes |
 | --- | --- | --- |
-| **`type`** (StyleSheet) | — | Shared text treatments: `type.eyebrow` (11px, uppercase, `letterSpacing: 1`), `type.metric` (mono, 24px, 600), `type.mono` (mono, 12px). Import these instead of re-declaring per screen. |
-| **Eyebrow** | `text`, `color?`, `style?` | Uppercase letterspaced section label, `textMuted` by default. |
-| **MetricText** | `text`, `color?`, `style?` | A ledger value in mono. Pair with an `Eyebrow` above it to make a stat tile — there is no native `StatCard`. |
-| **Card** | `children`, `style?` | `borderWidth: StyleSheet.hairlineWidth`, `borderRadius: 4`, `padding: space.md`. |
-| **Button** | `title`, `onPress`, `variant?` (`primary\|secondary\|ghost\|danger`), `loading?`, `disabled?` | Mirrors the web variant semantics — `danger` is an accent-outline stamp, not a solid red fill. `radius 3`, `opacity 0.85` while pressed, `ActivityIndicator` replaces the label while loading, `accessibilityRole="button"`. |
-| **Input** | `label?`, `value`, `onChangeText`, `placeholder?`, `secureTextEntry?`, `keyboardType?`, `autoCapitalize?` (default `'none'`) | Label renders through `Eyebrow`. `radius 3`, hairline border. |
-| **Badge** | `text`, `color?` | Colour drives a `1a` (10%) fill and `66` (40%) border of the same ink — same construction as the web tones. `radius 2`. |
-| **Spinner** | — | Centred `ActivityIndicator size="large"` in `primary`, with `space.xl` vertical padding. No size prop. |
-| **EmptyState** | `icon: string`, `title`, `body` | **`icon` is a text glyph here**, rendered at 36px — the native side has no inline-SVG equivalent of the web's stroke icons. |
-| **PageHeader** | `title`, `subtitle?` | 24px/700 `letterSpacing: -0.4`. No `action` slot; screens place their own action button. |
-| **ErrorText** | `message` | Accent-coloured inline validation line; renders nothing for an empty string. |
-| **OfflineNotice** | `onRetry`, `retrying?` | In `components/OfflineNotice.tsx`. The native counterpart to `ErrorState`: "Couldn't reach the server" + secondary Retry button in a Card. Same rule applies — a fetch failure uses this, never `EmptyState`. |
+| **`type`** (StyleSheet) | — | Shared text treatments: `type.eyebrow`, `type.metric` (mono, 24px), `type.mono` (mono, 12px). |
+| **Eyebrow** | `text`, `color?`, `style?` | Uppercase letterspaced section label. |
+| **MetricText** | `text`, `color?`, `style?` | A ledger value in mono. Pair with an `Eyebrow` to make a stat tile. |
+| **Card** | `children`, `style?` | Hairline border, `borderRadius: 4`, `padding: space.md`. |
+| **Button** | `title`, `onPress`, `variant?`, `loading?`, `disabled?` | Same variant semantics as the web; `danger` is an outline. `ActivityIndicator` while loading. |
+| **Input** | `label?`, `value`, `onChangeText`, `placeholder?`, `secureTextEntry?`, `keyboardType?`, `autoCapitalize?` | Label renders through `Eyebrow`. |
+| **Badge** | `text`, `color?` | 10% fill and 40% border of the same ink. |
+| **Spinner** | — | Centred `ActivityIndicator` in `primary`. |
+| **EmptyState** | `icon: string`, `title`, `body` | `icon` is a text glyph here. |
+| **PageHeader** | `title`, `subtitle?` | No `action` slot. |
+| **ErrorText** | `message` | Accent inline validation line. |
+| **OfflineNotice** | `onRetry`, `retrying?` | `components/OfflineNotice.tsx` — the native counterpart to `ErrorState`. |
 
 ## 4. Web / Mobile Parity
 
 | Concern | Web | Mobile | Parity |
 | --- | --- | --- | --- |
-| Colour tokens | `index.css` custom properties | `theme.ts` `Palette` objects | **Exact** — same eleven hex values per theme. Changing one without the other is a bug. |
-| Theme switch | `data-theme` on `<html>`, persisted in `localStorage` | `useColorScheme()` (OS only) | Partial — no in-app override on native yet. |
-| Spacing | `xs…2xl` Tailwind aliases | `space = { xs…xl }` | Near-exact; native has no `2xl` (safe-area insets cover it). |
-| Radii | 2 / 4 (8 unused) | 2 / 3 / 4 | Equivalent. |
-| Mono metrics | IBM Plex Mono via `font-mono` | `monoFont` — Menlo (iOS) / `monospace` | Equivalent; no bundled font package on native by design. |
-| Headings | Bricolage Grotesque | System sans at 600–700 | Web-only display face. |
-| Button | 4 variants + `loading` | 4 variants + `loading` | **Exact** semantics. |
-| Card / Input / Badge / Spinner / EmptyState / PageHeader | ✓ | ✓ | Present both sides; native versions have fewer props. |
-| Load-failure state | `ErrorState` (+ `onRetry`) | `OfflineNotice` (+ `onRetry`) | Same contract, different name. |
-| Select / Combobox / Modal / Progress / StatCard / Toasts | ✓ | — | **Web only.** Native screens compose `Eyebrow` + `MetricText` for tiles and use platform affordances instead of a custom dialog layer. |
-| Nav iconography | Inline stroke SVG (§6 of doc 01) | Uppercase eyebrow tab labels, no glyphs | Both emoji-free. |
+| Colour tokens | `index.css` custom properties | `theme.ts` `Palette` | **Exact**, enforced by the token test. |
+| Theme switch | `data-theme` on `<html>`, persisted | `useColorScheme()` (OS only) | Partial — no in-app override on native yet. |
+| Spacing | `xs…2xl` | `space = { xs…xl }` | Near-exact; native has no `2xl`. |
+| Radii | 8 / 12 / 18 / 24 / 28 | Scale `6 / 10 / 16 / 22` exported; components still use 2–4 | Tokens ready; components pending the native restyle. |
+| Elevation and glass | Four shadow steps, `.pane` | `lightElevation` / `darkElevation`, `glassBlurIntensity` exported | Tokens ready; components pending. |
+| Mono metrics | Geist Mono | `monoFont` (Menlo / `monospace`) | Equivalent. |
+| Display type | Fraunces | System sans | Web-only display face. |
+| Button | 4 variants, 3 sizes, `loading` | 4 variants, `loading` | Same semantics. |
+| Load-failure state | `ErrorState` + `onRetry` | `OfflineNotice` + `onRetry` | Same contract. |
+| Select / Combobox / Modal / Progress / Ring / StatCard / Toasts | ✓ | — | Web only. |
 
 ## 5. Icons and Illustrations
 
-**No icon library, no illustration set.** Icons are inline stroke SVGs authored beside the screens that use them — 24×24 viewBox, `fill="none"`, `stroke="currentColor"`, `strokeWidth={1.5}`, `strokeLinecap="square"`, `aria-hidden`. The full convention, the reference implementations, and the one known drift (`navItems.tsx`, still at `strokeWidth={2}` with round caps) are documented in `01-design-language.md` §6.
-
-Empty states use a stroke icon plus copy — there are no unDraw illustrations and no Lottie files in the repository.
+No icon library and no illustration set. Icons are inline stroke SVGs authored beside the screens that use them; the convention and the one known drift are in `01-design-language.md` §6. Empty states pair a glyph with honest copy. The brand mark is the only filled glyph.
 
 ## 6. Charts
 
-**No chart library.** The two data visualisations in the app are hand-rolled SVG against the same tokens:
+No chart library — see `01-design-language.md` §7. In short: `Ring` for circular progress, `Progress` for bars, and two hand-drawn SVG/CSS pieces (the weekly steps chart and the hydration glass). If a new visualisation is needed, draw it against `var(--color-*)` with mono labels before proposing a dependency; it must render in both themes and under `[data-high-contrast]`.
 
-- **Calorie ring** (`NutritionPage`) — two `<circle>` elements, a `border`-coloured track and a `primary` arc driven by `strokeDasharray`/`strokeDashoffset`, with the value written in the centre via `<text className="fill-text-main font-mono">`. The 700ms `stroke-dashoffset` transition is the app's only non-trivial animation.
-- **Macro bars** — the shared `Progress` component with `tone` per macro, not a chart.
+## 7. Dependency Decisions
 
-**Usage rule:** if a new visualisation is needed, draw it in SVG with `var(--color-*)` strokes and `font-mono` labels before proposing a dependency. Charts must render correctly in both themes and under `[data-high-contrast]`.
+The standing reason for hand-rolling: **a dependency-free UI keeps the design tokens the single source of styling truth.** A component library ships its own colours, radii, motion curves and DOM, which then have to be fought back into the language.
 
-## 7. What Was Dropped From v1.0 — and Why
-
-Every third-party UI dependency planned in v1.0 was removed before ship. The unifying reason: **a dependency-free UI keeps the design tokens the single source of styling truth, and keeps the bundle small.** Each library below would have shipped its own colours, radii, motion curves and DOM structure, which then have to be fought back into the field-notebook language — the override layer costs more than the components saved.
-
-| v1.0 planned | Status | Why it was dropped |
+| Library | Status | Why |
 | --- | --- | --- |
-| **shadcn/ui** (web components) | **Not installed** | Its defaults (soft radii, shadow elevation, its own focus treatment) are exactly what the redesign rejects. The dozen primitives we actually use are ~800 lines in one file we fully control, and native `<button>`/`<input>`/`<select>` give us keyboard and screen-reader behaviour for free. |
-| **React Native Paper** (FAB, Snackbar) | **Not installed** | Material Design has a strong visual opinion that fights the notebook language, and it is a large dependency for two widgets. The FAB was designed away entirely — the page's primary action lives in `PageHeader.action`. |
-| **NativeWind** | **Not installed** | Native styles are plain `StyleSheet` objects reading `usePalette()`. Parity with the web is enforced by keeping `theme.ts` in lock-step with `index.css`, which is a smaller and more auditable contract than a shared Tailwind build across two platforms. |
-| **Lucide** (`lucide-react`, `lucide-react-native`) | **Not installed** | The icon set the design wants is ~15 glyphs. Inline SVG lets us pin `strokeWidth 1.5` and **square** caps — the pen-on-paper detail that makes the set feel hand-drawn — which a shipped icon font/library does not offer, while adding a dependency on both platforms. |
-| **Framer Motion** (web) / **Reanimated** springs (native) | **Not installed** | The redesign's motion budget is six functional transitions (`01-design-language.md` §7). Spring physics and layout animation were decoration competing with data density, and they made the two reduced-motion mechanisms hard to honour. CSS transitions clamp cleanly; a JS animation library does not. |
-| **Lottie** (growth animations, confetti) | **Not installed** | Celebration animation contradicts the ledger metaphor and would be dead weight under `[data-reduce-motion]`. Achievements are recorded as `Badge` stamps instead. |
-| **Recharts** (web) / **Victory Native** (mobile) | **Not installed** | Two visualisations did not justify a charting runtime that ships its own theming layer. Hand-rolled SVG (§6) inherits the tokens automatically, including high-contrast mode. |
-| **unDraw** illustrations | **Not used** | Stock illustration reads as marketing; a stroke icon plus honest copy reads as a notebook. |
-| **`@gorhom/bottom-sheet`** | **Not installed** | Native screens use plain navigation instead of a sheet layer. |
+| **shadcn/ui** | Not installed | The primitives the app needs are one file we fully control, and native elements provide keyboard and screen-reader behaviour for free. `clsx` + `tailwind-merge` are installed so a vetted component could be adapted later without a style fight (see `THIRD_PARTY_LICENSES.md`). |
+| **Framer Motion → `motion`** | **Installed in v3.0** (reversing v2.0) | Dropped in v2.0 as decoration competing with data density. Re-added for the two things CSS cannot do well — a layout animation that glides between list items, and staged entrances — under `MotionConfig`, so both reduced-motion preferences still win. |
+| **`tailwindcss-animate`** | Installed (dev) | Keyframe utilities on Tailwind 3; build-time only. |
+| **React Native Paper**, **NativeWind**, **`@gorhom/bottom-sheet`** | Not installed | Native styles are plain `StyleSheet` objects reading `theme.ts`; parity is enforced by the token test rather than a shared build. |
+| **Lucide** | Not installed | The app needs a few dozen glyphs; inline SVG themes for free and costs nothing on either platform. |
+| **Lottie**, confetti | Not installed | Celebration animation contradicts the product's calm; achievements are medallions and badges. |
+| **Recharts / Victory Native** | Not installed | A handful of visualisations do not justify a charting runtime with its own theming layer. |
 
-**What replaced them, in one line:** one hand-rolled primitives file per platform, native elements wherever one exists, inline SVG for icons and charts, CSS transitions for the little motion that remains — all reading from the token set in `01-design-language.md`.
-
-**When to reconsider.** Adding a UI dependency is allowed, but it must (a) render correctly in both themes and under all three accessibility attributes, (b) accept our radii and hairline borders without an override sheet, and (c) not introduce a second source of colour truth. If it cannot do all three, hand-roll it.
+**When to reconsider.** A UI dependency is allowed if it (a) renders correctly in both themes and under all three accessibility attributes, (b) accepts the token radii, borders and glass without an override sheet, and (c) introduces no second source of colour truth. Anything vendored gets a row in `THIRD_PARTY_LICENSES.md`.

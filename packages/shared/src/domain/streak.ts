@@ -10,7 +10,7 @@
  *
  * Pure and clock-free: callers pass local date strings (YYYY-MM-DD, the
  * user's wall clock per FR-SYS-22) and the previous state; the function
- * returns the next state. One place, three clients (NFR-MAIN-03).
+ * returns the next state. One place, three clients (NFR-MAIN-04).
  */
 
 export interface StreakState {

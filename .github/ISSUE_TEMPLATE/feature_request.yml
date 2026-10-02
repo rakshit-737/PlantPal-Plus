@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a new feature or an improvement.
+title: '[Feature]: '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Many features are already specified in the [requirements](https://github.com/rakshit-737/PlantPal-Plus/tree/main/docs/requirements), with the release they belong to. A quick search there and in the existing issues may answer your question.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: The situation, and what is hard or missing today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: input
+    id: requirements
+    attributes:
+      label: Related requirement IDs
+      description: If this touches a documented requirement or user story, list its identifiers.
+      placeholder: e.g. FR-PLT-12, US-NUT-04

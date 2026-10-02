@@ -3,71 +3,77 @@
 | Field | Value |
 | --- | --- |
 | Document | `04-navigation-flow.md` — App routing and navigation structure |
-| Version | 1.0 |
+| Version | 2.0 |
+| Updated | 2026-10-02 |
 | Owner | Rakshit |
 
+> **v2.0 describes navigation as built.** v1.0 planned React Navigation stacks, bottom sheets and per-action routes (`/plants/add`, `/fitness/log`). The shipped apps are simpler: a flat tab switcher on mobile, and on the web one route per screen with actions opened in place. §5 lists the differences.
+
 ## 1. Overview
-The navigation architecture must accommodate a unified dashboard and three independent trackers. The presence of tabs is dynamic based on user preferences (if a user disables "Fitness", the Fitness tab disappears).
 
-## 2. Mobile App (React Navigation / Expo Router)
-We use a **Bottom Tab Navigator** as the root, with **Native Stack Navigators** inside each tab to handle drill-downs.
+The navigation must carry a unified dashboard and three independent trackers, and the trackers are **optional**: a module switched off in Settings disappears from every navigation surface at once. Both web navigations — the desktop sidebar and the phone dock — are rendered from the same `NAV_ITEMS` list (`apps/web/src/navigation/navItems.tsx`), so they can never disagree. While settings are still loading every module stays visible (fail-open), and the API refuses a state with every module off, so the navigation can never be empty.
 
-### Root Navigation
-- **Auth Stack:** Login -> Register -> Onboarding (hidden once authenticated and onboarded).
-- **Main App:** Bottom Tab Navigator.
+## 2. Web App (React Router)
 
-### Bottom Tabs
-1. **Home (Dashboard):** 
-   - `Dashboard` (Index) -> `Notifications` (Modal)
-2. **Plants:**
-   - `PlantList` (Index) -> `PlantDetail` -> `GrowthTimeline`
-   - `AddPlant` (Modal presentation)
-3. **Fitness:** (Hidden if disabled)
-   - `FitnessHome` (Index) -> `WorkoutDetail` -> `ExerciseList`
-   - `LogWorkout` (Bottom Sheet)
-4. **Nutrition:** (Hidden if disabled)
-   - `NutritionHome` (Index) -> `MealDetail` 
-   - `FoodSearch` (Modal presentation)
-5. **Me:** 
-   - `Profile/Settings` (Index) -> `Achievements` -> `EditProfile`
+### Routes
 
-### Modals & Overlays
-Actions that interrupt the user's flow without needing deep linking are presented as Modals or Bottom Sheets:
-- Quick log a meal (Bottom Sheet).
-- Quick water a plant (Bottom Sheet or immediate action).
-- Add a custom food (Modal).
+| Path | Screen | Access |
+| --- | --- | --- |
+| `/` | Landing page for visitors; signed-in users are sent to `/dashboard` | Public |
+| `/login`, `/register` | Auth screens | Public |
+| `/dashboard` | Daily dashboard | Signed in |
+| `/plants` | Plant list | Signed in |
+| `/plants/:id` | Plant detail: watering, conditions, care log, growth timeline | Signed in |
+| `/fitness` | Fitness: weekly summary, steps chart, workout log, personal records | Signed in |
+| `/nutrition` | Nutrition: calories and macros, hydration, meals by type | Signed in |
+| `/achievements` | Streaks, badge collection | Signed in |
+| `/settings` | Account, modules, notifications, appearance, accessibility, privacy, deletion | Signed in |
+| `/onboarding` | Two-step setup, reached by link from Settings | Signed in |
+| `*` | 404 page | Public |
 
-## 3. Web App (React Router)
-On the web, we use a responsive layout that adapts to screen size.
+`ProtectedRoute` sends a signed-out visitor to `/login` and remembers where they were going; after sign-in they return there. Signing in during the account-deletion grace period lands on `/settings?recover=1`, the only place deletion can be cancelled.
 
-### Desktop Layout (> 1024px)
-- **Persistent Left Sidebar:** Contains all the top-level navigation items (Dashboard, Plants, Fitness, Nutrition, Achievements, Settings).
-- **Main Content Area:** Renders the active route.
-- **Contextual Right Sidebar (Optional):** Used on the Dashboard to show upcoming reminders or a mini-calendar.
+### Actions open in place
 
-### Mobile Web (< 1024px)
-- Mirrors the mobile app with a **Bottom Navigation Bar**.
-- Replaces stack transitions with fast standard web page routing.
+Creating something never changes route. Add plant, Log workout, Log meal, Add photo and Remove are `Modal` flows on the page that owns the data. Other screens link straight into them with a query parameter that is consumed and stripped, so a refresh or Back does not reopen the dialog:
 
-### Web Routing Structure
-```
-/login
-/register
-/onboarding
-/                 (Dashboard)
-/plants           (Plant List)
-/plants/:id       (Plant Detail)
-/plants/add       (Add Plant Form)
-/fitness          (Fitness Home)
-/fitness/log      (Log Workout Form)
-/nutrition        (Nutrition Home)
-/nutrition/log    (Food Search/Log)
-/achievements     (Trophy Room)
-/settings         (Preferences)
-```
+- `/fitness?log=1` — opens Log workout (dashboard quick action).
+- `/nutrition?log=1&meal=LUNCH` — opens Log meal with the meal type preselected.
 
-## 4. Deep Linking & Notifications
-Push notifications must route directly to the relevant entity.
-- Prefix: `plantpal://`
-- E.g., `plantpal://plants/123` opens the Plant Detail screen for plant ID 123.
-- E.g., `plantpal://nutrition/log?meal=lunch` opens the food search modal pre-filled for Lunch.
+### Desktop and tablet (≥ 768px)
+
+- **Persistent glass sidebar** with the wordmark, navigation grouped as **Today** (Dashboard), **Habits** (Plants, Fitness, Nutrition) and **You** (Achievements, Settings), and an account card with the theme toggle and Sign out.
+- The active item is marked by one lit pill that glides between items, plus a dot.
+- **Main content area** renders the active route; each route grows in on arrival.
+
+### Phones (< 768px)
+
+- A sticky glass **top bar** with the wordmark, theme toggle and Sign out.
+- A **floating tab dock** inset from the bottom edge (safe-area aware), mirroring the sidebar's items. Toasts sit above it.
+
+### Focus and scroll
+
+A "Skip to content" link is the first focusable element. On every route change focus moves to `<main>` (without scrolling it under the sticky top bar) and the page scrolls to the top, so keyboard and screen-reader users land on the new page.
+
+## 3. Mobile App (Expo)
+
+Navigation is a deliberate **hand-rolled tab switcher** in `apps/mobile/App.tsx` rather than React Navigation: six flat tabs and one auth gate do not justify the dependency.
+
+- **Auth gate:** Login ↔ Register until a session exists.
+- **Tabs:** Home (dashboard) · Plants · Fit · Food · Awards · Set(tings). Each screen mounts on demand.
+- Safe areas come from `react-native-safe-area-context` insets, so Android edge-to-edge gets the same treatment as iOS.
+- An outbox indicator shows queued offline writes; they drain automatically when the connection returns.
+
+## 4. Deep Linking and Notifications
+
+**Planned, not yet implemented.** The design reserves the `plantpal://` scheme (for example `plantpal://plants/123` to open a plant, `plantpal://nutrition/log?meal=lunch` to open meal logging). Today `app.json` declares no scheme and a notification tap opens the app at Home. On the web, the query-parameter actions in §2 already provide the equivalent entry points.
+
+## 5. What Changed From v1.0
+
+| v1.0 planned | v2.0 ships | Why |
+| --- | --- | --- |
+| React Navigation bottom tabs with native stacks per tab | A flat six-tab switcher | Every screen is one level deep; stacks added configuration and no behaviour. |
+| `/` as the dashboard | `/` is the landing page; the app lives at `/dashboard` | A visitor sees what the product is before being asked to sign in. |
+| Separate routes for forms (`/plants/add`, `/fitness/log`, `/nutrition/log`) | Modals on the owning page, opened by `?log=1` | Logging is a seconds-long action; leaving the page for it lost context. |
+| Bottom sheets for quick logs | Modals that present as bottom sheets on phones | One dialog component with the same focus and busy guarantees everywhere. |
+| Desktop breakpoint at 1024px, optional right sidebar | Sidebar from 768px; no right sidebar | Tablets get the full navigation; the dashboard surfaces reminders inline instead. |

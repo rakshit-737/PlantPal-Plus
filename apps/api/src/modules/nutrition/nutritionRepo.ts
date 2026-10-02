@@ -10,6 +10,8 @@
  * summary does not re-sum every item on every dashboard read.
  */
 
+import { roundTo } from '@plantpal/shared'
+
 import { getPool, transaction } from '../../db/pool.ts'
 
 /* -----------------------------------------------------------------------
@@ -420,22 +422,33 @@ export async function getDailySummary(
     [userId, localDateStr],
   )
 
-  const totals = meals.reduce(
-    (acc, m) => {
-      acc.kcal += m.total_kcal
-      acc.protein_g += m.total_protein_g
-      acc.carbs_g += m.total_carbs_g
-      acc.fat_g += m.total_fat_g
-      return acc
-    },
-    { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 },
-  )
-
   return {
     meals,
     water_ml_total: Number(waterRow?.water_ml_total ?? 0),
     water_goal_ml: waterRow?.water_goal_ml ?? DEFAULT_WATER_GOAL_ML,
-    totals,
+    totals: sumMealTotals(meals),
+  }
+}
+
+type MealTotalField = 'total_kcal' | 'total_protein_g' | 'total_carbs_g' | 'total_fat_g'
+
+/**
+ * The day's totals across its meals. Every stored figure has one decimal place
+ * (the columns are numeric(_, 1)), but adding binary floats is not exact:
+ * 15.6 + 11.3 + 0.4 is 27.299999999999997, which the diary used to print as it
+ * was. Each sum is rounded back to that one decimal place, which removes the
+ * floating-point residue and cannot change a correct total.
+ */
+export function sumMealTotals(
+  meals: ReadonlyArray<Pick<MealView, MealTotalField>>,
+): DailySummary['totals'] {
+  const sum = (field: MealTotalField) =>
+    roundTo(meals.reduce((acc, meal) => acc + meal[field], 0), 1)
+  return {
+    kcal: sum('total_kcal'),
+    protein_g: sum('total_protein_g'),
+    carbs_g: sum('total_carbs_g'),
+    fat_g: sum('total_fat_g'),
   }
 }
 

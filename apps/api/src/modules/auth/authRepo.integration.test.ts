@@ -1,7 +1,7 @@
 /**
  * Auth integration tests — the real login path against a real PostgreSQL.
  *
- * Closes the long-standing gap recorded in docs/HANDOFF.md: session-cap
+ * Closes a long-standing testing gap: session-cap
  * eviction, refresh-token rotation and reuse detection, and the
  * PENDING_DELETION grace window were covered only by mocks until now.
  *

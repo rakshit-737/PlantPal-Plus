@@ -1,0 +1,72 @@
+name: Bug report
+description: Something in PlantPal+ does not work as it should.
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem. Please leave out passwords, tokens and other personal data.
+        Security vulnerabilities must be reported privately — see [SECURITY.md](https://github.com/rakshit-737/PlantPal-Plus/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Website (plant-pal-plus.vercel.app)
+        - Website (GitHub Pages mirror)
+        - Website (local development)
+        - Mobile app
+        - API
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Account and sign-in
+        - Plants
+        - Fitness
+        - Nutrition
+        - Dashboard
+        - Streaks and achievements
+        - Reminders and notifications
+        - Settings and accessibility
+        - Offline sync
+        - Other
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected to see instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Select …
+        3. See …
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser or device, and operating system
+      placeholder: e.g. Chrome 129 on Windows 11, or Pixel 8 on Android 15
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Error message, request ID or screenshots
+      description: API errors carry a `request_id`; including it lets the matching server log be found.

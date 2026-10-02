@@ -171,7 +171,7 @@ async function applyEvent(
     case 'WORKOUT': {
       const p = workoutPayload.parse(payload)
       // Derived figures recomputed server-side from @plantpal/shared, exactly
-      // as the online path does (BR-FIT-14/15, FR-FIT-05, NFR-MAIN-03).
+      // as the online path does (BR-FIT-14/15, FR-FIT-05, NFR-MAIN-04).
       const sets = (p.sets ?? []).map((s, i) => {
         const volume = setVolumeKg(s.reps, s.weight_kg)
         const eligible = isEligibleForOneRepMaxRecord(s.weight_kg, s.reps)

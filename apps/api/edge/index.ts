@@ -237,7 +237,7 @@ const host = express()
 
 host.post(`/${SLUG}/internal/tick`, async (req, res) => {
   const presented = (req.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
-  let authorised = false
+  let authorised: boolean
   try {
     authorised = presented.length > 0 && sameSecret(presented, await tickSecret())
   } catch {
