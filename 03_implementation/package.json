@@ -1,0 +1,57 @@
+{
+  "name": "plantpal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PlantPal+ — unified daily-habit tracker for plant care, fitness and nutrition",
+  "keywords": [
+    "habit-tracker",
+    "plant-care",
+    "fitness",
+    "nutrition",
+    "react",
+    "react-native",
+    "expo",
+    "express",
+    "postgresql",
+    "typescript",
+    "monorepo"
+  ],
+  "homepage": "https://plant-pal-plus.vercel.app",
+  "bugs": {
+    "url": "https://github.com/rakshit-737/PlantPal-Plus/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rakshit-737/PlantPal-Plus.git",
+    "directory": "03_implementation"
+  },
+  "license": "MIT",
+  "author": "Rakshit",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "workspaces": [
+    "shared",
+    "api",
+    "mobile",
+    "web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.10.2",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10"
+  }
+}
