@@ -1,0 +1,7 @@
+# Vercel turns every file under a top-level api/ folder into a serverless
+# function, and the Hobby plan allows twelve. This project only serves the
+# website from Vercel (the API runs on Supabase Edge Functions), so the API's
+# source is left out of the upload. Its package.json stays because npm ci
+# needs every workspace's manifest.
+/api/*
+!/api/package.json
