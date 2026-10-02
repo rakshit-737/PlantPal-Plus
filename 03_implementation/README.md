@@ -34,5 +34,6 @@ One workspace at a time: `npm run dev --workspace @plantpal/api`, `npm test --wo
 | `.prettierrc.json`, `.prettierignore` | The formatting style |
 | `.nvmrc` | The Node.js version to use (`nvm use`) |
 | `vercel.json` | How Vercel installs, builds and serves the website; the Vercel project's Root Directory is this folder |
+| `.vercelignore` | Keeps the API's source out of the Vercel deployment, which would otherwise turn every file under `api/` into a serverless function |
 
 Testing is described in the [testing guide](../04_testing/README.md) and deployment in the [deployment guide](../06_deployment/README.md).

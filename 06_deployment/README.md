@@ -29,6 +29,13 @@ redeploys on every push to `main`. If the Root Directory setting is ever reset
 to the repository root, the build fails at install: there is no `package.json`
 at the top level.
 
+**Why there is a `.vercelignore`.** Vercel deploys every file in a top-level
+`api/` folder of the project as a serverless function, and from
+`03_implementation` that folder is the API's source. Vercel only serves the
+website here, so [`03_implementation/.vercelignore`](../03_implementation/.vercelignore)
+excludes `api/` from the deployment, keeping `api/package.json` for `npm ci`.
+Without it the build stops at the Hobby plan's limit of twelve functions.
+
 **Why the page and the API share an origin.** The refresh token is an httpOnly
 cookie. A page on one origin talking to an API on another sends that cookie as
 a third-party cookie, which Safari blocks outright and Chrome is phasing out —
