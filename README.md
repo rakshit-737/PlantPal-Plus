@@ -27,7 +27,7 @@
 
 Watering plants, moving every day and eating well are all daily habits that run on the same loop: **schedule, remind, log, keep the streak, look back**. Most people juggle three apps for them, with three logins and three streams of notifications. PlantPal+ builds the loop once and runs all three habits through it: one dashboard, one reminder engine and one streak that counts a day when every habit you track is done.
 
-It is also a complete software-engineering project, built phase by phase from a 228-requirement specification. Code, tests and documents cite the identifiers of the requirements they implement, so a rule can be followed from the specification to the line that enforces it.
+It is also a complete software-engineering project, built phase by phase from a 228-requirement specification. Code, tests and documents cite the identifiers of the requirements they implement, so each rule can be followed from the specification to the line that enforces it.
 
 ## Features
 
@@ -145,7 +145,7 @@ cp web/.env.example web/.env
 npm run dev --workspace @plantpal/web        # http://localhost:5173
 ```
 
-**3. Run the mobile app (optional).** Scan the QR code with [Expo Go](https://expo.dev/go); a physical phone needs `EXPO_PUBLIC_API_URL` set to your computer's LAN address.
+**3. Run the mobile app (optional).** Scan the QR code with [Expo Go](https://expo.dev/go); on a physical phone, set `EXPO_PUBLIC_API_URL` to your computer's LAN address.
 
 ```bash
 cd mobile
@@ -168,7 +168,7 @@ Run these from `03_implementation`:
 
 ## Testing
 
-**466 tests** across the four workspaces run on every push and pull request, on Node 20.11 and 22, with a real PostgreSQL 16 for the integration suites.
+**466 tests** across the four workspaces run on every push and pull request, on Node 20.11 and 22, using a real PostgreSQL 16 for the integration suites.
 
 | Workspace | Tests | Focus |
 | --- | ---: | --- |
