@@ -11,7 +11,7 @@ PlantPal+ is deployed continuously from `main` and has no numbered releases yet,
 - The repository is organised by project phase, one numbered folder each: `01_requirements`, `02_design`, `03_implementation`, `04_testing`, `05_documentation` and `06_deployment` ([ADR 0005](../02_design/architecture/adrs/0005-organise-the-repository-by-project-phase.md)). Every numbered folder has a README.
 - `03_implementation` is the npm workspace root: `package.json`, the lockfile, `vercel.json` and the TypeScript, ESLint, Prettier and Node version files moved there, and npm commands run from that folder. The workspaces are `api`, `web`, `mobile` and `shared`. No dependency versions changed.
 - The contributing guide, code of conduct and security policy moved into `.github/`; the changelog and third-party licences into `05_documentation/`; the Render blueprint into `06_deployment/`.
-- The Vercel project builds from `03_implementation` (its Root Directory setting), and the CI and GitHub Pages workflows run npm there.
+- The Vercel project builds from `03_implementation` (its Root Directory setting), where a `.vercelignore` keeps the API's source out of the website deployment. The CI and GitHub Pages workflows run npm there too.
 - The committed API bundle is `06_deployment/api/index.js`, so the edge loader imports that path from the next API deploy on.
 - Every link and path in the documentation, comments and configuration points at the new folders.
 

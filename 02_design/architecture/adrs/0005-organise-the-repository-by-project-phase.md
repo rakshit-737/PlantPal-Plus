@@ -34,6 +34,7 @@ A reader opening the repository had to know the JavaScript conventions to find t
 **Negative:**
 - Every npm command runs from `03_implementation`, and `node_modules` lives there.
 - The Vercel project's Root Directory must be `03_implementation`; a project reset to the repository root fails at install.
+- From `03_implementation`, Vercel sees `api/` as a folder of serverless functions. `03_implementation/.vercelignore` keeps the API's source out of the website deployment, which would otherwise fail on the Hobby plan's limit of twelve functions.
 - A Render Blueprint needs its Blueprint path set to `06_deployment/render.yaml`.
 - The committed API bundle moves to `06_deployment/api/index.js`, so the edge loader's import path changes with the next API deploy. Functions pinned to earlier commits keep loading the old path, which still exists at those commits.
 - ESLint runs inside `03_implementation`, so the small Deno redirect function in `06_deployment/web_redirect/` is no longer linted.
