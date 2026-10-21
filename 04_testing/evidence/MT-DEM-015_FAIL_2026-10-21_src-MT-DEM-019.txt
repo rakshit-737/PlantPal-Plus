@@ -1,0 +1,7 @@
+# GET /api/v1/notifications
+{"error":{"code":"NOT_FOUND","message":"No route matches GET /api/v1/notifications","message_key":"errors.not_found","request_id":"c54e3601-8d7c-49e2-a3b8-13c22dd3ce67","timestamp":"2026-10-21T04:19:01.788Z"}}
+[404]
+
+# POST /api/v1/notifications/test
+{"error":{"code":"NOT_FOUND","message":"No route matches POST /api/v1/notifications/test","message_key":"errors.not_found","request_id":"0a925b37-aa94-411b-9816-0a69cd450d83","timestamp":"2026-10-21T04:19:01.795Z"}}
+[404]

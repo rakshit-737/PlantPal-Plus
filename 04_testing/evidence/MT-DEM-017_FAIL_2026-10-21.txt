@@ -1,0 +1,16 @@
+reminderService.ts l.50 push payload (source):
+  for (const row of sentRows) {
+    for (const token of tokensByUser.get(row.user_id) ?? []) {
+      messages.push({
+        to: token,
+        title: row.title,
+        body: row.body ?? '',
+        data: { reminder_id: row.id },
+      })
+      const list = reminderIdsByToken.get(token)
+      if (list) list.push(row.id)
+      else reminderIdsByToken.set(token, [row.id])
+    }
+  }
+
+grep deep_link|deeplink|Linking in api/src and mobile/src: no matches
