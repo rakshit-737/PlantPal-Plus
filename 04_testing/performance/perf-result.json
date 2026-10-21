@@ -1,0 +1,84 @@
+{
+  "base": "http://localhost:4010",
+  "node": "v22.22.2",
+  "date": "2026-10-18T12:45:12.297Z",
+  "results": [
+    {
+      "scenario": "read  GET /plants (20 rows)",
+      "samples": 150,
+      "errors": 0,
+      "p50": 1.7,
+      "p95": 4.9,
+      "p99": 8.8,
+      "limit_p95": 400,
+      "limit_p99": 900,
+      "result": "PASS"
+    },
+    {
+      "scenario": "read  GET /fitness (page)",
+      "samples": 150,
+      "errors": 0,
+      "p50": 2.3,
+      "p95": 5.1,
+      "p99": 8.6,
+      "limit_p95": 400,
+      "limit_p99": 900,
+      "result": "PASS"
+    },
+    {
+      "scenario": "read  GET /plants/species search",
+      "samples": 150,
+      "errors": 0,
+      "p50": 1.9,
+      "p95": 4,
+      "p99": 5.8,
+      "limit_p95": 400,
+      "limit_p99": 900,
+      "result": "PASS"
+    },
+    {
+      "scenario": "read  GET /achievements",
+      "samples": 150,
+      "errors": 0,
+      "p50": 1.6,
+      "p95": 3.1,
+      "p99": 6.4,
+      "limit_p95": 400,
+      "limit_p99": 900,
+      "result": "PASS"
+    },
+    {
+      "scenario": "dash  GET /dashboard",
+      "samples": 150,
+      "errors": 0,
+      "p50": 2,
+      "p95": 7.1,
+      "p99": 11,
+      "limit_p95": 800,
+      "limit_p99": null,
+      "result": "PASS"
+    },
+    {
+      "scenario": "write POST /nutrition/water",
+      "samples": 150,
+      "errors": 0,
+      "p50": 3.6,
+      "p95": 9.9,
+      "p99": 15.9,
+      "limit_p95": 600,
+      "limit_p99": 1200,
+      "result": "PASS"
+    },
+    {
+      "scenario": "write POST /fitness",
+      "samples": 150,
+      "errors": 0,
+      "p50": 5.2,
+      "p95": 7.4,
+      "p99": 14.5,
+      "limit_p95": 600,
+      "limit_p99": 1200,
+      "result": "PASS"
+    }
+  ]
+}
