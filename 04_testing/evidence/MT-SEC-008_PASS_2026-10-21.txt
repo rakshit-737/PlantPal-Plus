@@ -1,6 +1,0 @@
-After login (headless Chromium, local build):
-localStorage   = {"plantpal-theme":"light"}
-sessionStorage = {"plantpal-greeted":"1"}
-document.cookie = "" (nothing readable from script)
-Cookie refresh_token: HttpOnly=true, Secure=true, SameSite=None, Path=/api/auth
-IndexedDB databases: none
